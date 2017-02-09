@@ -12,9 +12,11 @@ Terraform provider plugin for proxmox
 
 ## Build
 
+Requires https://github.com/Telmate/proxmox-api-go
+
 ```
 go build -o terraform-provider-proxmox
-cp  terraform-provider-proxmox $GOPATH/bin
+cp terraform-provider-proxmox $GOPATH/bin
 ```
 
 ## Run
