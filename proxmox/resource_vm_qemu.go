@@ -4,7 +4,6 @@ import (
 	"fmt"
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform/helper/schema"
-	"log"
 	"strconv"
 )
 
@@ -17,10 +16,6 @@ func resourceVmQemu() *schema.Resource {
 		Delete: resourceVmQemuDelete,
 
 		Schema: map[string]*schema.Schema{
-			// "vmid": {
-			// 	Type:     schema.TypeInt,
-			// 	Optional: true,
-			// },
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -117,14 +112,11 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Duplicate VM name (%s) with vmId: %d", vmName, dupVmr.VmId())
 	}
 
-	// if d.Get("vmid").(int) == 0 {
+	// get unique id
 	maxid, err := pxapi.MaxVmId(client)
 	if err != nil {
 		return err
 	}
-	log.Println("MaxVmId: %d", maxid)
-	// 	d.Set("vmid", maxid+1)
-	// }
 	vmr := pxapi.NewVmRef(maxid + 1)
 	vmr.SetNode(d.Get("target_node").(string))
 
@@ -184,7 +176,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 	d.SetId(strconv.Itoa(vmr.VmId()))
-	//d.Set("vmid", vmr.VmId())
+	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
 	d.Set("storage", config.Storage)
