@@ -42,6 +42,14 @@ resource "proxmox_vm_qemu" "test" {
 	cores = 3
 	sockets = 1
 	memory = 2560
+	disk_gb = 4
+	nic = "virtio"
+	bridge = "vmbr1"
+	os_type = "ubnutu"
+	os_network_config = <<EOF
+auto eth0
+iface eth0 inet dhcp
+EOF
 }
 
 ```

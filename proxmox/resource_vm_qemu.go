@@ -1,9 +1,11 @@
 package proxmox
 
 import (
+	"fmt"
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+	"strconv"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -11,101 +13,119 @@ func resourceVmQemu() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceVmQemuCreate,
 		Read:   resourceVmQemuRead,
-		Update: nil, // TODO - updates?
+		Update: resourceVmQemuUpdate,
 		Delete: resourceVmQemuDelete,
 
 		Schema: map[string]*schema.Schema{
-			"vmid": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				ForceNew: true,
-			},
+			// "vmid": {
+			// 	Type:     schema.TypeInt,
+			// 	Optional: true,
+			// },
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"desc": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"target_node": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"ssh_forward_ip": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"iso": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"clone": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"storage": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
+			},
+			"qemu_os": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "l26",
 			},
 			"memory": {
 				Type:     schema.TypeInt,
 				Required: true,
-				ForceNew: true,
 			},
 			"cores": {
 				Type:     schema.TypeInt,
 				Required: true,
-				ForceNew: true,
 			},
 			"sockets": {
 				Type:     schema.TypeInt,
 				Required: true,
+			},
+			"disk_gb": {
+				Type:     schema.TypeFloat,
+				Required: true,
+			},
+			"nic": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"bridge": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"vlan": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  -1,
+			},
+			"os_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"os_network_config": {
+				Type:     schema.TypeString,
+				Optional: true,
 				ForceNew: true,
 			},
-
-			// TODO - diskGB
-			// TODO - os
-			// TODO - cores
-			// TODO - nic
-			// TODO - bridge
-			// TODO - vlan
-			// TODO - eth0 OS config
 		},
 	}
 }
 
 func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*providerConfiguration).Client
+	vmName := d.Get("name").(string)
 	config := pxapi.ConfigQemu{
-		Name:        d.Get("name").(string),
-		Description: d.Get("desc").(string),
-		Storage:     d.Get("storage").(string),
-		Memory:      d.Get("memory").(int),
-		QemuCores:   d.Get("cores").(int),
-		QemuSockets: d.Get("sockets").(int),
-		// TODO - diskGB
-		// TODO - os
-		// TODO - nic
-		// TODO - bridge
-		// TODO - vlan
+		Name:         vmName,
+		Description:  d.Get("desc").(string),
+		Storage:      d.Get("storage").(string),
+		Memory:       d.Get("memory").(int),
+		QemuCores:    d.Get("cores").(int),
+		QemuSockets:  d.Get("sockets").(int),
+		DiskSize:     d.Get("disk_gb").(float64),
+		QemuOs:       d.Get("qemu_os").(string),
+		QemuNicModel: d.Get("nic").(string),
+		QemuBrige:    d.Get("bridge").(string),
+		QemuVlanTag:  d.Get("vlan").(int),
 	}
-	if d.Get("vmid").(int) == 0 {
-		maxid, err := pxapi.MaxVmId(client)
-		if err != nil {
-			return err
-		}
-		log.Println("MaxVmId: %d", maxid)
-		d.Set("vmid", maxid+1)
+	dupVmr, _ := client.GetVmRefByName(vmName)
+	if dupVmr != nil {
+		return fmt.Errorf("Duplicate VM name (%s) with vmId: %d", vmName, dupVmr.VmId())
 	}
-	vmr := pxapi.NewVmRef(d.Get("vmid").(int))
+
+	// if d.Get("vmid").(int) == 0 {
+	maxid, err := pxapi.MaxVmId(client)
+	if err != nil {
+		return err
+	}
+	log.Println("MaxVmId: %d", maxid)
+	// 	d.Set("vmid", maxid+1)
+	// }
+	vmr := pxapi.NewVmRef(maxid + 1)
 	vmr.SetNode(d.Get("target_node").(string))
 
 	// check if ISO or clone
@@ -126,7 +146,10 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 	}
-	_, err := client.StartVm(vmr)
+
+	d.SetId(strconv.Itoa(vmr.VmId()))
+
+	_, err = client.StartVm(vmr)
 	if err != nil {
 		return err
 	}
@@ -146,8 +169,34 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
+func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
+	return nil
+}
+
 func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
-	return nil // all information in schema
+	client := meta.(*providerConfiguration).Client
+	vmr, err := client.GetVmRefByName(d.Get("name").(string))
+	if err != nil {
+		return err
+	}
+	config, err := pxapi.NewConfigQemuFromApi(vmr, client)
+	if err != nil {
+		return err
+	}
+	d.SetId(strconv.Itoa(vmr.VmId()))
+	//d.Set("vmid", vmr.VmId())
+	d.Set("name", config.Name)
+	d.Set("desc", config.Description)
+	d.Set("storage", config.Storage)
+	d.Set("memory", config.Memory)
+	d.Set("cores", config.QemuCores)
+	d.Set("sockets", config.QemuSockets)
+	d.Set("disk_gb", config.DiskSize)
+	d.Set("qemu_os", config.QemuOs)
+	d.Set("nic", config.QemuNicModel)
+	d.Set("bridge", config.QemuBrige)
+	d.Set("vlan", config.QemuVlanTag)
+	return nil
 }
 
 func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
