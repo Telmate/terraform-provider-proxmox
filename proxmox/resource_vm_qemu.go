@@ -87,6 +87,16 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"ssh_user": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"ssh_private_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 		},
 	}
 }
@@ -151,13 +161,24 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetConnInfo(map[string]string{
-		"type": "ssh",
-		"host": d.Get("ssh_forward_ip").(string),
-		"port": sshPort,
+		"type":        "ssh",
+		"host":        d.Get("ssh_forward_ip").(string),
+		"port":        sshPort,
+		"user":        d.Get("ssh_user").(string),
+		"private_key": d.Get("ssh_private_key").(string),
 	})
 
-	// TODO - preprovision VM (setup eth0 and hostname)
+	switch d.Get("os_type").(string) {
 
+	case "ubuntu":
+		err = preProvisionUbuntu(d)
+		if err != nil {
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Unknown os_type: %s", d.Get("os_type").(string))
+	}
 	return nil
 }
 
