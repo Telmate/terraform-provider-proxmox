@@ -5,6 +5,7 @@ import (
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform/helper/schema"
 	"strconv"
+	"time"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -171,6 +172,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	switch d.Get("os_type").(string) {
 
 	case "ubuntu":
+		// give sometime to bootup
+		time.Sleep(5 * time.Second)
 		err = preProvisionUbuntu(d)
 		if err != nil {
 			return err

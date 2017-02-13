@@ -8,9 +8,40 @@ import (
 	// "github.com/hashicorp/terraform/terraform"
 	// "github.com/mitchellh/go-linereader"
 	"io"
+	"strconv"
+	"strings"
 )
 
+const eth0Payload = "echo $'%s' > /tmp/tf_eth0_payload"
+const provisionPayload = "echo $'%s' > /tmp/tf_preprovision.sh"
+
 // preprovision VM (setup eth0 and hostname)
+const ubuntuPreprovisionScript = `
+BOX_HOSTNAME=%s
+BOX_SHORT_HOSTNAME=%s
+MY_IP=$(echo $SSH_CLIENT | awk "{ print \$1 }")
+echo Using my ip $MY_IP to provision at $(date)
+if [ -z "$(grep $BOX_SHORT_HOSTNAME /etc/hosts)" ]; then
+	echo 127.0.1.1 $BOX_HOSTNAME $BOX_SHORT_HOSTNAME >> /etc/hosts
+else
+	echo Hosts file already set includes $BOX_SHORT_HOSTNAME
+fi
+echo $BOX_SHORT_HOSTNAME > /etc/hostname
+hostname $BOX_SHORT_HOSTNAME
+echo Hostname set $BOX_SHORT_HOSTNAME
+if [ -z "$(grep eth0 /etc/network/interfaces)" ]; then
+	echo Setting up eth0 for $BOX_HOSTNAME
+	cat /tmp/tf_eth0_payload >> /etc/network/interfaces
+else
+	echo eth0 already setup for $BOX_HOSTNAME
+fi
+
+echo Attempting to bring up eth0
+ip route add $MY_IP via 10.0.2.2
+ip route del default via 10.0.2.2
+ifup eth0
+echo Preprovision done at $(date)
+`
 
 func preProvisionUbuntu(d *schema.ResourceData) error {
 
@@ -20,7 +51,22 @@ func preProvisionUbuntu(d *schema.ResourceData) error {
 		return err
 	}
 
-	err = runCommand(comm, "echo cool > /tmp/test")
+	err = runCommand(comm, fmt.Sprintf(eth0Payload, strings.Trim(strconv.Quote(d.Get("os_network_config").(string)), "\"")))
+	if err != nil {
+		return err
+	}
+
+	hostname := d.Get("name").(string)
+	pScript := fmt.Sprintf(ubuntuPreprovisionScript, hostname, strings.Split(hostname, ".")[0])
+	err = runCommand(comm, fmt.Sprintf(provisionPayload, strings.Trim(strconv.Quote(pScript), "\"")))
+	if err != nil {
+		return err
+	}
+
+	err = runCommand(comm, "sudo bash /tmp/tf_preprovision.sh >> /tmp/tf_preprovision.log 2>&1")
+	if err != nil {
+		return err
+	}
 
 	comm.Disconnect()
 
