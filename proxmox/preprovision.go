@@ -8,6 +8,7 @@ import (
 	// "github.com/hashicorp/terraform/terraform"
 	// "github.com/mitchellh/go-linereader"
 	"io"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -46,11 +47,13 @@ echo Preprovision done at $(date)
 func preProvisionUbuntu(d *schema.ResourceData) error {
 
 	// Get a new communicator
+	log.Print("[DEBUG] connecting to SSH on ubuntu")
 	comm, err := communicator.New(d.State())
 	if err != nil {
 		return err
 	}
 
+	log.Print("[DEBUG] sending os_network_config")
 	err = runCommand(comm, fmt.Sprintf(eth0Payload, strings.Trim(strconv.Quote(d.Get("os_network_config").(string)), "\"")))
 	if err != nil {
 		return err
@@ -58,16 +61,20 @@ func preProvisionUbuntu(d *schema.ResourceData) error {
 
 	hostname := d.Get("name").(string)
 	pScript := fmt.Sprintf(ubuntuPreprovisionScript, hostname, strings.Split(hostname, ".")[0])
+
+	log.Print("[DEBUG] sending provisionPayload")
 	err = runCommand(comm, fmt.Sprintf(provisionPayload, strings.Trim(strconv.Quote(pScript), "\"")))
 	if err != nil {
 		return err
 	}
 
+	log.Print("[DEBUG] running provisionPayload")
 	err = runCommand(comm, "sudo bash /tmp/tf_preprovision.sh >> /tmp/tf_preprovision.log 2>&1")
 	if err != nil {
 		return err
 	}
 
+	log.Print("[DEBUG] disconnecting SSH")
 	comm.Disconnect()
 
 	return err
