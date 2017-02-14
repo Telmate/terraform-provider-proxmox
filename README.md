@@ -3,12 +3,7 @@
 Terraform provider plugin for proxmox
 
 
-## Work in progress
-
-### TODO
-
-* document terraform-ubuntu1404-template creation process
-* implement pre-provision phase
+## Working prototype
 
 ## Build
 
@@ -18,6 +13,9 @@ Requires https://github.com/Telmate/proxmox-api-go
 go build -o terraform-provider-proxmox
 cp terraform-provider-proxmox $GOPATH/bin
 ```
+
+Recommended ISO builder https://github.com/Telmate/terraform-ubuntu-proxmox-iso
+
 
 ## Run
 

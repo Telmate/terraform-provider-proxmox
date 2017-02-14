@@ -20,6 +20,7 @@ const provisionPayload = "echo $'%s' > /tmp/tf_preprovision.sh"
 const ubuntuPreprovisionScript = `
 BOX_HOSTNAME=%s
 BOX_SHORT_HOSTNAME=%s
+SSH_CLIENT=$1
 MY_IP=$(echo $SSH_CLIENT | awk "{ print \$1 }")
 echo Using my ip $MY_IP to provision at $(date)
 if [ -z "$(grep $BOX_SHORT_HOSTNAME /etc/hosts)" ]; then
@@ -41,6 +42,10 @@ echo Attempting to bring up eth0
 ip route add $MY_IP via 10.0.2.2
 ip route del default via 10.0.2.2
 ifup eth0
+if [ -e /etc/auto_resize_vda.sh ]; then
+	echo Auto-resizing file-system
+	/etc/auto_resize_vda.sh
+fi
 echo Preprovision done at $(date)
 `
 
@@ -69,7 +74,7 @@ func preProvisionUbuntu(d *schema.ResourceData) error {
 	}
 
 	log.Print("[DEBUG] running provisionPayload")
-	err = runCommand(comm, "sudo bash /tmp/tf_preprovision.sh >> /tmp/tf_preprovision.log 2>&1")
+	err = runCommand(comm, "sudo bash /tmp/tf_preprovision.sh \"$SSH_CLIENT\" >> /tmp/tf_preprovision.log 2>&1")
 	if err != nil {
 		return err
 	}
