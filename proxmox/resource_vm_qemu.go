@@ -206,6 +206,26 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
+	vmName := d.Get("name").(string)
+	disk_gb := d.Get("disk_gb").(float64)
+	config := pxapi.ConfigQemu{
+		Name:         vmName,
+		Description:  d.Get("desc").(string),
+		Storage:      d.Get("storage").(string),
+		Memory:       d.Get("memory").(int),
+		QemuCores:    d.Get("cores").(int),
+		QemuSockets:  d.Get("sockets").(int),
+		DiskSize:     disk_gb,
+		QemuOs:       d.Get("qemu_os").(string),
+		QemuNicModel: d.Get("nic").(string),
+		QemuBrige:    d.Get("bridge").(string),
+		QemuVlanTag:  d.Get("vlan").(int),
+	}
+
+	config.UpdateConfig(vmr, client)
+
+	// TODO - resize disk
+
 	sshPort, err := pxapi.SshForwardUsernet(vmr, client)
 	if err != nil {
 		return err
