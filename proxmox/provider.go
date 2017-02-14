@@ -3,6 +3,7 @@ package proxmox
 import (
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform/helper/schema"
+	"sync"
 )
 
 type providerConfiguration struct {
@@ -53,4 +54,21 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	return &providerConfiguration{
 		Client: client,
 	}, nil
+}
+
+var mutex = &sync.Mutex{}
+var maxVmId = 0
+
+func nextVmId(client *pxapi.Client) (nextId int, err error) {
+	mutex.Lock()
+	if maxVmId == 0 {
+		maxVmId, err = pxapi.MaxVmId(client)
+		if err != nil {
+			return 0, err
+		}
+	}
+	maxVmId++
+	nextId = maxVmId
+	mutex.Unlock()
+	return nextId, nil
 }

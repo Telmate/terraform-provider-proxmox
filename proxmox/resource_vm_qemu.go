@@ -127,11 +127,11 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// get unique id
-	maxid, err := pxapi.MaxVmId(client)
+	nextid, err := nextVmId(client)
 	if err != nil {
 		return err
 	}
-	vmr := pxapi.NewVmRef(maxid + 1)
+	vmr := pxapi.NewVmRef(nextid)
 	vmr.SetNode(d.Get("target_node").(string))
 
 	// check if ISO or clone
