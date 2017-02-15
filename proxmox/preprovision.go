@@ -11,6 +11,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const eth0Payload = "echo $'%s' > /tmp/tf_eth0_payload"
@@ -59,9 +60,20 @@ func preProvisionUbuntu(d *schema.ResourceData) error {
 	}
 
 	log.Print("[DEBUG] sending os_network_config")
-	err = runCommand(comm, fmt.Sprintf(eth0Payload, strings.Trim(strconv.Quote(d.Get("os_network_config").(string)), "\"")))
-	if err != nil {
-		return err
+
+	// on this first one allow some retries to connect
+	rr := 0
+	for {
+		rr++
+		err = runCommand(comm, fmt.Sprintf(eth0Payload, strings.Trim(strconv.Quote(d.Get("os_network_config").(string)), "\"")))
+		if err != nil {
+			if rr > 3 {
+				return err
+			}
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		break
 	}
 
 	hostname := d.Get("name").(string)

@@ -25,6 +25,7 @@ func Provider() *schema.Provider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_PASS", nil),
 				Description: "secret",
+				Sensitive:   true,
 			},
 			"pm_api_url": {
 				Type:        schema.TypeString,

@@ -95,9 +95,10 @@ func resourceVmQemu() *schema.Resource {
 				ForceNew: true,
 			},
 			"ssh_private_key": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				ForceNew:  true,
+				Sensitive: true,
 			},
 		},
 	}
