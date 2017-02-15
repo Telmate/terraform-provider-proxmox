@@ -268,7 +268,12 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 
 func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*providerConfiguration).Client
-	vmr := pxapi.NewVmRef(d.Get("vmid").(int))
-	_, err := client.DeleteVm(vmr)
+	vmId, _ := strconv.Atoi(d.Id())
+	vmr := pxapi.NewVmRef(vmId)
+	_, err := client.StopVm(vmr)
+	if err != nil {
+		return err
+	}
+	_, err = client.DeleteVm(vmr)
 	return err
 }
