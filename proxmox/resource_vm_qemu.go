@@ -5,6 +5,7 @@ import (
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+	"path"
 	"strconv"
 	"time"
 )
@@ -100,6 +101,11 @@ func resourceVmQemu() *schema.Resource {
 				ForceNew:  true,
 				Sensitive: true,
 			},
+			"force_create": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 		},
 	}
 }
@@ -123,51 +129,62 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	log.Print("[DEBUG] checking for duplicate name")
 	dupVmr, _ := client.GetVmRefByName(vmName)
-	if dupVmr != nil {
-		return fmt.Errorf("Duplicate VM name (%s) with vmId: %d", vmName, dupVmr.VmId())
+
+	forceCreate := d.Get("force_create").(bool)
+	targetNode := d.Get("target_node").(string)
+
+	if dupVmr != nil && forceCreate {
+		return fmt.Errorf("Duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId())
+	} else if dupVmr != nil && dupVmr.Node() != targetNode {
+		return fmt.Errorf("Duplicate VM name (%s) with vmId: %d on different target_node=%s", vmName, dupVmr.VmId(), dupVmr.Node())
 	}
 
-	// get unique id
-	nextid, err := nextVmId(client)
-	if err != nil {
-		return err
-	}
-	vmr := pxapi.NewVmRef(nextid)
-	vmr.SetNode(d.Get("target_node").(string))
+	vmr := dupVmr
 
-	// check if ISO or clone
-	if d.Get("clone").(string) != "" {
-		sourceVmr, err := client.GetVmRefByName(d.Get("clone").(string))
+	if vmr == nil {
+		// get unique id
+		nextid, err := nextVmId(client)
 		if err != nil {
 			return err
 		}
-		log.Print("[DEBUG] cloning VM")
-		err = config.CloneVm(sourceVmr, vmr, client)
-		if err != nil {
-			return err
-		}
+		vmr = pxapi.NewVmRef(nextid)
 
-		clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
+		vmr.SetNode(targetNode)
+		// check if ISO or clone
+		if d.Get("clone").(string) != "" {
+			sourceVmr, err := client.GetVmRefByName(d.Get("clone").(string))
+			if err != nil {
+				return err
+			}
+			log.Print("[DEBUG] cloning VM")
+			err = config.CloneVm(sourceVmr, vmr, client)
+			if err != nil {
+				return err
+			}
 
-		if disk_gb > clonedConfig.DiskSize {
-			log.Print("[DEBUG] resizing disk")
-			_, err = client.ResizeQemuDisk(vmr, "virtio0", int(disk_gb-clonedConfig.DiskSize))
+			err = prepareDiskSize(client, vmr, disk_gb)
+			if err != nil {
+				return err
+			}
+
+		} else if d.Get("iso").(string) != "" {
+			config.QemuIso = d.Get("iso").(string)
+			err := config.CreateVm(vmr, client)
 			if err != nil {
 				return err
 			}
 		}
-	} else if d.Get("iso").(string) != "" {
-		config.QemuIso = d.Get("iso").(string)
-		err := config.CreateVm(vmr, client)
+	} else {
+		log.Printf("[DEBUG] recycling VM vmId: %d", vmr.VmId())
+		err := prepareDiskSize(client, vmr, disk_gb)
 		if err != nil {
 			return err
 		}
 	}
-
-	d.SetId(strconv.Itoa(vmr.VmId()))
+	d.SetId(resourceId(targetNode, vmr.VmId()))
 
 	log.Print("[DEBUG] starting VM")
-	_, err = client.StartVm(vmr)
+	_, err := client.StartVm(vmr)
 	if err != nil {
 		return err
 	}
@@ -225,7 +242,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	config.UpdateConfig(vmr, client)
 
-	// TODO - resize disk
+	prepareDiskSize(client, vmr, disk_gb)
 
 	sshPort, err := pxapi.SshForwardUsernet(vmr, client)
 	if err != nil {
@@ -251,7 +268,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	d.SetId(strconv.Itoa(vmr.VmId()))
+	d.SetId(resourceId(vmr.Node(), vmr.VmId()))
 	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
@@ -269,7 +286,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 
 func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*providerConfiguration).Client
-	vmId, _ := strconv.Atoi(d.Id())
+	vmId, _ := strconv.Atoi(path.Base(d.Id()))
 	vmr := pxapi.NewVmRef(vmId)
 	_, err := client.StopVm(vmr)
 	if err != nil {
@@ -277,4 +294,21 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 	_, err = client.DeleteVm(vmr)
 	return err
+}
+
+func resourceId(targetNode string, vmId int) string {
+	return fmt.Sprintf("%s/qemu/%d", targetNode, vmId)
+}
+
+func prepareDiskSize(client *pxapi.Client, vmr *pxapi.VmRef, disk_gb float64) error {
+	clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
+
+	if disk_gb > clonedConfig.DiskSize {
+		log.Print("[DEBUG] resizing disk")
+		_, err = client.ResizeQemuDisk(vmr, "virtio0", int(disk_gb-clonedConfig.DiskSize))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
