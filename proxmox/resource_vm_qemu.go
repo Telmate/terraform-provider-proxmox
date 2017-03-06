@@ -7,6 +7,7 @@ import (
 	"log"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -98,8 +99,10 @@ func resourceVmQemu() *schema.Resource {
 			"ssh_private_key": {
 				Type:      schema.TypeString,
 				Optional:  true,
-				ForceNew:  true,
 				Sensitive: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return strings.TrimSpace(old) == strings.TrimSpace(new)
+				},
 			},
 			"force_create": {
 				Type:     schema.TypeBool,
