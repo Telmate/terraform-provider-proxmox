@@ -179,7 +179,14 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		}
 	} else {
 		log.Printf("[DEBUG] recycling VM vmId: %d", vmr.VmId())
-		err := prepareDiskSize(client, vmr, disk_gb)
+
+		client.StopVm(vmr)
+
+		err := config.UpdateConfig(vmr, client)
+		if err != nil {
+			return err
+		}
+		err = prepareDiskSize(client, vmr, disk_gb)
 		if err != nil {
 			return err
 		}
