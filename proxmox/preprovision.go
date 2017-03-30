@@ -50,10 +50,51 @@ fi
 echo Preprovision done at $(date)
 `
 
+// preprovision VM (setup eth0 and hostname)
+const centosPreprovisionScript = `
+BOX_HOSTNAME=%s
+BOX_SHORT_HOSTNAME=%s
+SSH_CLIENT=$1
+MY_IP=$(echo $SSH_CLIENT | awk "{ print \$1 }")
+echo Using my ip $MY_IP to provision at $(date)
+if [ -z "$(grep $BOX_SHORT_HOSTNAME /etc/hosts)" ]; then
+	echo 127.0.1.1 $BOX_HOSTNAME $BOX_SHORT_HOSTNAME >> /etc/hosts
+else
+	echo Hosts file already set includes $BOX_SHORT_HOSTNAME
+fi
+echo $BOX_SHORT_HOSTNAME > /etc/hostname
+hostname $BOX_SHORT_HOSTNAME
+echo Hostname set $BOX_SHORT_HOSTNAME
+if [ -z "$(grep -i yes /etc/sysconfig/network-scripts/ifcfg-eth0)" ]; then
+	echo Setting up eth0 for $BOX_HOSTNAME
+	cat /tmp/tf_eth0_payload >> /etc/sysconfig/network-scripts/ifcfg-eth0
+else
+	echo eth0 already setup for $BOX_HOSTNAME
+fi
+
+echo Attempting to bring up eth0
+ip route add $MY_IP via 10.0.2.2
+ip route del default via 10.0.2.2
+ifup eth0
+if [ -e /etc/auto_resize_vda.sh ]; then
+	echo Auto-resizing file-system
+	/etc/auto_resize_vda.sh
+fi
+echo Preprovision done at $(date)
+`
+
+func preProvisionCentos(d *schema.ResourceData) error {
+	return preProvisionLinux(d, centosPreprovisionScript)
+}
+
 func preProvisionUbuntu(d *schema.ResourceData) error {
+	return preProvisionLinux(d, ubuntuPreprovisionScript)
+}
+
+func preProvisionLinux(d *schema.ResourceData, provisionBash string) error {
 
 	// Get a new communicator
-	log.Print("[DEBUG] connecting to SSH on ubuntu")
+	log.Print("[DEBUG] connecting to SSH on linux")
 	comm, err := communicator.New(d.State())
 	if err != nil {
 		return err
@@ -77,7 +118,7 @@ func preProvisionUbuntu(d *schema.ResourceData) error {
 	}
 
 	hostname := d.Get("name").(string)
-	pScript := fmt.Sprintf(ubuntuPreprovisionScript, hostname, strings.Split(hostname, ".")[0])
+	pScript := fmt.Sprintf(provisionBash, hostname, strings.Split(hostname, ".")[0])
 
 	log.Print("[DEBUG] sending provisionPayload")
 	err = runCommand(comm, fmt.Sprintf(provisionPayload, strings.Trim(strconv.Quote(pScript), "\"")))

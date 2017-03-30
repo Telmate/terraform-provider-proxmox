@@ -222,6 +222,14 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 
+	case "centos":
+		// give sometime to bootup
+		time.Sleep(8 * time.Second)
+		err = preProvisionCentos(d)
+		if err != nil {
+			return err
+		}
+
 	default:
 		return fmt.Errorf("Unknown os_type: %s", d.Get("os_type").(string))
 	}
