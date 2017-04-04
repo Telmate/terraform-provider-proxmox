@@ -67,7 +67,7 @@ hostname $BOX_SHORT_HOSTNAME
 echo Hostname set $BOX_SHORT_HOSTNAME
 if [ -z "$(grep -i yes /etc/sysconfig/network-scripts/ifcfg-eth0)" ]; then
 	echo Setting up eth0 for $BOX_HOSTNAME
-	cat /tmp/tf_eth0_payload >> /etc/sysconfig/network-scripts/ifcfg-eth0
+	cat /tmp/tf_eth0_payload > /etc/sysconfig/network-scripts/ifcfg-eth0
 else
 	echo eth0 already setup for $BOX_HOSTNAME
 fi
