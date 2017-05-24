@@ -18,6 +18,9 @@ func resourceVmQemu() *schema.Resource {
 		Read:   resourceVmQemuRead,
 		Update: resourceVmQemuUpdate,
 		Delete: resourceVmQemuDelete,
+		Importer: &schema.ResourceImporter{
+			State: resourceVmQemuImport,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -197,7 +200,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 	}
-	d.SetId(resourceId(targetNode, vmr.VmId()))
+	d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 
 	log.Print("[DEBUG] starting VM")
 	_, err := client.StartVm(vmr)
@@ -216,6 +219,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		"port":        sshPort,
 		"user":        d.Get("ssh_user").(string),
 		"private_key": d.Get("ssh_private_key").(string),
+		"pm_api_url":  client.ApiUrl,
+		"pm_user":     client.Username,
+		"pm_password": client.Password,
 	})
 
 	switch d.Get("os_type").(string) {
@@ -292,7 +298,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	d.SetId(resourceId(vmr.Node(), vmr.VmId()))
+	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
@@ -308,6 +314,11 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
+func resourceVmQemuImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	err := resourceVmQemuRead(d, meta)
+	return []*schema.ResourceData{d}, err
+}
+
 func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*providerConfiguration).Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
@@ -318,10 +329,6 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 	_, err = client.DeleteVm(vmr)
 	return err
-}
-
-func resourceId(targetNode string, vmId int) string {
-	return fmt.Sprintf("%s/qemu/%d", targetNode, vmId)
 }
 
 func prepareDiskSize(client *pxapi.Client, vmr *pxapi.VmRef, disk_gb float64) error {

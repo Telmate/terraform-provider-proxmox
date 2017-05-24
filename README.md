@@ -12,7 +12,10 @@ Requires https://github.com/Telmate/proxmox-api-go
 ```
 go build -o terraform-provider-proxmox
 cp terraform-provider-proxmox $GOPATH/bin
+cp terraform-provider-proxmox $GOPATH/bin/terraform-provisioner-proxmox
 ```
+
+Note: this plugin is both a provider and provisioner in one, which is why it needs to be in the $GOPATH/bin/ twice.
 
 Recommended ISO builder https://github.com/Telmate/terraform-ubuntu-proxmox-iso
 
@@ -56,6 +59,16 @@ EOF
 auto eth0
 iface eth0 inet dhcp
 EOF
+
+	provisioner "remote-exec" {
+		inline = [
+			"ip a"
+		]
+	}
+
+	provisioner "proxmox" {
+		action = "sshbackward"
+	}
 }
 
 ```
