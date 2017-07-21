@@ -300,9 +300,27 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		QemuVlanTag:  d.Get("vlan").(int),
 	}
 
-	config.UpdateConfig(vmr, client)
+	err = config.UpdateConfig(vmr, client)
+	if err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
+
+	// give sometime to proxmox to catchup
+	time.Sleep(5 * time.Second)
 
 	prepareDiskSize(client, vmr, disk_gb)
+
+	// give sometime to proxmox to catchup
+	time.Sleep(5 * time.Second)
+
+	log.Print("[DEBUG] starting VM")
+	_, err = client.StartVm(vmr)
+
+	if err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
 
 	sshPort, err := pxapi.SshForwardUsernet(vmr, client)
 	if err != nil {
@@ -317,6 +335,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		"private_key": d.Get("ssh_private_key").(string),
 	})
 	pmParallelEnd(pconf)
+
+	// give sometime to bootup
+	time.Sleep(9 * time.Second)
 	return nil
 }
 
@@ -376,7 +397,9 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 
 func prepareDiskSize(client *pxapi.Client, vmr *pxapi.VmRef, disk_gb float64) error {
 	clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
-
+	if err != nil {
+		return err
+	}
 	if disk_gb > clonedConfig.DiskSize {
 		log.Print("[DEBUG] resizing disk")
 		_, err = client.ResizeQemuDisk(vmr, "virtio0", int(disk_gb-clonedConfig.DiskSize))
