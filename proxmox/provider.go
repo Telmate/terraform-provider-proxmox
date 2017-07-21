@@ -10,7 +10,12 @@ import (
 )
 
 type providerConfiguration struct {
-	Client *pxapi.Client
+	Client          *pxapi.Client
+	MaxParallel     int
+	CurrentParallel int
+	MaxVmId         int
+	Mutex           *sync.Mutex
+	Cond            *sync.Cond
 }
 
 func Provider() *schema.Provider {
@@ -36,6 +41,11 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("PM_API_URL", nil),
 				Description: "https://host.fqdn:8006/api2/json",
 			},
+			"pm_parallel": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  4,
+			},
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
@@ -54,8 +64,14 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	var mut sync.Mutex
 	return &providerConfiguration{
-		Client: client,
+		Client:          client,
+		MaxParallel:     d.Get("pm_parallel").(int),
+		CurrentParallel: 0,
+		MaxVmId:         0,
+		Mutex:           &mut,
+		Cond:            sync.NewCond(&mut),
 	}, nil
 }
 
@@ -68,21 +84,34 @@ func getClient(pm_api_url string, pm_user string, pm_password string) (*pxapi.Cl
 	return client, nil
 }
 
-var mutex = &sync.Mutex{}
-var maxVmId = 0
-
-func nextVmId(client *pxapi.Client) (nextId int, err error) {
-	mutex.Lock()
-	if maxVmId == 0 {
-		maxVmId, err = pxapi.MaxVmId(client)
+func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
+	pconf.Mutex.Lock()
+	if pconf.MaxVmId == 0 {
+		pconf.MaxVmId, err = pxapi.MaxVmId(pconf.Client)
 		if err != nil {
 			return 0, err
 		}
 	}
-	maxVmId++
-	nextId = maxVmId
-	mutex.Unlock()
+	pconf.MaxVmId++
+	nextId = pconf.MaxVmId
+	pconf.Mutex.Unlock()
 	return nextId, nil
+}
+
+func pmParallelBegin(pconf *providerConfiguration) {
+	pconf.Mutex.Lock()
+	for pconf.CurrentParallel >= pconf.MaxParallel {
+		pconf.Cond.Wait()
+	}
+	pconf.CurrentParallel++
+	pconf.Mutex.Unlock()
+}
+
+func pmParallelEnd(pconf *providerConfiguration) {
+	pconf.Mutex.Lock()
+	pconf.CurrentParallel--
+	pconf.Cond.Signal()
+	pconf.Mutex.Unlock()
 }
 
 func resourceId(targetNode string, resType string, vmId int) string {
