@@ -6,6 +6,7 @@ import (
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
+	"time"
 )
 
 func Provisioner() terraform.ResourceProvisioner {
@@ -51,6 +52,19 @@ func applyFn(ctx context.Context) error {
 	switch act {
 	case "sshbackward":
 		return pxapi.RemoveSshForwardUsernet(vmr, client)
+
+	case "reconnect":
+		err = pxapi.RemoveSshForwardUsernet(vmr, client)
+		if err != nil {
+			return err
+		}
+		time.Sleep(5 * time.Second)
+		vmParams := map[string]string{
+			"net1": data.Get("net1").(string),
+		}
+		_, err = client.SetVmConfig(vmr, vmParams)
+
+		return err
 	default:
 		return fmt.Errorf("Unkown action: %s", act)
 	}
