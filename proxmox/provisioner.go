@@ -58,12 +58,12 @@ func applyFn(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 		vmParams := map[string]string{
 			"net1": data.Get("net1").(string),
 		}
 		_, err = client.SetVmConfig(vmr, vmParams)
-
+		time.Sleep(10 * time.Second)
 		return err
 	default:
 		return fmt.Errorf("Unkown action: %s", act)
