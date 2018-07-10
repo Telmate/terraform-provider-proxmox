@@ -111,9 +111,6 @@ func resourceVmQemu() *schema.Resource {
 				Optional:  true,
 				Sensitive: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old == "" {
-						return true
-					}
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
@@ -244,14 +241,15 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	pmParallelEnd(pconf)
 
 	d.SetConnInfo(map[string]string{
-		"type":        "ssh",
-		"host":        d.Get("ssh_forward_ip").(string),
-		"port":        sshPort,
-		"user":        d.Get("ssh_user").(string),
-		"private_key": d.Get("ssh_private_key").(string),
-		"pm_api_url":  client.ApiUrl,
-		"pm_user":     client.Username,
-		"pm_password": client.Password,
+		"type":            "ssh",
+		"host":            d.Get("ssh_forward_ip").(string),
+		"port":            sshPort,
+		"user":            d.Get("ssh_user").(string),
+		"private_key":     d.Get("ssh_private_key").(string),
+		"pm_api_url":      client.ApiUrl,
+		"pm_user":         client.Username,
+		"pm_password":     client.Password,
+		"pm_tls_insecure": "true", // TODO - pass pm_tls_insecure state around, but if we made it this far, default insecure
 	})
 
 	switch d.Get("os_type").(string) {
