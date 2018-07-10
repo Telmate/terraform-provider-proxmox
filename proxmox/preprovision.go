@@ -2,11 +2,11 @@ package proxmox
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/terraform/communicator"
 	"github.com/hashicorp/terraform/communicator/remote"
 	"github.com/hashicorp/terraform/helper/schema"
-	// "github.com/hashicorp/terraform/terraform"
-	// "github.com/mitchellh/go-linereader"
+
 	"io"
 	"log"
 	"strconv"

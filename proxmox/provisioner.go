@@ -3,10 +3,11 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"time"
+
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
-	"time"
 )
 
 func Provisioner() terraform.ResourceProvisioner {
