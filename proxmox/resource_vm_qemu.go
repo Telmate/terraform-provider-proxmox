@@ -2,13 +2,14 @@ package proxmox
 
 import (
 	"fmt"
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/terraform/helper/schema"
 	"log"
 	"path"
 	"strconv"
 	"strings"
 	"time"
+
+	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -110,6 +111,9 @@ func resourceVmQemu() *schema.Resource {
 				Optional:  true,
 				Sensitive: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old == "" {
+						return true
+					}
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
