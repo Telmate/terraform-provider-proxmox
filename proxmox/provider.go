@@ -2,11 +2,12 @@ package proxmox
 
 import (
 	"fmt"
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/terraform/helper/schema"
 	"regexp"
 	"strconv"
 	"sync"
+
+	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 type providerConfiguration struct {
