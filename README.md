@@ -31,6 +31,7 @@ terraform apply
 main.tf:
 ```
 provider "proxmox" {
+	pm_tls_insecure = true
 }
 
 resource "proxmox_vm_qemu" "test" {

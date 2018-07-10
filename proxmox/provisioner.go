@@ -44,7 +44,7 @@ func applyFn(ctx context.Context) error {
 	vmr.SetNode(targetNode)
 	client := currentClient
 	if client == nil {
-		client, err = getClient(connInfo["pm_api_url"], connInfo["pm_user"], connInfo["pm_password"])
+		client, err = getClient(connInfo["pm_api_url"], connInfo["pm_user"], connInfo["pm_password"], connInfo["pm_tls_insecure"] == "true")
 		if err != nil {
 			return err
 		}
