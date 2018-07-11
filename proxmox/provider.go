@@ -76,7 +76,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		Client:          client,
 		MaxParallel:     d.Get("pm_parallel").(int),
 		CurrentParallel: 0,
-		MaxVmId:         0,
+		MaxVmId:         -1,
 		Mutex:           &mut,
 		Cond:            sync.NewCond(&mut),
 	}, nil
@@ -97,13 +97,10 @@ func getClient(pm_api_url string, pm_user string, pm_password string, pm_tls_ins
 
 func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
 	pconf.Mutex.Lock()
-	if pconf.MaxVmId == 0 {
-		pconf.MaxVmId, err = pxapi.MaxVmId(pconf.Client)
-		if err != nil {
-			return 0, err
-		}
+	pconf.MaxVmId, err = pconf.Client.GetNextID(pconf.MaxVmId + 1)
+	if err != nil {
+		return 0, err
 	}
-	pconf.MaxVmId++
 	nextId = pconf.MaxVmId
 	pconf.Mutex.Unlock()
 	return nextId, nil
