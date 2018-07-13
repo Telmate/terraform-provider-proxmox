@@ -15,11 +15,12 @@ type providerConfiguration struct {
 	Client          *pxapi.Client
 	MaxParallel     int
 	CurrentParallel int
-	MaxVmId         int
+	MaxVMID         int
 	Mutex           *sync.Mutex
 	Cond            *sync.Cond
 }
 
+// Provider - Terrafrom properties for proxmox
 func Provider() *schema.Provider {
 	return &schema.Provider{
 
@@ -76,7 +77,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		Client:          client,
 		MaxParallel:     d.Get("pm_parallel").(int),
 		CurrentParallel: 0,
-		MaxVmId:         -1,
+		MaxVMID:         -1,
 		Mutex:           &mut,
 		Cond:            sync.NewCond(&mut),
 	}, nil
@@ -97,11 +98,11 @@ func getClient(pm_api_url string, pm_user string, pm_password string, pm_tls_ins
 
 func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
 	pconf.Mutex.Lock()
-	pconf.MaxVmId, err = pconf.Client.GetNextID(pconf.MaxVmId + 1)
+	pconf.MaxVMID, err = pconf.Client.GetNextID(pconf.MaxVMID + 1)
 	if err != nil {
 		return 0, err
 	}
-	nextId = pconf.MaxVmId
+	nextId = pconf.MaxVMID
 	pconf.Mutex.Unlock()
 	return nextId, nil
 }
