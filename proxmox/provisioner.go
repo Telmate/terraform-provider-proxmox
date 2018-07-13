@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform/terraform"
 )
 
+// Provisioner - Terrafrom properties for proxmox-provisioner
 func Provisioner() terraform.ResourceProvisioner {
 	return &schema.Provisioner{
 		Schema: map[string]*schema.Schema{
@@ -27,7 +28,7 @@ func Provisioner() terraform.ResourceProvisioner {
 	}
 }
 
-var currentClient *pxapi.Client = nil
+var currentClient *pxapi.Client
 
 func applyFn(ctx context.Context) error {
 	data := ctx.Value(schema.ProvConfigDataKey).(*schema.ResourceData)
@@ -36,11 +37,11 @@ func applyFn(ctx context.Context) error {
 	connInfo := state.Ephemeral.ConnInfo
 
 	act := data.Get("action").(string)
-	targetNode, _, vmId, err := parseResourceId(state.ID)
+	targetNode, _, vmID, err := parseResourceId(state.ID)
 	if err != nil {
 		return err
 	}
-	vmr := pxapi.NewVmRef(vmId)
+	vmr := pxapi.NewVmRef(vmID)
 	vmr.SetNode(targetNode)
 	client := currentClient
 	if client == nil {
@@ -69,5 +70,4 @@ func applyFn(ctx context.Context) error {
 	default:
 		return fmt.Errorf("Unkown action: %s", act)
 	}
-	return nil
 }

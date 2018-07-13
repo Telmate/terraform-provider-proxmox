@@ -34,7 +34,45 @@ provider "proxmox" {
 	pm_tls_insecure = true
 }
 
-resource "proxmox_vm_qemu" "test" {
+/* Uses cloud-init options from Proxmox 5.2 */
+resource "proxmox_vm_qemu" "cloudinit-test" {
+	name = "tftest1.xyz.com"
+	desc = "tf description"
+	target_node = "proxmox1-xx"
+
+	clone = "ci-ubuntu-template"
+	storage = "local"
+	cores = 3
+	sockets = 1
+	memory = 2560
+	disk_gb = 4
+	nic = "virtio"
+	bridge = "vmbr0"
+
+	ssh_user = "root"
+	ssh_private_key = <<EOF
+-----BEGIN RSA PRIVATE KEY-----
+private ssh key root
+-----END RSA PRIVATE KEY-----
+EOF
+
+	os_type = "cloud-init"
+	ipconfig0 = "ip=10.0.2.99, gw=10.0.2.2"
+
+	sshkeys = <<EOF
+ssh-rsa AAAAB3NzaC1kj...key1
+ssh-rsa AAAAB3NzaC1kj...key2
+EOF
+
+	provisioner "remote-exec" {
+		inline = [
+			"ip a"
+		]
+	}
+}
+
+/* Uses custom eth1 user-net SSH portforward */
+resource "proxmox_vm_qemu" "prepprovision-test" {
 	name = "tftest1.xyz.com"
 	desc = "tf description"
 	target_node = "proxmox1-xx"
@@ -80,12 +118,27 @@ Optimally, you could create a VM resource you will use a clone base with an ISO,
 
 Interesting parameters:
 
-**ssh_forward_ip** - should be the IP or hostname of the target node or bridge IP. This is where proxmox will create a port forward to your VM with via a user_net.
+**os_type** - 
+* cloud-init  - from Proxmox 5.2
+* ubuntu -(https://github.com/Telmate/terraform-ubuntu-proxmox-iso)
+* centos - (TODO: centos iso template)
 
-**os_type** - ubuntu (https://github.com/Telmate/terraform-ubuntu-proxmox-iso) or centos (TODO: centos iso template)
+**ssh_forward_ip** - should be the IP or hostname of the target node or bridge IP. This is where proxmox will create a port forward to your VM with via a user_net. (for pre-cloud-init provisioning)
 
+### Cloud-Init
 
-### Preprovision (internal)
+Cloud-init VMs must be cloned from a cloud-init ready template. 
+See: https://pve.proxmox.com/wiki/Cloud-Init_Support
+
+* ciuser - User name to change ssh keys and password for instead of the image’s configured default user.
+* cipassword - Password to assign the user.
+* searchdomain - Sets DNS search domains for a container.
+* nameserver - Sets DNS server IP address for a container.
+* sshkeys - public ssh keys, one per line
+* ipconfig0 - [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]
+* ipconfig1 - optional, same as ipconfig0 format
+
+### Preprovision (internal alternative to Cloud-Init)
 
 There is a pre-provision phase which is used to set a hostname, intialize eth0, and resize the VM disk to available space. This is done over SSH with the ssh_forward_ip, ssh_user and ssh_private_key.
 
