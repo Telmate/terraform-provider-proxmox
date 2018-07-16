@@ -3,6 +3,7 @@ package proxmox
 import (
 	"fmt"
 	"log"
+	"math"
 	"path"
 	"regexp"
 	"strconv"
@@ -62,12 +63,24 @@ func resourceVmQemu() *schema.Resource {
 			"storage_type": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
+				ForceNew: false,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if new == "" {
+						return true // empty template ok
+					}
+					return strings.TrimSpace(old) == strings.TrimSpace(new)
+				},
 			},
 			"qemu_os": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "l26",
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old == "" {
+						return true // reading empty ok
+					}
+					return strings.TrimSpace(old) == strings.TrimSpace(new)
+				},
 			},
 			"memory": {
 				Type:     schema.TypeInt,
@@ -84,6 +97,12 @@ func resourceVmQemu() *schema.Resource {
 			"disk_gb": {
 				Type:     schema.TypeFloat,
 				Required: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// bigger ok
+					oldf, _ := strconv.ParseFloat(old, 64)
+					newf, _ := strconv.ParseFloat(new, 64)
+					return oldf >= newf
+				},
 			},
 			"nic": {
 				Type:     schema.TypeString,
@@ -132,8 +151,8 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old == "" {
-						return false // macaddr auto-generates and its ok
+					if new == "" {
+						return true // macaddr auto-generates and its ok
 					}
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
@@ -162,6 +181,9 @@ func resourceVmQemu() *schema.Resource {
 			"sshkeys": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return strings.TrimSpace(old) == strings.TrimSpace(new)
+				},
 			},
 			"ipconfig0": {
 				Type:     schema.TypeString,
@@ -298,7 +320,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	if config.HasCloudInit() {
 		if d.Get("ssh_forward_ip") != nil {
 			sshHost = d.Get("ssh_forward_ip").(string)
-		} else {
+		}
+		if sshHost == "" {
 			// parse IP address out of ipconfig0
 			ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
 			sshHost = ipMatch[1]
@@ -504,7 +527,8 @@ func prepareDiskSize(client *pxapi.Client, vmr *pxapi.VmRef, diskGB float64) err
 	}
 	if diskGB > clonedConfig.DiskSize {
 		log.Print("[DEBUG] resizing disk " + clonedConfig.StorageType)
-		_, err = client.ResizeQemuDisk(vmr, clonedConfig.StorageType+"0", int(diskGB-clonedConfig.DiskSize))
+		diffSize := int(math.Ceil(diskGB - clonedConfig.DiskSize))
+		_, err = client.ResizeQemuDisk(vmr, clonedConfig.StorageType+"0", diffSize)
 		if err != nil {
 			return err
 		}
