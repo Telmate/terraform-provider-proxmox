@@ -43,7 +43,7 @@ func resourceVmQemu() *schema.Resource {
 			},
 			"ssh_forward_ip": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"iso": {
 				Type:     schema.TypeString,
@@ -348,6 +348,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 	case "cloud-init":
 		// wait for OS too boot awhile...
+		log.Print("[DEBUG] sleeping for OS bootup...")
 		time.Sleep(time.Duration(d.Get("ci_wait").(int)) * time.Second)
 
 	default:
