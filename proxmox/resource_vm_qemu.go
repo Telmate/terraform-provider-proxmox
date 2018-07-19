@@ -161,6 +161,12 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  30,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old == "" {
+						return true // old empty ok
+					}
+					return strings.TrimSpace(old) == strings.TrimSpace(new)
+				},
 			},
 			"ciuser": {
 				Type:     schema.TypeString,
