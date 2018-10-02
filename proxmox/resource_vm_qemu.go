@@ -331,6 +331,13 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			// parse IP address out of ipconfig0
 			ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
 			sshHost = ipMatch[1]
+
+		}
+		// Check if we got a speficied port
+		if strings.Contains(sshHost, ":") {
+			sshParts := strings.Split(sshHost, ":")
+			sshHost = sshParts[0]
+			sshPort = sshParts[1]
 		}
 	} else {
 		log.Print("[DEBUG] setting up SSH forward")
