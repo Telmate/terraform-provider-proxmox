@@ -61,9 +61,8 @@ func applyFn(ctx context.Context) error {
 			return err
 		}
 		time.Sleep(10 * time.Second)
-		vmParams := map[string]string{
-			"net1": data.Get("net1").(string),
-		}
+		var vmParams map[string]interface{}
+		vmParams["net1"] = data.Get("net1").(string)
 		_, err = client.SetVmConfig(vmr, vmParams)
 		time.Sleep(10 * time.Second)
 		return err
