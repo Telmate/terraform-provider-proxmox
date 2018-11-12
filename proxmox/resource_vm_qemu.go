@@ -337,7 +337,6 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	qemuNetworks := devicesSetToMap(networks)
 	disks := d.Get("disk").(*schema.Set)
 	qemuDisks := devicesSetToMap(disks)
-	diskGB := d.Get("disk_gb").(float64)
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -359,7 +358,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Ipconfig1:    d.Get("ipconfig1").(string),
 		// Deprecated single disk config.
 		Storage:  d.Get("storage").(string),
-		DiskSize: diskGB,
+		DiskSize: d.Get("disk_gb").(float64),
 		// Deprecated single nic config.
 		QemuNicModel: d.Get("nic").(string),
 		QemuBrige:    d.Get("bridge").(string),
@@ -475,7 +474,6 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	qemuDisks := devicesSetToMap(configDisksSet)
 	configNetworksSet := d.Get("network").(*schema.Set)
 	qemuNetworks := devicesSetToMap(configNetworksSet)
-	diskGB := d.Get("disk_gb").(float64)
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -497,7 +495,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Ipconfig1:    d.Get("ipconfig1").(string),
 		// Deprecated single disk config.
 		Storage:  d.Get("storage").(string),
-		DiskSize: diskGB,
+		DiskSize: d.Get("disk_gb").(float64),
 		// Deprecated single nic config.
 		QemuNicModel: d.Get("nic").(string),
 		QemuBrige:    d.Get("bridge").(string),
@@ -791,6 +789,5 @@ func preprovision(
 			}
 		}
 	}
-
 	return nil
 }
