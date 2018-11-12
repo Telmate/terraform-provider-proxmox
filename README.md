@@ -1,4 +1,4 @@
-# Proxmox  4 Terraform
+# Proxmox 4 Terraform
 
 Terraform provider plugin for proxmox
 
@@ -78,13 +78,27 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
 	target_node = "proxmox1-xx"
 
 	clone = "terraform-ubuntu1404-template"
-	storage = "local"
 	cores = 3
 	sockets = 1
 	memory = 2560
-	disk_gb = 4
-	nic = "virtio"
-	bridge = "vmbr1"
+	network {
+		id = 0
+		model = "virtio"
+	}
+	network {
+		id = 1
+		model = "virtio"
+		bridge = "vmbr1"
+	}
+	disk {
+		id = 0
+		type = virtio
+		storage = local-lvm
+		storage_type = lvm
+		size = 4G
+		backup = true
+	}
+	preprovision = true
 	ssh_forward_ip = "10.0.0.1"
 	ssh_user = "terraform"
 	ssh_private_key = <<EOF
@@ -117,7 +131,7 @@ You can start from either an ISO or clone an existing VM.
 Optimally, you could create a VM resource you will use a clone base with an ISO, and make the rest of the VM resources depend on that base "template" and clone it.
 
 Interesting parameters:
-
+**preprovision** - to enable or disable internal pre-provisioning (e.g. if you already have another way to provision VMs). Conflicts with: `ssh_forward_ip`, `ssh_user`, `ssh_private_key`, `os_type`, `os_network_config`.
 **os_type** - 
 * cloud-init  - from Proxmox 5.2
 * ubuntu -(https://github.com/Telmate/terraform-ubuntu-proxmox-iso)
