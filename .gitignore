@@ -1,1 +1,2 @@
-terraform-provider-proxmox
+*~*
+*.bak
