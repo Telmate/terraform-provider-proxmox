@@ -11,8 +11,5 @@ func main() {
 		ProviderFunc: func() terraform.ResourceProvider {
 			return proxmox.Provider()
 		},
-		ProvisionerFunc: func() terraform.ResourceProvisioner {
-			return proxmox.Provisioner()
-		},
 	})
 }
