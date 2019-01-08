@@ -21,6 +21,8 @@ Requires https://github.com/Telmate/proxmox-api-go
 ```
 go get github.com/Telmate/proxmox-api-go
 make
+
+make install
 ```
 
 Recommended ISO builder https://github.com/Telmate/terraform-ubuntu-proxmox-iso

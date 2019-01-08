@@ -620,15 +620,16 @@ func prepareDiskSize(
 	diskConfMap pxapi.QemuDevices,
 ) error {
 	clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
-	for _, diskConf := range diskConfMap {
-		diskID := diskConf["id"].(int)
+	//log.Printf("%s", clonedConfig)
+	for diskID, diskConf := range diskConfMap {
 		diskName := fmt.Sprintf("%v%v", diskConf["type"], diskID)
 
-		diskSizeGB := diskConf["size"].(string)
-		diskSize, _ := strconv.ParseFloat(strings.Trim(diskSizeGB, "G"), 64)
-		if err != nil {
-			return err
-		}
+		//diskSizeGB := diskConf["size"].(string)
+		//diskSize, _ := strconv.ParseFloat(strings.Trim(diskSizeGB, "G"), 64)
+		diskSize := diskConf["size"].(float64)
+		// if err != nil {
+		// 	return err
+		// }
 
 		if _, diskExists := clonedConfig.QemuDisks[diskID]; !diskExists {
 			return err
