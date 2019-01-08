@@ -5,20 +5,25 @@ Terraform provider plugin for proxmox
 
 ## Working prototype
 
-## Build
+
+## Go Install
+
+```
+go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
+go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provisioner-proxmox
+```
+Note: this plugin is both a provider and provisioner in one, which is why it needs two install commands.
+
+## Build local source
 
 Requires https://github.com/Telmate/proxmox-api-go
 
 ```
-go build -o terraform-provider-proxmox
-cp terraform-provider-proxmox $GOPATH/bin
-cp terraform-provider-proxmox $GOPATH/bin/terraform-provisioner-proxmox
+go get github.com/Telmate/proxmox-api-go
+make
 ```
 
-Note: this plugin is both a provider and provisioner in one, which is why it needs to be in the $GOPATH/bin/ twice.
-
 Recommended ISO builder https://github.com/Telmate/terraform-ubuntu-proxmox-iso
-
 
 ## Run
 
