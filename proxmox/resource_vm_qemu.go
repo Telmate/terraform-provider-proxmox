@@ -454,6 +454,11 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	err = initConnInfo(d, pconf, client, vmr, &config)
+	if err != nil {
+		return err
+	}
+
 	// Apply pre-provision if enabled.
 	preprovision(d, pconf, client, vmr, true)
 
@@ -527,10 +532,13 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	err = initConnInfo(d, pconf, client, vmr, &config)
+	if err != nil {
+		return err
+	}
+
 	// Apply pre-provision if enabled.
 	preprovision(d, pconf, client, vmr, false)
-
-	pmParallelEnd(pconf)
 
 	// give sometime to bootup
 	time.Sleep(9 * time.Second)
@@ -735,6 +743,52 @@ func updateDevicesDefaults(
 	return activeDevicesMap
 }
 
+func initConnInfo(
+	d *schema.ResourceData,
+	pconf *providerConfiguration,
+	client *pxapi.Client,
+	vmr *pxapi.VmRef,
+	config *pxapi.ConfigQemu) error {
+
+	sshPort := "22"
+	sshHost := ""
+	var err error
+	if config.HasCloudInit() {
+		if d.Get("ssh_forward_ip") != nil {
+			sshHost = d.Get("ssh_forward_ip").(string)
+		}
+		if sshHost == "" {
+			// parse IP address out of ipconfig0
+			ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
+			sshHost = ipMatch[1]
+		}
+	} else {
+		log.Print("[DEBUG] setting up SSH forward")
+		sshPort, err = pxapi.SshForwardUsernet(vmr, client)
+		if err != nil {
+			pmParallelEnd(pconf)
+			return err
+		}
+		sshHost = d.Get("ssh_forward_ip").(string)
+	}
+
+	// Done with proxmox API, end parallel and do the SSH things
+	pmParallelEnd(pconf)
+
+	d.SetConnInfo(map[string]string{
+		"type":            "ssh",
+		"host":            sshHost,
+		"port":            sshPort,
+		"user":            d.Get("ssh_user").(string),
+		"private_key":     d.Get("ssh_private_key").(string),
+		"pm_api_url":      client.ApiUrl,
+		"pm_user":         client.Username,
+		"pm_password":     client.Password,
+		"pm_tls_insecure": "true", // TODO - pass pm_tls_insecure state around, but if we made it this far, default insecure
+	})
+	return nil
+}
+
 // Internal pre-provision.
 func preprovision(
 	d *schema.ResourceData,
@@ -745,26 +799,6 @@ func preprovision(
 ) error {
 
 	if d.Get("preprovision").(bool) {
-		log.Print("[DEBUG] setting up SSH forward")
-		sshPort, err := pxapi.SshForwardUsernet(vmr, client)
-		if err != nil {
-			pmParallelEnd(pconf)
-			return err
-		}
-
-		// Done with proxmox API, end parallel and do the SSH things
-		pmParallelEnd(pconf)
-
-		d.SetConnInfo(map[string]string{
-			"type":        "ssh",
-			"host":        d.Get("ssh_forward_ip").(string),
-			"port":        sshPort,
-			"user":        d.Get("ssh_user").(string),
-			"private_key": d.Get("ssh_private_key").(string),
-			"pm_api_url":  client.ApiUrl,
-			"pm_user":     client.Username,
-			"pm_password": client.Password,
-		})
 
 		if systemPreProvision {
 			switch d.Get("os_type").(string) {
@@ -772,7 +806,7 @@ func preprovision(
 			case "ubuntu":
 				// give sometime to bootup
 				time.Sleep(9 * time.Second)
-				err = preProvisionUbuntu(d)
+				err := preProvisionUbuntu(d)
 				if err != nil {
 					return err
 				}
@@ -780,10 +814,15 @@ func preprovision(
 			case "centos":
 				// give sometime to bootup
 				time.Sleep(9 * time.Second)
-				err = preProvisionCentos(d)
+				err := preProvisionCentos(d)
 				if err != nil {
 					return err
 				}
+
+			case "cloud-init":
+				// wait for OS too boot awhile...
+				log.Print("[DEBUG] sleeping for OS bootup...")
+				time.Sleep(time.Duration(d.Get("ci_wait").(int)) * time.Second)
 
 			default:
 				return fmt.Errorf("Unknown os_type: %s", d.Get("os_type").(string))
