@@ -628,22 +628,20 @@ func prepareDiskSize(
 	diskConfMap pxapi.QemuDevices,
 ) error {
 	clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
+	if err != nil {
+		return err
+	}
 	//log.Printf("%s", clonedConfig)
 	for diskID, diskConf := range diskConfMap {
 		diskName := fmt.Sprintf("%v%v", diskConf["type"], diskID)
 
-		//diskSizeGB := diskConf["size"].(string)
-		//diskSize, _ := strconv.ParseFloat(strings.Trim(diskSizeGB, "G"), 64)
-		diskSize := diskConf["size"].(float64)
-		// if err != nil {
-		// 	return err
-		// }
+		diskSize := diskSizeGB(diskConf["size"])
 
 		if _, diskExists := clonedConfig.QemuDisks[diskID]; !diskExists {
 			return err
 		}
-		clonedDiskSizeGB := clonedConfig.QemuDisks[diskID]["size"].(string)
-		clonedDiskSize, _ := strconv.ParseFloat(strings.Trim(clonedDiskSizeGB, "G"), 64)
+
+		clonedDiskSize := diskSizeGB(clonedConfig.QemuDisks[diskID]["size"])
 
 		if err != nil {
 			return err
@@ -659,6 +657,19 @@ func prepareDiskSize(
 		}
 	}
 	return nil
+}
+
+func diskSizeGB(dcSize interface{}) float64 {
+	var diskSize float64
+	// TODO support other units M/G/K
+	switch dcSize.(type) {
+	case string:
+		diskSizeGB := dcSize.(string)
+		diskSize, _ = strconv.ParseFloat(strings.Trim(diskSizeGB, "G"), 64)
+	case float64:
+		diskSize = dcSize.(float64)
+	}
+	return diskSize
 }
 
 // Converting from schema.TypeSet to map of id and conf for each device,
