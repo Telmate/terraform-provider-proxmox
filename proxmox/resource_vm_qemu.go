@@ -421,6 +421,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				pmParallelEnd(pconf)
 				return err
 			}
+		} else {
+			return fmt.Errorf("Either clone or iso must be set")
 		}
 	} else {
 		log.Printf("[DEBUG] recycling VM vmId: %d", vmr.VmId())
