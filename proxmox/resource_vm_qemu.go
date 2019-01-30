@@ -471,19 +471,24 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
 	pmParallelBegin(pconf)
 	client := pconf.Client
-	vmr, err := client.GetVmRefByName(d.Get("name").(string))
+	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
 		pmParallelEnd(pconf)
 		return err
 	}
-	vmName := d.Get("name").(string)
+	vmr := pxapi.NewVmRef(vmID)
+	_, err = client.GetVmInfo(vmr)
+	if err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
 	configDisksSet := d.Get("disk").(*schema.Set)
 	qemuDisks := devicesSetToMap(configDisksSet)
 	configNetworksSet := d.Get("network").(*schema.Set)
 	qemuNetworks := devicesSetToMap(configNetworksSet)
 
 	config := pxapi.ConfigQemu{
-		Name:         vmName,
+		Name:         d.Get("name").(string),
 		Description:  d.Get("desc").(string),
 		Onboot:       d.Get("onboot").(bool),
 		Memory:       d.Get("memory").(int),
@@ -551,8 +556,15 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
 	pmParallelBegin(pconf)
 	client := pconf.Client
-	vmr, err := client.GetVmRefByName(d.Get("name").(string))
+	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
+	vmr := pxapi.NewVmRef(vmID)
+	_, err = client.GetVmInfo(vmr)
+	if err != nil {
+		pmParallelEnd(pconf)
 		return err
 	}
 	config, err := pxapi.NewConfigQemuFromApi(vmr, client)
