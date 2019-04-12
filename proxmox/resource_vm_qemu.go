@@ -47,6 +47,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  true,
 			},
+			"agent": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "1",
+			},
 			"iso": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -348,6 +353,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Name:         vmName,
 		Description:  d.Get("desc").(string),
 		Onboot:       d.Get("onboot").(bool),
+		Agent:        d.Get("agent").(string),
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
