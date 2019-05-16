@@ -353,7 +353,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Name:         vmName,
 		Description:  d.Get("desc").(string),
 		Onboot:       d.Get("onboot").(bool),
-		Agent:        d.Get("agent").(string),
+		Agent:        d.Get("agent").(int),
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
