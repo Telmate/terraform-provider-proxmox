@@ -16,6 +16,8 @@ notifications:
 before_script:
   - go get github.com/Telmate/proxmox-api-go
   - go install github.com/Telmate/proxmox-api-go
+  - go get github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
+  - go get github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provisioner-proxmox
 
 script:
   - make
