@@ -14,6 +14,7 @@ notifications:
   email: false
 
 before_script:
+  - go get github.com/Telmate/proxmox-api-go
   - go install github.com/Telmate/proxmox-api-go
 
 script:
