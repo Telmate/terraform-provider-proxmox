@@ -1,0 +1,21 @@
+dist: xenial
+
+language: go
+
+go:
+  - 1.12.x
+
+git:
+  depth: 1
+
+install: true
+
+notifications:
+  email: false
+
+before_script:
+  - go install github.com/Telmate/proxmox-api-go
+
+script:
+  - make
+  - make install
