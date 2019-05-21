@@ -48,9 +48,9 @@ func resourceVmQemu() *schema.Resource {
 				Default:  true,
 			},
 			"agent": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  "1",
+				Default:  1,
 			},
 			"iso": {
 				Type:     schema.TypeString,
