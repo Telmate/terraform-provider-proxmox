@@ -29,9 +29,21 @@ make install
 
 Recommended ISO builder https://github.com/Telmate/terraform-ubuntu-proxmox-iso
 
+## Credentials
+
+```bash
+# Credentials and URL optionally defined in the environment
+export PM_API_URL="https://xxxx.com:8006/api2/json"
+export PM_USER=user@pam
+export PM_PASS=password
+```
+
+
 ## Run
 
 ```
+terraform init
+terraform plan
 terraform apply
 ```
 
@@ -40,97 +52,103 @@ terraform apply
 main.tf:
 ```
 provider "proxmox" {
-	pm_tls_insecure = true
+  pm_tls_insecure = true
+  /*
+    // Credentials here or environment
+    pm_api_url = "https://proxmox-server01.example.com:8006/api2/json"
+    pm_password = "secret"
+    pm_user = "terraform-user@pve"
+  */
 }
 
 /* Uses cloud-init options from Proxmox 5.2 */
 resource "proxmox_vm_qemu" "cloudinit-test" {
-	name = "tftest1.xyz.com"
-	desc = "tf description"
-	target_node = "proxmox1-xx"
+  name = "tftest1.xyz.com"
+  desc = "tf description"
+  target_node = "proxmox1-xx"
 
-	clone = "ci-ubuntu-template"
-	storage = "local"
-	cores = 3
-	sockets = 1
-	memory = 2560
-	disk_gb = 4
-	nic = "virtio"
-	bridge = "vmbr0"
+  clone = "ci-ubuntu-template"
+  storage = "local"
+  cores = 3
+  sockets = 1
+  memory = 2560
+  disk_gb = 4
+  nic = "virtio"
+  bridge = "vmbr0"
 
-	ssh_user = "root"
-	ssh_private_key = <<EOF
+  ssh_user = "root"
+  ssh_private_key = <<EOF
 -----BEGIN RSA PRIVATE KEY-----
 private ssh key root
 -----END RSA PRIVATE KEY-----
 EOF
 
-	os_type = "cloud-init"
-	ipconfig0 = "ip=10.0.2.99, gw=10.0.2.2"
+  os_type = "cloud-init"
+  ipconfig0 = "ip=10.0.2.99, gw=10.0.2.2"
 
-	sshkeys = <<EOF
+  sshkeys = <<EOF
 ssh-rsa AAAAB3NzaC1kj...key1
 ssh-rsa AAAAB3NzaC1kj...key2
 EOF
 
-	provisioner "remote-exec" {
-		inline = [
-			"ip a"
-		]
-	}
+  provisioner "remote-exec" {
+    inline = [
+      "ip a"
+    ]
+  }
 }
 
 /* Uses custom eth1 user-net SSH portforward */
 resource "proxmox_vm_qemu" "prepprovision-test" {
-	name = "tftest1.xyz.com"
-	desc = "tf description"
-	target_node = "proxmox1-xx"
+  name = "tftest1.xyz.com"
+  desc = "tf description"
+  target_node = "proxmox1-xx"
 
-	clone = "terraform-ubuntu1404-template"
-	cores = 3
-	sockets = 1
-	memory = 2560
-	network {
-		id = 0
-		model = "virtio"
-	}
-	network {
-		id = 1
-		model = "virtio"
-		bridge = "vmbr1"
-	}
-	disk {
-		id = 0
-		type = virtio
-		storage = local-lvm
-		storage_type = lvm
-		size = 4G
-		backup = true
-	}
-	preprovision = true
-	ssh_forward_ip = "10.0.0.1"
-	ssh_user = "terraform"
-	ssh_private_key = <<EOF
+  clone = "terraform-ubuntu1404-template"
+  cores = 3
+  sockets = 1
+  memory = 2560
+  network {
+    id = 0
+    model = "virtio"
+  }
+  network {
+    id = 1
+    model = "virtio"
+    bridge = "vmbr1"
+  }
+  disk {
+    id = 0
+    type = virtio
+    storage = local-lvm
+    storage_type = lvm
+    size = 4G
+    backup = true
+  }
+  preprovision = true
+  ssh_forward_ip = "10.0.0.1"
+  ssh_user = "terraform"
+  ssh_private_key = <<EOF
 -----BEGIN RSA PRIVATE KEY-----
 private ssh key terraform
 -----END RSA PRIVATE KEY-----
 EOF
 
-	os_type = "ubuntu"
-	os_network_config = <<EOF
+  os_type = "ubuntu"
+  os_network_config = <<EOF
 auto eth0
 iface eth0 inet dhcp
 EOF
 
-	provisioner "remote-exec" {
-		inline = [
-			"ip a"
-		]
-	}
+  provisioner "remote-exec" {
+    inline = [
+      "ip a"
+    ]
+  }
 
-	provisioner "proxmox" {
-		action = "sshbackward"
-	}
+  provisioner "proxmox" {
+    action = "sshbackward"
+  }
 }
 
 ```
@@ -141,7 +159,7 @@ Optimally, you could create a VM resource you will use a clone base with an ISO,
 
 Interesting parameters:
 **preprovision** - to enable or disable internal pre-provisioning (e.g. if you already have another way to provision VMs). Conflicts with: `ssh_forward_ip`, `ssh_user`, `ssh_private_key`, `os_type`, `os_network_config`.
-**os_type** - 
+**os_type** -
 * cloud-init  - from Proxmox 5.2
 * ubuntu -(https://github.com/Telmate/terraform-ubuntu-proxmox-iso)
 * centos - (TODO: centos iso template)
@@ -150,7 +168,7 @@ Interesting parameters:
 
 ### Cloud-Init
 
-Cloud-init VMs must be cloned from a cloud-init ready template. 
+Cloud-init VMs must be cloned from a cloud-init ready template.
 See: https://pve.proxmox.com/wiki/Cloud-Init_Support
 
 * ciuser - User name to change ssh keys and password for instead of the image’s configured default user.
@@ -173,18 +191,18 @@ Disk resize is done if the file /etc/auto_resize_vda.sh exists. Source: https://
 Remove the temporary net1 adapter.
 Inside the VM this usually triggers the routes back to the provisioning machine on net0.
 ```
-	provisioner "proxmox" {
-		action = "sshbackward"
-	}
+  provisioner "proxmox" {
+    action = "sshbackward"
+  }
 
 ```
 
 Replace the temporary net1 adapter with a new persistent net1.
 ```
-	provisioner "proxmox" {
-		action = "reconnect"
-		net1 = "virtio,bridge=vmbr0,tag=99"
-	}
+  provisioner "proxmox" {
+    action = "reconnect"
+    net1 = "virtio,bridge=vmbr0,tag=99"
+  }
 
 ```
 If net1 needs a config other than DHCP you should prior to this use provisioner "remote-exec" to modify the network config.

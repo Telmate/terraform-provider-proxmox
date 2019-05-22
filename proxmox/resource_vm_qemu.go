@@ -50,7 +50,7 @@ func resourceVmQemu() *schema.Resource {
 			"agent": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  1,
+				Default:  0,
 			},
 			"iso": {
 				Type:     schema.TypeString,
@@ -66,6 +66,12 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "l26",
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if new == "l26" {
+						return len(d.Get("clone").(string)) > 0 // the cloned source may have a different os, which we shoud leave alone
+					}
+					return strings.TrimSpace(old) == strings.TrimSpace(new)
+				},
 			},
 			"memory": {
 				Type:     schema.TypeInt,
@@ -589,6 +595,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
 	d.Set("onboot", config.Onboot)
+	d.Set("agent", config.Agent)
 	d.Set("memory", config.Memory)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
