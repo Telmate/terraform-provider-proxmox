@@ -22,7 +22,7 @@ func resourceVmQemu() *schema.Resource {
 		Update: resourceVmQemuUpdate,
 		Delete: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
-			State: resourceVmQemuImport,
+			State: schema.ImportStatePassthrough,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -577,6 +577,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
 		pmParallelEnd(pconf)
+		d.SetId("")
 		return err
 	}
 	vmr := pxapi.NewVmRef(vmID)
@@ -628,12 +629,6 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 
 	pmParallelEnd(pconf)
 	return nil
-}
-
-func resourceVmQemuImport(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	// TODO: research proper import
-	err := resourceVmQemuRead(d, meta)
-	return []*schema.ResourceData{d}, err
 }
 
 func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
