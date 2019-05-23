@@ -130,10 +130,10 @@ func resourceId(targetNode string, resType string, vmId int) string {
 var rxRsId = regexp.MustCompile("([^/]+)/([^/]+)/(\\d+)")
 
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
-	idMatch := rxRsId.FindStringSubmatch(resId)
-	if idMatch == nil {
-		err = fmt.Errorf("Invalid resource id: %s", resId)
+	if !rxRsId.MatchString(resId) {
+		return "", "", -1, fmt.Errorf("Invalid resource format: %s. Must be node/type/vmId", resId)
 	}
+	idMatch := rxRsId.FindStringSubmatch(resId)
 	targetNode = idMatch[1]
 	resType = idMatch[2]
 	vmId, err = strconv.Atoi(idMatch[3])
