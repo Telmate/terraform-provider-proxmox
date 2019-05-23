@@ -75,15 +75,18 @@ func resourceVmQemu() *schema.Resource {
 			},
 			"memory": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
+				Default:  512,
 			},
 			"cores": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
+				Default:  1,
 			},
 			"sockets": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
+				Default:  1,
 			},
 			"network": &schema.Schema{
 				Type:          schema.TypeSet,
