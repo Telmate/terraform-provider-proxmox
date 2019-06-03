@@ -19,5 +19,5 @@ resource "proxmox_lxc" "lxc-test" {
     ]
     storage = "local-lvm"
     pool = "terraform"
-    passsword = "rootroot"
+    password = "rootroot"
 }
