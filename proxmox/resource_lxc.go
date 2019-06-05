@@ -17,19 +17,19 @@ func resourceLxc() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"hostname": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"target_node": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
 			"ostemplate": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
+			},
+			"force": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"hostname": {
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"networks": &schema.Schema{
 				Type:          schema.TypeSet,
@@ -58,23 +58,23 @@ func resourceLxc() *schema.Resource {
 					},
 				},
 			},
-			"storage": {
-				Type:       schema.TypeString,
-				Optional:   true,
-				Default:    "local-lvm",
+			"password": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"pool": {
 				Type:       schema.TypeString,
 				Optional:   true,
 			},
-			"password": {
-				Type:     schema.TypeString,
-				Optional: true,
+			"storage": {
+				Type:       schema.TypeString,
+				Optional:   true,
+				Default:    "local-lvm",
 			},
-			"force": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+			"target_node": {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
 			},
 		},
 	}
