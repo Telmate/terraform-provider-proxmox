@@ -22,54 +22,282 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
-			"force": {
+			"arch": {
+				Type:     schema.TypeString,
+				Optional: true,
+                                Default:  "amd64",
+			},
+			"bwlimit": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"cmode": {
+				Type:     schema.TypeString,
+				Optional: true,
+                                Default:  "tty",
+			},
+			"console": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  false,
+                                Default:  true,
 			},
-			"hostname": {
+			"cores": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"cpulimit": {
+				Type:     schema.TypeInt,
+				Optional: true,
+                                Default:  0,
+			},
+			"cpuunits": {
+				Type:     schema.TypeInt,
+				Optional: true,
+                                Default:  1024,
+			},
+			"description": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
-			"networks": &schema.Schema{
-				Type:          schema.TypeSet,
-				Optional:      true,
+			"features": {
+				Type:     schema.TypeSet,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"name": &schema.Schema{
-							Type:     schema.TypeString,
+						"fuse": {
+							Type:     schema.TypeBool,
 							Required: true,
 						},
-						"bridge": &schema.Schema{
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "vmbr0",
+						"keyctl": {
+							Type:     schema.TypeBool,
+							Required: true,
 						},
-						"ip": &schema.Schema{
+						"mount": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "dhcp",
 						},
-						"ip6": &schema.Schema{
-							Type:     schema.TypeString,
+						"nesting": {
+							Type:     schema.TypeBool,
 							Optional: true,
-							Default:  "dhcp",
 						},
 					},
 				},
+			},
+			"force": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"hookscript": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hostname": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ignore_unpack_errors": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"lock": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"memory": {
+				Type:     schema.TypeInt,
+				Optional: true,
+                                Default:  512,
+			},
+			"mountpoints": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"volume": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"mp": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"acl": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"backup": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"quota": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"replicate": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"shared": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"size": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"nameserver": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"network": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"bridge": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"firewall": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"gw": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"gw6": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"hwaddr": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"ip": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"ip6": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"mtu": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"rate": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"tag": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"trunks": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"onboot": {
+				Type:     schema.TypeBool,
+				Optional: true,
+                                Default:  false,
+			},
+			"ostype": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"password": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"pool": {
-				Type:       schema.TypeString,
-				Optional:   true,
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"protection": {
+				Type:     schema.TypeBool,
+				Optional: true,
+                                Default:  false,
+			},
+			"restore": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"rootfs": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"searchdomain": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ssh_public_keys": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"start": {
+				Type:     schema.TypeBool,
+				Optional: true,
+                                Default:  false,
+			},
+			"startup": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"storage": {
-				Type:       schema.TypeString,
-				Optional:   true,
-				Default:    "local-lvm",
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "local",
+			},
+			"swap": {
+				Type:     schema.TypeInt,
+				Optional: true,
+                                Default:  512,
+			},
+			"template": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"tty": {
+				Type:     schema.TypeInt,
+				Optional: true,
+                                Default:  2,
+			},
+			"unique": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"unprivileged": {
+				Type:     schema.TypeBool,
+				Optional: true,
+                                Default:  false,
+			},
+			"unused": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"target_node": {
 				Type:     schema.TypeString,
@@ -85,7 +313,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	pmParallelBegin(pconf)
 	client := pconf.Client
 	vmName := d.Get("hostname").(string)
-	networks := d.Get("networks").(*schema.Set)
+	networks := d.Get("network").(*schema.Set)
 	lxcNetworks := DevicesSetToMap(networks)
 
         config := pxapi.NewConfigLxc()

@@ -6,18 +6,18 @@ provider "proxmox" {
 }
 
 resource "proxmox_lxc" "lxc-test" {
+    force = true
     hostname = "terraform-new-container"
-    ostemplate = "shared:vztmpl/centos-7-default_20171212_amd64.tar.xz"
-    target_node = "node-01"
-    network = {
+    network {
         id = 0
         name = "eth0"
         bridge = "vmbr0"
         ip = "dhcp"
         ip6 = "dhcp"
     }
-    storage = "local-lvm"
-    pool = "terraform"
+    ostemplate = "shared:vztmpl/centos-7-default_20171212_amd64.tar.xz"
     password = "rootroot"
-    force = true
+    pool = "terraform"
+    storage = "local-lvm"
+    target_node = "node-01"
 }
