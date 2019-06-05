@@ -71,6 +71,11 @@ func resourceLxc() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"force": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 		},
 	}
 }
@@ -81,16 +86,15 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	vmName := d.Get("hostname").(string)
 	networks := d.Get("networks").(*schema.Set)
-	lxcNetworks := lxcDevicesSetToMap(networks)
+	lxcNetworks := DevicesSetToMap(networks)
 
-	config := pxapi.ConfigLxc{
-                Ostemplate: d.Get("ostemplate").(string),
-		Storage:    d.Get("storage").(string),
-		Pool:       d.Get("pool").(string),
-                Password:   d.Get("password").(string),
-		Hostname:   vmName,
-		Networks:   lxcNetworks,
-	}
+        config := pxapi.NewConfigLxc()
+	config.Ostemplate = d.Get("ostemplate").(string)
+	config.Hostname = vmName
+	config.Networks = lxcNetworks
+        config.Password = d.Get("password").(string)
+	config.Pool = d.Get("pool").(string)
+	config.Storage = d.Get("storage").(string)
 
 	targetNode := d.Get("target_node").(string)
 	//vmr, _ := client.GetVmRefByName(vmName)
@@ -125,18 +129,4 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 
 func resourceLxcDelete(d *schema.ResourceData, meta interface{}) error {
 	return nil
-}
-
-func lxcDevicesSetToMap(devicesSet *schema.Set) pxapi.LxcDevices {
-
-	devicesMap := pxapi.LxcDevices{}
-
-	for _, set := range devicesSet.List() {
-		setMap, isMap := set.(map[string]interface{})
-		if isMap {
-			setID := setMap["id"].(int)
-			devicesMap[setID] = setMap
-		}
-	}
-	return devicesMap
 }

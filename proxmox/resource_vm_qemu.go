@@ -354,9 +354,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	networks := d.Get("network").(*schema.Set)
-	qemuNetworks := devicesSetToMap(networks)
+	qemuNetworks := DevicesSetToMap(networks)
 	disks := d.Get("disk").(*schema.Set)
-	qemuDisks := devicesSetToMap(disks)
+	qemuDisks := DevicesSetToMap(disks)
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -504,9 +504,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 	configDisksSet := d.Get("disk").(*schema.Set)
-	qemuDisks := devicesSetToMap(configDisksSet)
+	qemuDisks := DevicesSetToMap(configDisksSet)
 	configNetworksSet := d.Get("network").(*schema.Set)
-	qemuNetworks := devicesSetToMap(configNetworksSet)
+	qemuNetworks := DevicesSetToMap(configNetworksSet)
 
 	config := pxapi.ConfigQemu{
 		Name:         d.Get("name").(string),
@@ -706,7 +706,7 @@ func diskSizeGB(dcSize interface{}) float64 {
 
 // Converting from schema.TypeSet to map of id and conf for each device,
 // which will be sent to Proxmox API.
-func devicesSetToMap(devicesSet *schema.Set) pxapi.QemuDevices {
+func DevicesSetToMap(devicesSet *schema.Set) pxapi.QemuDevices {
 
 	devicesMap := pxapi.QemuDevices{}
 
@@ -727,7 +727,7 @@ func updateDevicesSet(
 	devicesMap pxapi.QemuDevices,
 ) *schema.Set {
 
-	configDevicesMap := devicesSetToMap(devicesSet)
+	configDevicesMap := DevicesSetToMap(devicesSet)
 	activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
 
 	for _, setConf := range devicesSet.List() {
