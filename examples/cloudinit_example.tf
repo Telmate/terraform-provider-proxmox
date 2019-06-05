@@ -25,7 +25,7 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     memory = "2048"
 
     # Setup the disk. The id has to be unique
-    disk = {
+    disk {
         id = 0
         size = 32
         type = "virtio"
@@ -35,7 +35,7 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     }
 
     # Setup the network interface and assign a vlan tag: 256
-    network = {
+    network {
         id = 0
         model = "virtio"
         bridge = "vmbr0"
