@@ -6,7 +6,9 @@ provider "proxmox" {
 }
 
 resource "proxmox_lxc" "lxc-test" {
-    force = true
+    features {
+        nesting = true
+    }
     hostname = "terraform-new-container"
     network {
         id = 0
@@ -20,4 +22,5 @@ resource "proxmox_lxc" "lxc-test" {
     pool = "terraform"
     storage = "local-lvm"
     target_node = "node-01"
+    unprivileged = true
 }
