@@ -66,11 +66,11 @@ func resourceLxc() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"fuse": {
 							Type:     schema.TypeBool,
-							Required: true,
+							Optional: true,
 						},
 						"keyctl": {
 							Type:     schema.TypeBool,
-							Required: true,
+							Optional: true,
 						},
 						"mount": {
 							Type:     schema.TypeString,
@@ -108,7 +108,7 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
                                 Default:  512,
 			},
-			"mountpoints": {
+			"mountpoint": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
@@ -296,8 +296,11 @@ func resourceLxc() *schema.Resource {
                                 Default:  false,
 			},
 			"unused": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeList,
 				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+                                },
 			},
 			"target_node": {
 				Type:     schema.TypeString,
@@ -313,16 +316,66 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	pmParallelBegin(pconf)
 	client := pconf.Client
 	vmName := d.Get("hostname").(string)
-	networks := d.Get("network").(*schema.Set)
-	lxcNetworks := DevicesSetToMap(networks)
 
         config := pxapi.NewConfigLxc()
 	config.Ostemplate = d.Get("ostemplate").(string)
+	config.Arch = d.Get("arch").(string)
+	config.BWLimit = d.Get("bwlimit").(int)
+	config.CMode = d.Get("cmode").(string)
+	config.Console = d.Get("console").(bool)
+	config.Cores = d.Get("cores").(int)
+	config.CPULimit = d.Get("cpulimit").(int)
+	config.CPUUnits = d.Get("cpuunits").(int)
+	config.Description = d.Get("description").(string)
+        features := d.Get("features").(*schema.Set)
+	featureSetList := features.List()
+	if len(featureSetList) > 0 {
+                // only apply the first feature set,
+                // because proxmox api only allows one feature set
+		config.Features = featureSetList[0].(map[string]interface{})
+        }
+	config.Force = d.Get("force").(bool)
+	config.Hookscript = d.Get("hookscript").(string)
 	config.Hostname = vmName
-	config.Networks = lxcNetworks
+        config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
+	config.Lock = d.Get("lock").(string)
+	config.Memory = d.Get("memory").(int)
+        // proxmox api allows multiple mountpoint sets,
+        // having a unique 'id' parameter foreach set
+	mountpoints := d.Get("mountpoint").(*schema.Set)
+	lxcMountpoints := DevicesSetToMap(mountpoints)
+	config.Mountpoints = lxcMountpoints
+        config.Nameserver = d.Get("nameserver").(string)
+        // proxmox api allows multiple network sets,
+        // having a unique 'id' parameter foreach set
+	networks := d.Get("network").(*schema.Set)
+	lxcNetworks := DevicesSetToMap(networks)
+        config.Networks = lxcNetworks
+	config.OnBoot = d.Get("onboot").(bool)
+        config.OsType = d.Get("ostype").(string)
         config.Password = d.Get("password").(string)
 	config.Pool = d.Get("pool").(string)
+	config.Protection = d.Get("protection").(bool)
+	config.Restore = d.Get("restore").(bool)
+	config.RootFs = d.Get("rootfs").(string)
+	config.SearchDomain = d.Get("searchdomain").(string)
+	config.SSHPublicKeys = d.Get("ssh_public_keys").(string)
+	config.Start = d.Get("start").(bool)
+	config.Startup = d.Get("startup").(string)
 	config.Storage = d.Get("storage").(string)
+	config.Swap = d.Get("swap").(int)
+	config.Template = d.Get("template").(bool)
+	config.Tty = d.Get("tty").(int)
+	config.Unique = d.Get("unique").(bool)
+	config.Unprivileged = d.Get("unprivileged").(bool)
+        // proxmox api allows to specify unused volumes
+        // even if it is recommended not to change them manually
+	unusedVolumes := d.Get("unused").([]interface{})
+        var volumes []string
+        for _, v := range unusedVolumes {
+            volumes = append(volumes, v.(string))
+        }
+	config.Unused = volumes
 
 	targetNode := d.Get("target_node").(string)
 	//vmr, _ := client.GetVmRefByName(vmName)
