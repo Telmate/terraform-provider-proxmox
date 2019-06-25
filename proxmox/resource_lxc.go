@@ -20,7 +20,6 @@ func resourceLxc() *schema.Resource {
 			"ostemplate": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"arch": {
 				Type:     schema.TypeString,
@@ -405,6 +404,80 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
+	pconf := meta.(*providerConfiguration)
+	pmParallelBegin(pconf)
+	client := pconf.Client
+	_, _, vmID, err := parseResourceId(d.Id())
+	if err != nil {
+		pmParallelEnd(pconf)
+		d.SetId("")
+		return err
+	}
+	vmr := pxapi.NewVmRef(vmID)
+	_, err = client.GetVmInfo(vmr)
+	if err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
+	config, err := pxapi.NewConfigLxcFromApi(vmr, client)
+	if err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
+	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
+	d.Set("target_node", vmr.Node())
+
+	d.Set("arch", config.Arch)
+	d.Set("bwlimit", config.BWLimit)
+	d.Set("cmode", config.CMode)
+	d.Set("console", config.Console)
+	d.Set("cores", config.Cores)
+	d.Set("cpulimit", config.CPULimit)
+	d.Set("cpuunits", config.CPUUnits)
+	d.Set("description", config.Description)
+
+	defaultFeatures := d.Get("features").(*schema.Set)
+        featuresWithDefaults := UpdateDeviceConfDefaults(config.Features, defaultFeatures)
+	d.Set("features", featuresWithDefaults)
+
+	d.Set("force", config.Force)
+	d.Set("hookscript", config.Hookscript)
+	d.Set("hostname", config.Hostname)
+	d.Set("ignore_unpack_errors", config.IgnoreUnpackErrors)
+	d.Set("lock", config.Lock)
+	d.Set("memory", config.Memory)
+
+	configMountpointSet := d.Get("mountpoint").(*schema.Set)
+	activeMountpointSet := UpdateDevicesSet(configMountpointSet, config.Mountpoints)
+	d.Set("mountpoint", activeMountpointSet)
+
+	d.Set("nameserver", config.Nameserver)
+
+	configNetworksSet := d.Get("network").(*schema.Set)
+	activeNetworksSet := UpdateDevicesSet(configNetworksSet, config.Networks)
+	d.Set("network", activeNetworksSet)
+
+	d.Set("onboot", config.OnBoot)
+	d.Set("ostemplate", config.Ostemplate)
+	d.Set("ostype", config.OsType)
+	d.Set("password", config.Password)
+	d.Set("pool", config.Pool)
+	d.Set("protection", config.Protection)
+	d.Set("restore", config.Restore)
+	d.Set("rootfs", config.RootFs)
+	d.Set("searchdomain", config.SearchDomain)
+	d.Set("ssh_public_keys", config.SSHPublicKeys)
+	d.Set("start", config.Start)
+	d.Set("startup", config.Startup)
+	d.Set("storage", config.Storage)
+	d.Set("swap", config.Swap)
+	d.Set("template", config.Template)
+	d.Set("tty", config.Tty)
+	d.Set("unique", config.Unique)
+	d.Set("unprivileged", config.Unprivileged)
+	d.Set("unused", config.Unused)
+
+	pmParallelEnd(pconf)
 	return nil
 }
 
