@@ -84,7 +84,7 @@ private ssh key root
 EOF
 
   os_type = "cloud-init"
-  ipconfig0 = "ip=10.0.2.99, gw=10.0.2.2"
+  ipconfig0 = "ip=10.0.2.99/16,gw=10.0.2.2"
 
   sshkeys = <<EOF
 ssh-rsa AAAAB3NzaC1kj...key1
