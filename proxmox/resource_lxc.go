@@ -415,10 +415,6 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		pmParallelEnd(pconf)
 		return err
 	}
-//	configDisksSet := d.Get("disk").(*schema.Set)
-//	qemuDisks := DevicesSetToMap(configDisksSet)
-//	configNetworksSet := d.Get("network").(*schema.Set)
-//	qemuNetworks := DevicesSetToMap(configNetworksSet)
 
         config := pxapi.NewConfigLxc()
 	config.Ostemplate = d.Get("ostemplate").(string)
@@ -480,19 +476,11 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
         }
 	config.Unused = volumes
 
-//	targetNode := d.Get("target_node").(string)
-
-
-
-
-
-
 	err = config.UpdateConfig(vmr, client)
 	if err != nil {
 		pmParallelEnd(pconf)
 		return err
 	}
-
 
 	return nil
 }
