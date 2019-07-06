@@ -11,7 +11,7 @@ func resourceLxc() *schema.Resource {
 		Create: resourceLxcCreate,
 		Read:   resourceLxcRead,
 		Update: resourceLxcUpdate,
-		Delete: resourceLxcDelete,
+		Delete: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
 			State: schema.ImportStatePassthrough,
 		},
@@ -560,9 +560,5 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("unused", config.Unused)
 
 	pmParallelEnd(pconf)
-	return nil
-}
-
-func resourceLxcDelete(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
