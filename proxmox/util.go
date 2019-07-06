@@ -10,7 +10,7 @@ func UpdateDeviceConfDefaults(
 	activeDeviceConf pxapi.QemuDevice,
 	defaultDeviceConf *schema.Set,
 ) *schema.Set {
-        defaultDeviceConfMap := defaultDeviceConf.List()[0].(map[string]interface{})
+	defaultDeviceConfMap := defaultDeviceConf.List()[0].(map[string]interface{})
 	for key, _ := range defaultDeviceConfMap {
 		if deviceConfigValue, ok := activeDeviceConf[key]; ok {
 			defaultDeviceConfMap[key] = deviceConfigValue

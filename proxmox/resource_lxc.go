@@ -24,7 +24,7 @@ func resourceLxc() *schema.Resource {
 			"arch": {
 				Type:     schema.TypeString,
 				Optional: true,
-                                Default:  "amd64",
+				Default:  "amd64",
 			},
 			"bwlimit": {
 				Type:     schema.TypeInt,
@@ -33,12 +33,12 @@ func resourceLxc() *schema.Resource {
 			"cmode": {
 				Type:     schema.TypeString,
 				Optional: true,
-                                Default:  "tty",
+				Default:  "tty",
 			},
 			"console": {
 				Type:     schema.TypeBool,
 				Optional: true,
-                                Default:  true,
+				Default:  true,
 			},
 			"cores": {
 				Type:     schema.TypeInt,
@@ -47,12 +47,12 @@ func resourceLxc() *schema.Resource {
 			"cpulimit": {
 				Type:     schema.TypeInt,
 				Optional: true,
-                                Default:  0,
+				Default:  0,
 			},
 			"cpuunits": {
 				Type:     schema.TypeInt,
 				Optional: true,
-                                Default:  1024,
+				Default:  1024,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -105,7 +105,7 @@ func resourceLxc() *schema.Resource {
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
-                                Default:  512,
+				Default:  512,
 			},
 			"mountpoint": {
 				Type:     schema.TypeSet,
@@ -222,7 +222,7 @@ func resourceLxc() *schema.Resource {
 			"onboot": {
 				Type:     schema.TypeBool,
 				Optional: true,
-                                Default:  false,
+				Default:  false,
 			},
 			"ostype": {
 				Type:     schema.TypeString,
@@ -239,7 +239,7 @@ func resourceLxc() *schema.Resource {
 			"protection": {
 				Type:     schema.TypeBool,
 				Optional: true,
-                                Default:  false,
+				Default:  false,
 			},
 			"restore": {
 				Type:     schema.TypeBool,
@@ -260,7 +260,7 @@ func resourceLxc() *schema.Resource {
 			"start": {
 				Type:     schema.TypeBool,
 				Optional: true,
-                                Default:  false,
+				Default:  false,
 			},
 			"startup": {
 				Type:     schema.TypeString,
@@ -274,7 +274,7 @@ func resourceLxc() *schema.Resource {
 			"swap": {
 				Type:     schema.TypeInt,
 				Optional: true,
-                                Default:  512,
+				Default:  512,
 			},
 			"template": {
 				Type:     schema.TypeBool,
@@ -283,7 +283,7 @@ func resourceLxc() *schema.Resource {
 			"tty": {
 				Type:     schema.TypeInt,
 				Optional: true,
-                                Default:  2,
+				Default:  2,
 			},
 			"unique": {
 				Type:     schema.TypeBool,
@@ -292,14 +292,14 @@ func resourceLxc() *schema.Resource {
 			"unprivileged": {
 				Type:     schema.TypeBool,
 				Optional: true,
-                                Default:  false,
+				Default:  false,
 			},
 			"unused": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
-                                },
+				},
 			},
 			"target_node": {
 				Type:     schema.TypeString,
@@ -316,7 +316,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	vmName := d.Get("hostname").(string)
 
-        config := pxapi.NewConfigLxc()
+	config := pxapi.NewConfigLxc()
 	config.Ostemplate = d.Get("ostemplate").(string)
 	config.Arch = d.Get("arch").(string)
 	config.BWLimit = d.Get("bwlimit").(int)
@@ -326,33 +326,33 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.CPULimit = d.Get("cpulimit").(int)
 	config.CPUUnits = d.Get("cpuunits").(int)
 	config.Description = d.Get("description").(string)
-        features := d.Get("features").(*schema.Set)
+	features := d.Get("features").(*schema.Set)
 	featureSetList := features.List()
 	if len(featureSetList) > 0 {
-                // only apply the first feature set,
-                // because proxmox api only allows one feature set
+		// only apply the first feature set,
+		// because proxmox api only allows one feature set
 		config.Features = featureSetList[0].(map[string]interface{})
-        }
+	}
 	config.Force = d.Get("force").(bool)
 	config.Hookscript = d.Get("hookscript").(string)
 	config.Hostname = vmName
-        config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
+	config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
 	config.Lock = d.Get("lock").(string)
 	config.Memory = d.Get("memory").(int)
-        // proxmox api allows multiple mountpoint sets,
-        // having a unique 'id' parameter foreach set
+	// proxmox api allows multiple mountpoint sets,
+	// having a unique 'id' parameter foreach set
 	mountpoints := d.Get("mountpoint").(*schema.Set)
 	lxcMountpoints := DevicesSetToMap(mountpoints)
 	config.Mountpoints = lxcMountpoints
-        config.Nameserver = d.Get("nameserver").(string)
-        // proxmox api allows multiple network sets,
-        // having a unique 'id' parameter foreach set
+	config.Nameserver = d.Get("nameserver").(string)
+	// proxmox api allows multiple network sets,
+	// having a unique 'id' parameter foreach set
 	networks := d.Get("network").(*schema.Set)
 	lxcNetworks := DevicesSetToMap(networks)
-        config.Networks = lxcNetworks
+	config.Networks = lxcNetworks
 	config.OnBoot = d.Get("onboot").(bool)
-        config.OsType = d.Get("ostype").(string)
-        config.Password = d.Get("password").(string)
+	config.OsType = d.Get("ostype").(string)
+	config.Password = d.Get("password").(string)
 	config.Pool = d.Get("pool").(string)
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
@@ -367,13 +367,13 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
-        // proxmox api allows to specify unused volumes
-        // even if it is recommended not to change them manually
+	// proxmox api allows to specify unused volumes
+	// even if it is recommended not to change them manually
 	unusedVolumes := d.Get("unused").([]interface{})
-        var volumes []string
-        for _, v := range unusedVolumes {
-            volumes = append(volumes, v.(string))
-        }
+	var volumes []string
+	for _, v := range unusedVolumes {
+		volumes = append(volumes, v.(string))
+	}
 	config.Unused = volumes
 
 	targetNode := d.Get("target_node").(string)
@@ -393,7 +393,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-        // The existence of a non-blank ID is what tells Terraform that a resource was created
+	// The existence of a non-blank ID is what tells Terraform that a resource was created
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
 	return resourceLxcRead(d, meta)
@@ -416,7 +416,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-        config := pxapi.NewConfigLxc()
+	config := pxapi.NewConfigLxc()
 	config.Ostemplate = d.Get("ostemplate").(string)
 	config.Arch = d.Get("arch").(string)
 	config.BWLimit = d.Get("bwlimit").(int)
@@ -426,33 +426,33 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.CPULimit = d.Get("cpulimit").(int)
 	config.CPUUnits = d.Get("cpuunits").(int)
 	config.Description = d.Get("description").(string)
-        features := d.Get("features").(*schema.Set)
+	features := d.Get("features").(*schema.Set)
 	featureSetList := features.List()
 	if len(featureSetList) > 0 {
-                // only apply the first feature set,
-                // because proxmox api only allows one feature set
+		// only apply the first feature set,
+		// because proxmox api only allows one feature set
 		config.Features = featureSetList[0].(map[string]interface{})
-        }
+	}
 	config.Force = d.Get("force").(bool)
 	config.Hookscript = d.Get("hookscript").(string)
 	config.Hostname = d.Get("hostname").(string)
-        config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
+	config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
 	config.Lock = d.Get("lock").(string)
 	config.Memory = d.Get("memory").(int)
-        // proxmox api allows multiple mountpoint sets,
-        // having a unique 'id' parameter foreach set
+	// proxmox api allows multiple mountpoint sets,
+	// having a unique 'id' parameter foreach set
 	mountpoints := d.Get("mountpoint").(*schema.Set)
 	lxcMountpoints := DevicesSetToMap(mountpoints)
 	config.Mountpoints = lxcMountpoints
-        config.Nameserver = d.Get("nameserver").(string)
-        // proxmox api allows multiple network sets,
-        // having a unique 'id' parameter foreach set
+	config.Nameserver = d.Get("nameserver").(string)
+	// proxmox api allows multiple network sets,
+	// having a unique 'id' parameter foreach set
 	networks := d.Get("network").(*schema.Set)
 	lxcNetworks := DevicesSetToMap(networks)
-        config.Networks = lxcNetworks
+	config.Networks = lxcNetworks
 	config.OnBoot = d.Get("onboot").(bool)
-        config.OsType = d.Get("ostype").(string)
-        config.Password = d.Get("password").(string)
+	config.OsType = d.Get("ostype").(string)
+	config.Password = d.Get("password").(string)
 	config.Pool = d.Get("pool").(string)
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
@@ -467,13 +467,13 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
-        // proxmox api allows to specify unused volumes
-        // even if it is recommended not to change them manually
+	// proxmox api allows to specify unused volumes
+	// even if it is recommended not to change them manually
 	unusedVolumes := d.Get("unused").([]interface{})
-        var volumes []string
-        for _, v := range unusedVolumes {
-            volumes = append(volumes, v.(string))
-        }
+	var volumes []string
+	for _, v := range unusedVolumes {
+		volumes = append(volumes, v.(string))
+	}
 	config.Unused = volumes
 
 	err = config.UpdateConfig(vmr, client)
@@ -519,7 +519,7 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("description", config.Description)
 
 	defaultFeatures := d.Get("features").(*schema.Set)
-        featuresWithDefaults := UpdateDeviceConfDefaults(config.Features, defaultFeatures)
+	featuresWithDefaults := UpdateDeviceConfDefaults(config.Features, defaultFeatures)
 	d.Set("features", featuresWithDefaults)
 
 	d.Set("force", config.Force)
