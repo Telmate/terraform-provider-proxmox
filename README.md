@@ -9,8 +9,8 @@ Terraform provider plugin for proxmox
 ## Go Install
 
 ```
-go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
-go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provisioner-proxmox
+go install github.com/Telmate/terraform-provider-proxmox/tree/master/cmd/terraform-provider-proxmox
+go install github.com/Telmate/terraform-provider-proxmox/tree/master/cmd/terraform-provisioner-proxmox
 ```
 Note: this plugin is both a provider and provisioner in one, which is why it needs two install commands.
 
