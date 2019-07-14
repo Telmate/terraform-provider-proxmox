@@ -21,9 +21,9 @@ Note: this plugin is both a provider and provisioner in one, which is why it nee
 Requires https://github.com/Telmate/proxmox-api-go
 
 ```
-go get github.com/Telmate/proxmox-api-go
+export GOPATH=`pwd`
+make setup
 make
-
 make install
 ```
 
