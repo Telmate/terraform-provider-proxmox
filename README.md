@@ -68,6 +68,10 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
   target_node = "proxmox1-xx"
 
   clone = "ci-ubuntu-template"
+
+  # The destination resource pool for the new VM
+  pool = "pool0"
+
   storage = "local"
   cores = 3
   sockets = 1
@@ -105,6 +109,10 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
   target_node = "proxmox1-xx"
 
   clone = "terraform-ubuntu1404-template"
+
+  # The destination resource pool for the new VM
+  pool = "pool0"
+
   cores = 3
   sockets = 1
   memory = 2560

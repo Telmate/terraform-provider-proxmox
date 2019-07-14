@@ -342,6 +342,10 @@ func resourceVmQemu() *schema.Resource {
 				Default:       true,
 				ConflictsWith: []string{"ssh_forward_ip", "ssh_user", "ssh_private_key", "os_type", "os_network_config"},
 			},
+			"pool": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -391,6 +395,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 	forceCreate := d.Get("force_create").(bool)
 	targetNode := d.Get("target_node").(string)
+	pool := d.Get("pool").(string)
 
 	if dupVmr != nil && forceCreate {
 		pmParallelEnd(pconf)
@@ -411,7 +416,12 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		}
 		vmr = pxapi.NewVmRef(nextid)
 
+		// set target node and pool
 		vmr.SetNode(targetNode)
+		if pool != "" {
+			vmr.SetPool(pool)
+		}
+
 		// check if ISO or clone
 		if d.Get("clone").(string) != "" {
 			sourceVmr, err := client.GetVmRefByName(d.Get("clone").(string))
@@ -630,6 +640,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("bridge", config.QemuBrige)
 	d.Set("vlan", config.QemuVlanTag)
 	d.Set("mac", config.QemuMacAddr)
+	d.Set("pool", vmr.Pool())
 
 	pmParallelEnd(pconf)
 	return nil

@@ -13,6 +13,9 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     # this might not include the FQDN
     target_node = "proxmox-server02"
 
+    # The destination resource pool for the new VM
+    pool = "pool0"
+
     # The template name to clone this vm from
     clone = "linux-cloudinit-template"
 
