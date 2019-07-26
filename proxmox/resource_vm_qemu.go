@@ -358,9 +358,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	networks := d.Get("network").(*schema.Set)
-	qemuNetworks := devicesSetToMap(networks)
+	qemuNetworks := DevicesSetToMap(networks)
 	disks := d.Get("disk").(*schema.Set)
-	qemuDisks := devicesSetToMap(disks)
+	qemuDisks := DevicesSetToMap(disks)
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -514,9 +514,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 	configDisksSet := d.Get("disk").(*schema.Set)
-	qemuDisks := devicesSetToMap(configDisksSet)
+	qemuDisks := DevicesSetToMap(configDisksSet)
 	configNetworksSet := d.Get("network").(*schema.Set)
-	qemuNetworks := devicesSetToMap(configNetworksSet)
+	qemuNetworks := DevicesSetToMap(configNetworksSet)
 
 	config := pxapi.ConfigQemu{
 		Name:         d.Get("name").(string),
@@ -625,11 +625,11 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig1", config.Ipconfig1)
 	// Disks.
 	configDisksSet := d.Get("disk").(*schema.Set)
-	activeDisksSet := updateDevicesSet(configDisksSet, config.QemuDisks)
+	activeDisksSet := UpdateDevicesSet(configDisksSet, config.QemuDisks)
 	d.Set("disk", activeDisksSet)
 	// Networks.
 	configNetworksSet := d.Get("network").(*schema.Set)
-	activeNetworksSet := updateDevicesSet(configNetworksSet, config.QemuNetworks)
+	activeNetworksSet := UpdateDevicesSet(configNetworksSet, config.QemuNetworks)
 	d.Set("network", activeNetworksSet)
 	// Deprecated single disk config.
 	d.Set("storage", config.Storage)
@@ -717,7 +717,7 @@ func diskSizeGB(dcSize interface{}) float64 {
 
 // Converting from schema.TypeSet to map of id and conf for each device,
 // which will be sent to Proxmox API.
-func devicesSetToMap(devicesSet *schema.Set) pxapi.QemuDevices {
+func DevicesSetToMap(devicesSet *schema.Set) pxapi.QemuDevices {
 
 	devicesMap := pxapi.QemuDevices{}
 
@@ -733,12 +733,13 @@ func devicesSetToMap(devicesSet *schema.Set) pxapi.QemuDevices {
 
 // Update schema.TypeSet with new values comes from Proxmox API.
 // TODO: Maybe it's better to create a new Set instead add to current one.
-func updateDevicesSet(
+func UpdateDevicesSet(
 	devicesSet *schema.Set,
 	devicesMap pxapi.QemuDevices,
 ) *schema.Set {
 
-	configDevicesMap := devicesSetToMap(devicesSet)
+	configDevicesMap := DevicesSetToMap(devicesSet)
+
 	activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
 
 	for _, setConf := range devicesSet.List() {

@@ -58,6 +58,7 @@ func Provider() *schema.Provider {
 
 		ResourcesMap: map[string]*schema.Resource{
 			"proxmox_vm_qemu": resourceVmQemu(),
+			"proxmox_lxc": resourceLxc(),
 			// TODO - storage_iso
 			// TODO - bridge
 			// TODO - vm_qemu_template
