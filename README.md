@@ -37,7 +37,11 @@ export PM_API_URL="https://xxxx.com:8006/api2/json"
 export PM_USER=user@pam
 export PM_PASS=password
 ```
-
+If a 2FA OTP code is required
+```bash
+# Optional 2FA OTP code
+export PM_OTP=otpcode
+```
 
 ## Run
 
@@ -58,6 +62,8 @@ provider "proxmox" {
     pm_api_url = "https://proxmox-server01.example.com:8006/api2/json"
     pm_password = "secret"
     pm_user = "terraform-user@pve"
+    //Optional
+    pm_otp = "otpcode"
   */
 }
 

@@ -839,6 +839,7 @@ func initConnInfo(
 		"pm_api_url":      client.ApiUrl,
 		"pm_user":         client.Username,
 		"pm_password":     client.Password,
+		"pm_otp":          client.Otp,
 		"pm_tls_insecure": "true", // TODO - pass pm_tls_insecure state around, but if we made it this far, default insecure
 	})
 	return nil
