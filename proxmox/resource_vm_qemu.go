@@ -47,6 +47,15 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  true,
 			},
+			"boot": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "cdn",
+			},
+			"bootdisk": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"agent": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -371,6 +380,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Name:         vmName,
 		Description:  d.Get("desc").(string),
 		Onboot:       d.Get("onboot").(bool),
+		Boot:         d.Get("boot").(string),
+		BootDisk:     d.Get("bootdisk").(string),
 		Agent:        d.Get("agent").(int),
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
@@ -528,6 +539,8 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Name:         d.Get("name").(string),
 		Description:  d.Get("desc").(string),
 		Onboot:       d.Get("onboot").(bool),
+		Boot:         d.Get("boot").(string),
+		BootDisk:     d.Get("bootdisk").(string),
 		Agent:        d.Get("agent").(int),
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
@@ -617,6 +630,8 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
 	d.Set("onboot", config.Onboot)
+	d.Set("boot", config.Boot)
+	d.Set("bootdisk", config.BootDisk)
 	d.Set("agent", config.Agent)
 	d.Set("memory", config.Memory)
 	d.Set("cores", config.QemuCores)
