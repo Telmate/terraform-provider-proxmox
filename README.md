@@ -116,6 +116,7 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
   cores = 3
   sockets = 1
   memory = 2560
+  scsihw = "lsi"
   network {
     id = 0
     model = "virtio"

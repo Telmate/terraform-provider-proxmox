@@ -88,6 +88,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  1,
 			},
+			"scsihw": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
 			"network": &schema.Schema{
 				Type:          schema.TypeSet,
 				Optional:      true,
@@ -370,6 +375,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
+		Scsihw:       d.Get("scsihw").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
@@ -526,6 +532,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
+		Scsihw:       d.Get("scsihw").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
@@ -614,6 +621,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("memory", config.Memory)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
+	d.Set("scsihw", config.Scsihw)
 	d.Set("qemu_os", config.QemuOs)
 	// Cloud-init.
 	d.Set("ciuser", config.CIuser)
