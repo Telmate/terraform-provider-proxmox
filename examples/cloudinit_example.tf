@@ -27,6 +27,7 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     cores = "2"
     sockets = "1"
     memory = "2048"
+    scsihw = "lsi"
 
     # Setup the disk. The id has to be unique
     disk {
