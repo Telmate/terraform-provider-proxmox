@@ -123,6 +123,10 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
   sockets = 1
   memory = 2560
   scsihw = "lsi"
+  # Boot from hard disk (c), CD-ROM (d), network (n)
+  boot = "cdn"
+  # Default boot disk
+  bootdisk = "virtio0"
   network {
     id = 0
     model = "virtio"
