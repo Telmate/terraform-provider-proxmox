@@ -140,6 +140,10 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
     size = 4G
     backup = true
   }
+  serial {
+    id = 0
+    type = "socket"
+  }
   preprovision = true
   ssh_forward_ip = "10.0.0.1"
   ssh_user = "terraform"
