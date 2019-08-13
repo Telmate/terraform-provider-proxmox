@@ -289,6 +289,22 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
+			"serial": &schema.Schema{
+				Type:          schema.TypeSet,
+				Optional:      true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": &schema.Schema{
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"type": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
 			"os_type": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -390,6 +406,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	qemuNetworks := DevicesSetToMap(networks)
 	disks := d.Get("disk").(*schema.Set)
 	qemuDisks := DevicesSetToMap(disks)
+	serials := d.Get("serial").(*schema.Set)
+	qemuSerials := DevicesSetToMap(serials)
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -408,6 +426,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
+		QemuSerials:  qemuSerials,
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -552,6 +571,8 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	qemuDisks := DevicesSetToMap(configDisksSet)
 	configNetworksSet := d.Get("network").(*schema.Set)
 	qemuNetworks := DevicesSetToMap(configNetworksSet)
+	serials := d.Get("serial").(*schema.Set)
+	qemuSerials := DevicesSetToMap(serials)
 
 	config := pxapi.ConfigQemu{
 		Name:         d.Get("name").(string),
@@ -570,6 +591,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
+		QemuSerials:  qemuSerials,
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -688,6 +710,10 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("vlan", config.QemuVlanTag)
 	d.Set("mac", config.QemuMacAddr)
 	d.Set("pool", vmr.Pool())
+	//Serials
+	configSerialsSet := d.Get("serial").(*schema.Set)
+	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials)
+	d.Set("serial", activeSerialSet)
 
 	pmParallelEnd(pconf)
 	return nil
