@@ -140,7 +140,8 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
     size = 4G
     backup = true
   }
-  # Serial interface is used by xterm.js
+  # Serial interface of type socket is used by xterm.js
+  # You will need to configure your guest system before being able to use it
   serial {
     id = 0
     type = "socket"
