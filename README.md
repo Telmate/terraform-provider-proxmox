@@ -140,6 +140,7 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
     size = 4G
     backup = true
   }
+  # Serial interface is used by xterm.js
   serial {
     id = 0
     type = "socket"
