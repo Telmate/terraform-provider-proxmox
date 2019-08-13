@@ -144,6 +144,12 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
     size = 4G
     backup = true
   }
+  # Serial interface of type socket is used by xterm.js
+  # You will need to configure your guest system before being able to use it
+  serial {
+    id = 0
+    type = "socket"
+  }
   preprovision = true
   ssh_forward_ip = "10.0.0.1"
   ssh_user = "terraform"
