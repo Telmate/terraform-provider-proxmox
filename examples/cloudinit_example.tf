@@ -3,7 +3,6 @@ provider "proxmox" {
     pm_api_url = "https://proxmox-server01.example.com:8006/api2/json"
     pm_password = "secret"
     pm_user = "terraform-user@pve"
-    pm_otp = ""
 }
 
 resource "proxmox_vm_qemu" "cloudinit-test" {
