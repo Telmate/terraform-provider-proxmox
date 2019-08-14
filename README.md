@@ -121,10 +121,17 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
 
   cores = 3
   sockets = 1
+  # Same CPU as the Physical host, possible to add cpu flags
+  # Ex: "host,flags=+md-clear;+pcid;+spec-ctrl;+ssbd;+pdpe1gb"
+  cpu = "host"
+  numa = false
   memory = 2560
   scsihw = "lsi"
   # Boot from hard disk (c), CD-ROM (d), network (n)
   boot = "cdn"
+  # It's possible to add this type of material and use it directly
+  # Possible values are: network,disk,cpu,memory,usb
+  hotplug = "network,disk,usb"
   # Default boot disk
   bootdisk = "virtio0"
   network {
