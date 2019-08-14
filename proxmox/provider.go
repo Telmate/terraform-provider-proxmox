@@ -55,16 +55,16 @@ func Provider() *schema.Provider {
 				Default:  false,
 			},
 			"pm_otp": {
-				Type:     schema.TypeString,
-				Required: true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_OTP", nil),
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_OTP", ""),
 				Description: "OTP 2FA code (if required)",
 			},
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
 			"proxmox_vm_qemu": resourceVmQemu(),
-			"proxmox_lxc": resourceLxc(),
+			"proxmox_lxc":     resourceLxc(),
 			// TODO - storage_iso
 			// TODO - bridge
 			// TODO - vm_qemu_template
