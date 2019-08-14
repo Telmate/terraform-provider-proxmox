@@ -3,6 +3,7 @@ package proxmox
 import (
 	"crypto/tls"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"sync"
@@ -22,6 +23,20 @@ type providerConfiguration struct {
 
 // Provider - Terrafrom properties for proxmox
 func Provider() *schema.Provider {
+	pmOTPprompt := schema.Schema{
+		Type:        schema.TypeString,
+		Optional:    true,
+		DefaultFunc: schema.EnvDefaultFunc("PM_OTP", ""),
+		Description: "OTP 2FA code (if required)",
+	}
+	if os.Getenv("PM_OTP_PROMPT") == "1" {
+		pmOTPprompt = schema.Schema{
+			Type:        schema.TypeString,
+			Required:    true,
+			DefaultFunc: schema.EnvDefaultFunc("PM_OTP", nil),
+			Description: "OTP 2FA code (if required)",
+		}
+	}
 	return &schema.Provider{
 
 		Schema: map[string]*schema.Schema{
@@ -54,12 +69,7 @@ func Provider() *schema.Provider {
 				Optional: true,
 				Default:  false,
 			},
-			"pm_otp": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_OTP", ""),
-				Description: "OTP 2FA code (if required)",
-			},
+			"pm_otp": &pmOTPprompt,
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
