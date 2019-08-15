@@ -26,6 +26,7 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     os_type = "cloud-init"
     cores = "2"
     sockets = "1"
+    cpu = "host"
     memory = "2048"
     scsihw = "lsi"
 

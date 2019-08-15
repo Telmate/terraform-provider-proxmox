@@ -97,6 +97,21 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  1,
 			},
+			"cpu": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "host",
+			},
+			"numa": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"hotplug": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "network,disk,usb",
+			},
 			"scsihw": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -404,6 +419,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
+		QemuCpu:      d.Get("cpu").(string),
+		QemuNuma:     d.Get("numa").(bool),
+		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
@@ -566,6 +584,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
+		QemuCpu:      d.Get("cpu").(string),
+		QemuNuma:     d.Get("numa").(bool),
+		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
@@ -658,6 +679,9 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("memory", config.Memory)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
+	d.Set("cpu", config.QemuCpu)
+	d.Set("numa", config.QemuNuma)
+	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
 	d.Set("qemu_os", config.QemuOs)
 	// Cloud-init.
