@@ -777,11 +777,24 @@ func prepareDiskSize(
 
 func diskSizeGB(dcSize interface{}) float64 {
 	var diskSize float64
-	// TODO support other units M/G/K
 	switch dcSize.(type) {
 	case string:
-		diskSizeGB := dcSize.(string)
-		diskSize, _ = strconv.ParseFloat(strings.Trim(diskSizeGB, "G"), 64)
+		diskString := strings.ToUpper(dcSize.(string))
+		re := regexp.MustCompile("([0-9]+)([A-Z]*)")
+		diskArray := re.FindStringSubmatch(diskString)
+		
+		diskSize, _ = strconv.ParseFloat(diskArray[1], 64)
+		
+		if len(diskArray) >= 3 {
+			switch diskArray[2] {
+			case "G", "GB":
+				//Nothing to do
+			case "M", "MB":
+				diskSize /= 1000
+			case "K", "KB":
+				diskSize /= 1000000
+			}
+		}
 	case float64:
 		diskSize = dcSize.(float64)
 	}
