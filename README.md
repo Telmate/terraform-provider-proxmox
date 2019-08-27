@@ -113,6 +113,8 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
   name = "tftest1.xyz.com"
   desc = "tf description"
   target_node = "proxmox1-xx"
+  # Migrate the VM if already running on a different node
+  target_ignore = false
 
   clone = "terraform-ubuntu1404-template"
 
