@@ -40,7 +40,11 @@ func resourceVmQemu() *schema.Resource {
 			"target_node": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
+			},
+			"target_ignore": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 			"onboot": {
 				Type:     schema.TypeBool,
@@ -534,6 +538,11 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// give sometime to proxmox to catchup
 	time.Sleep(5 * time.Second)
 
+	if targetNode != vmr.Node() {
+		client.Migrate(vmr, targetNode, false)
+		time.Sleep(5 * time.Second)
+	}
+
 	log.Print("[DEBUG] starting VM")
 	_, err := client.StartVm(vmr)
 	if err != nil {
@@ -624,14 +633,32 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	// give sometime to proxmox to catchup
 	time.Sleep(5 * time.Second)
 
-	// Start VM only if it wasn't running.
+	//Is the VM running?
 	vmState, err := client.GetVmState(vmr)
+	
+	if err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
+
+	if d.Get("target_ignore").(bool) == false && vmr.Node() != d.Get("target_node").(string) {
+		isMigratable := false
+		if vmState["status"] == "running" {
+			//Is the VM able to migrate directly
+			isMigratable = MigrationPossible(config)
+			if isMigratable == false {
+				client.StopVm(vmr)
+				vmState["status"] = "stopped"
+			}
+		}
+		
+		client.Migrate(vmr, d.Get("target_node").(string), isMigratable)
+	}
+
+	// Start VM only if it wasn't running.
 	if err == nil && vmState["status"] == "stopped" {
 		log.Print("[DEBUG] starting VM")
 		_, err = client.StartVm(vmr)
-	} else if err != nil {
-		pmParallelEnd(pconf)
-		return err
 	}
 
 	err = initConnInfo(d, pconf, client, vmr, &config)
@@ -972,4 +999,18 @@ func preprovision(
 		}
 	}
 	return nil
+}
+
+func MigrationPossible(config pxapi.ConfigQemu) bool {
+	possible := true
+	//Shared types
+	rxStorageTypes := `(rbd)`
+	
+	for _, diskConf := range config.QemuDisks {
+		log.Print(diskConf["storage_type"])
+		if matched, _ := regexp.MatchString(rxStorageTypes, diskConf["storage_type"].(string)); matched == false {
+			possible = false
+		}
+	}
+	return possible
 }
