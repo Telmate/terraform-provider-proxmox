@@ -290,8 +290,8 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"serial": &schema.Schema{
-				Type:          schema.TypeSet,
-				Optional:      true,
+				Type:     schema.TypeSet,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"id": &schema.Schema{
@@ -782,9 +782,9 @@ func diskSizeGB(dcSize interface{}) float64 {
 		diskString := strings.ToUpper(dcSize.(string))
 		re := regexp.MustCompile("([0-9]+)([A-Z]*)")
 		diskArray := re.FindStringSubmatch(diskString)
-		
+
 		diskSize, _ = strconv.ParseFloat(diskArray[1], 64)
-		
+
 		if len(diskArray) >= 3 {
 			switch diskArray[2] {
 			case "G", "GB":
@@ -902,6 +902,12 @@ func initConnInfo(
 			// parse IP address out of ipconfig0
 			ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
 			sshHost = ipMatch[1]
+		}
+		// Check if we got a speficied port
+		if strings.Contains(sshHost, ":") {
+			sshParts := strings.Split(sshHost, ":")
+			sshHost = sshParts[0]
+			sshPort = sshParts[1]
 		}
 	} else {
 		log.Print("[DEBUG] setting up SSH forward")
