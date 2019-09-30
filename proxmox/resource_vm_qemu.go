@@ -71,6 +71,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"full_clone": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				ForceNew: true,
+				Default:  true,
+			},
 			"qemu_os": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -478,6 +484,12 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 		// check if ISO or clone
 		if d.Get("clone").(string) != "" {
+			fullClone := 1
+			if !d.Get("full_clone").(bool) {
+				fullClone = 0
+			}
+			config.FullClone = &fullClone
+
 			sourceVmr, err := client.GetVmRefByName(d.Get("clone").(string))
 			if err != nil {
 				pmParallelEnd(pconf)
