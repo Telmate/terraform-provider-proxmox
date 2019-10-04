@@ -112,10 +112,6 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeInt,
-							Required: true,
-						},
 						"volume": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -160,10 +156,6 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeInt,
-							Required: true,
-						},
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -342,14 +334,18 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	// proxmox api allows multiple mountpoint sets,
 	// having a unique 'id' parameter foreach set
 	mountpoints := d.Get("mountpoint").(*schema.Set)
-	lxcMountpoints := DevicesSetToMap(mountpoints)
-	config.Mountpoints = lxcMountpoints
+	if len(mountpoints.List()) > 0 {
+		lxcMountpoints := DevicesSetToMapWithoutId(mountpoints)
+		config.Mountpoints = lxcMountpoints
+	}
 	config.Nameserver = d.Get("nameserver").(string)
 	// proxmox api allows multiple network sets,
 	// having a unique 'id' parameter foreach set
 	networks := d.Get("network").(*schema.Set)
-	lxcNetworks := DevicesSetToMap(networks)
-	config.Networks = lxcNetworks
+	if len(networks.List()) > 0 {
+		lxcNetworks := DevicesSetToMapWithoutId(networks)
+		config.Networks = lxcNetworks
+	}
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
@@ -442,14 +438,18 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	// proxmox api allows multiple mountpoint sets,
 	// having a unique 'id' parameter foreach set
 	mountpoints := d.Get("mountpoint").(*schema.Set)
-	lxcMountpoints := DevicesSetToMap(mountpoints)
-	config.Mountpoints = lxcMountpoints
+	if len(mountpoints.List()) > 0 {
+		lxcMountpoints := DevicesSetToMapWithoutId(mountpoints)
+		config.Mountpoints = lxcMountpoints
+	}
 	config.Nameserver = d.Get("nameserver").(string)
 	// proxmox api allows multiple network sets,
 	// having a unique 'id' parameter foreach set
 	networks := d.Get("network").(*schema.Set)
-	lxcNetworks := DevicesSetToMap(networks)
-	config.Networks = lxcNetworks
+	if len(networks.List()) > 0 {
+		lxcNetworks := DevicesSetToMapWithoutId(networks)
+		config.Networks = lxcNetworks
+	}
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
@@ -532,14 +532,22 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("memory", config.Memory)
 
 	configMountpointSet := d.Get("mountpoint").(*schema.Set)
-	activeMountpointSet := UpdateDevicesSet(configMountpointSet, config.Mountpoints)
-	d.Set("mountpoint", activeMountpointSet)
+	configMountpointSet = AddIds(configMountpointSet)
+	if len(configMountpointSet.List()) > 0 {
+		activeMountpointSet := UpdateDevicesSet(configMountpointSet, config.Mountpoints)
+		activeMountpointSet = RemoveIds(activeMountpointSet)
+		d.Set("mountpoint", activeMountpointSet)
+	}
 
 	d.Set("nameserver", config.Nameserver)
 
 	configNetworksSet := d.Get("network").(*schema.Set)
-	activeNetworksSet := UpdateDevicesSet(configNetworksSet, config.Networks)
-	d.Set("network", activeNetworksSet)
+	configNetworksSet = AddIds(configNetworksSet)
+	if len(configNetworksSet.List()) > 0 {
+		activeNetworksSet := UpdateDevicesSet(configNetworksSet, config.Networks)
+		activeNetworksSet = RemoveIds(activeNetworksSet)
+		d.Set("network", activeNetworksSet)
+	}
 
 	d.Set("onboot", config.OnBoot)
 	d.Set("ostemplate", config.Ostemplate)
