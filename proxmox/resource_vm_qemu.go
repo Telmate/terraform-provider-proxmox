@@ -387,6 +387,10 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"ipconfig2": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
 			"preprovision": {
 				Type:          schema.TypeBool,
 				Optional:      true,
@@ -441,6 +445,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Sshkeys:      d.Get("sshkeys").(string),
 		Ipconfig0:    d.Get("ipconfig0").(string),
 		Ipconfig1:    d.Get("ipconfig1").(string),
+		Ipconfig2:    d.Get("ipconfig2").(string),
 		// Deprecated single disk config.
 		Storage:  d.Get("storage").(string),
 		DiskSize: d.Get("disk_gb").(float64),
@@ -612,6 +617,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Sshkeys:      d.Get("sshkeys").(string),
 		Ipconfig0:    d.Get("ipconfig0").(string),
 		Ipconfig1:    d.Get("ipconfig1").(string),
+		Ipconfig2:    d.Get("ipconfig2").(string),
 		// Deprecated single disk config.
 		Storage:  d.Get("storage").(string),
 		DiskSize: d.Get("disk_gb").(float64),
@@ -704,6 +710,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("sshkeys", config.Sshkeys)
 	d.Set("ipconfig0", config.Ipconfig0)
 	d.Set("ipconfig1", config.Ipconfig1)
+	d.Set("ipconfig2", config.Ipconfig2)
 	// Disks.
 	configDisksSet := d.Get("disk").(*schema.Set)
 	activeDisksSet := UpdateDevicesSet(configDisksSet, config.QemuDisks)
