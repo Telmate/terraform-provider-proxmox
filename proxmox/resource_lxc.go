@@ -519,8 +519,10 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("description", config.Description)
 
 	defaultFeatures := d.Get("features").(*schema.Set)
-	featuresWithDefaults := UpdateDeviceConfDefaults(config.Features, defaultFeatures)
-	d.Set("features", featuresWithDefaults)
+	if len(defaultFeatures.List()) > 0 {
+		featuresWithDefaults := UpdateDeviceConfDefaults(config.Features, defaultFeatures)
+		d.Set("features", featuresWithDefaults)
+	}
 
 	d.Set("force", config.Force)
 	d.Set("hookscript", config.Hookscript)
