@@ -172,6 +172,14 @@ auto eth0
 iface eth0 inet dhcp
 EOF
 
+  connection {
+    type = "ssh"
+    user = "${self.ssh_user}"
+    private_key = "${self.ssh_private_key}"
+    host = "${self.ssh_host}"
+    port = "${self.ssh_port}"
+  }
+
   provisioner "remote-exec" {
     inline = [
       "ip a"

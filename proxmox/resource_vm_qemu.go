@@ -391,6 +391,14 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"ssh_host": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"ssh_port": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -922,6 +930,11 @@ func initConnInfo(
 	// Done with proxmox API, end parallel and do the SSH things
 	pmParallelEnd(pconf)
 
+	// Optional convience attributes for provisioners
+	d.Set("ssh_host", sshHost)
+	d.Set("ssh_port", sshPort)
+
+	// This connection INFO is longer shared up to the providers :-(
 	d.SetConnInfo(map[string]string{
 		"type":            "ssh",
 		"host":            sshHost,
