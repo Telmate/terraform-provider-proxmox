@@ -430,6 +430,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
 		Description:  d.Get("desc").(string),
+		Pool:         d.Get("pool").(string),
 		Onboot:       d.Get("onboot").(bool),
 		Boot:         d.Get("boot").(string),
 		BootDisk:     d.Get("bootdisk").(string),
@@ -602,6 +603,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	config := pxapi.ConfigQemu{
 		Name:         d.Get("name").(string),
 		Description:  d.Get("desc").(string),
+		Pool:         d.Get("pool").(string),
 		Onboot:       d.Get("onboot").(bool),
 		Boot:         d.Get("boot").(string),
 		BootDisk:     d.Get("bootdisk").(string),
@@ -698,6 +700,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
+	d.Set("pool", config.Pool)
 	d.Set("onboot", config.Onboot)
 	d.Set("boot", config.Boot)
 	d.Set("bootdisk", config.BootDisk)
