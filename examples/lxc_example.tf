@@ -12,7 +12,6 @@ resource "proxmox_lxc" "lxc-test" {
     }
     hostname = "terraform-new-container"
     network {
-        id = 0
         name = "eth0"
         bridge = "vmbr0"
         ip = "dhcp"
