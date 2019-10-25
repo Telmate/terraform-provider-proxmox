@@ -2,6 +2,10 @@ dist: xenial
 
 language: go
 
+cache:
+  directories:
+    - $HOME/.cache/go-build
+    - $HOME/gopath/pkg/mod
 go:
   - 1.13.x
 
@@ -14,5 +18,4 @@ notifications:
   email: false
 
 script:
-  - make
-  - make install
+  - make test build install
