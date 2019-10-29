@@ -134,6 +134,8 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
   hotplug = "network,disk,usb"
   # Default boot disk
   bootdisk = "virtio0"
+  # HA, you need to use a shared disk for this feature (ex: rbd)
+  hastate = ""
   network {
     id = 0
     model = "virtio"
