@@ -388,9 +388,9 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 			},
 			"ipconfig2": {
-                                Type:     schema.TypeString,
-                                Optional: true,
-                        },
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"preprovision": {
 				Type:          schema.TypeBool,
 				Optional:      true,
@@ -512,6 +512,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			log.Print("[DEBUG] cloning VM")
 			err = config.CloneVm(sourceVmr, vmr, client)
 			if err != nil {
+				// Set the id because when update config fail the vm is still created
+				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 				pmParallelEnd(pconf)
 				return err
 			}
@@ -542,6 +544,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 		err := config.UpdateConfig(vmr, client)
 		if err != nil {
+			// Set the id because when update config fail the vm is still created
+			d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 			pmParallelEnd(pconf)
 			return err
 		}
