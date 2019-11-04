@@ -77,6 +77,10 @@ func resourceVmQemu() *schema.Resource {
 				ForceNew: true,
 				Default:  true,
 			},
+			"hastate": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"qemu_os": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -442,6 +446,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		QemuNuma:     d.Get("numa").(bool),
 		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
+		HaState:      d.Get("hastate").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
@@ -615,6 +620,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		QemuNuma:     d.Get("numa").(bool),
 		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
+		HaState:      d.Get("hastate").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
@@ -712,6 +718,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("numa", config.QemuNuma)
 	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
+	d.Set("hastate", vmr.HaState())
 	d.Set("qemu_os", config.QemuOs)
 	// Cloud-init.
 	d.Set("ciuser", config.CIuser)
