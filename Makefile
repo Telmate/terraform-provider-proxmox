@@ -1,27 +1,32 @@
-
-.PHONY:  build clean install
+.PHONY:  build  fmt vet test clean install
 
 all: build
 
-setup:
-	go get github.com/Telmate/proxmox-api-go
-	go get github.com/hashicorp/terraform/plugin
-	go get github.com/hashicorp/terraform/terraform
-	go get github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
-	go get github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provisioner-proxmox
+
+fmt:
+	@echo " -> checking code style"
+	@! gofmt -d $(shell find . -path ./vendor -prune -o -name '*.go' -print) | grep '^'
+
+vet:
+	@echo " -> vetting code"
+	@go vet ./...
+
+test:
+	@echo " -> testing code"
+	@go test -v ./...
+
 
 build: clean
 	@echo " -> Building"
-	@cd cmd/terraform-provider-proxmox && go build
+	mkdir -p bin
+	CGO_ENABLED=0 go build  -o bin/terraform-provider-proxmox cmd/terraform-provider-proxmox/* 
 	@echo "Built terraform-provider-proxmox"
-	@cd cmd/terraform-provisioner-proxmox && go build
+	CGO_ENABLED=0 go build -v -o bin/terraform-provisioner-proxmox cmd/terraform-provisioner-proxmox/* 
 	@echo "Built terraform-provisioner-proxmox"
 
-
-install: clean
-	@echo " -> Installing"
-	go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
-	go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provisioner-proxmox
+install: build 
+	cp bin/terraform-provider-proxmox $$GOPATH/bin/terraform-provider-proxmox
+	cp bin/terraform-provisioner-proxmox $$GOPATH/bin/terraform-provider-proxmox
 
 clean:
 	@git clean -f -d -X
