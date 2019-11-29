@@ -183,6 +183,10 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"cloudinit_cdrom_storage": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"full_clone": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -879,6 +883,17 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("Set this vm (resource Id) to '%v'", d.Id())
+
+	if d.Get("cloudinit_cdrom_storage").(string) != "" {
+		vmParams := map[string]interface{}{
+			"cdrom": fmt.Sprintf("%s:cloudinit", d.Get("cloudinit_cdrom_storage").(string)),
+		}
+
+		_, err := client.SetVmConfig(vmr, vmParams)
+		if err != nil {
+			return err
+		}
+	}
 
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
