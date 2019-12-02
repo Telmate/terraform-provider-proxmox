@@ -520,6 +520,13 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			}
 			log.Print("[DEBUG] cloning VM")
 			err = config.CloneVm(sourceVmr, vmr, client)
+
+			if err != nil {
+				pmParallelEnd(pconf)
+				return err
+			}
+
+			err = config.UpdateConfig(vmr, client)
 			if err != nil {
 				// Set the id because when update config fail the vm is still created
 				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
