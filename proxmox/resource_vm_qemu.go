@@ -40,7 +40,6 @@ func resourceVmQemu() *schema.Resource {
 			"target_node": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"onboot": {
 				Type:     schema.TypeBool,
@@ -613,6 +612,18 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	qemuNetworks := DevicesSetToMap(configNetworksSet)
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials := DevicesSetToMap(serials)
+
+	d.Partial(true)
+	if d.HasChange("target_node") {
+		_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
+		if err != nil {
+			pmParallelEnd(pconf)
+			return err
+		}
+		d.SetPartial("target_node")
+		vmr.SetNode(d.Get("target_node").(string))
+	}
+	d.Partial(false)
 
 	config := pxapi.ConfigQemu{
 		Name:         d.Get("name").(string),
