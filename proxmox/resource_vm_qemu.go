@@ -349,6 +349,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  false,
 			},
+			"clone_wait": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  15,
+			},
 			"ci_wait": { // how long to wait before provision
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -524,7 +529,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			}
 
 			// give sometime to proxmox to catchup
-			time.Sleep(5 * time.Second)
+			time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
 
 			err = prepareDiskSize(client, vmr, qemuDisks)
 			if err != nil {
@@ -567,7 +572,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 
 	// give sometime to proxmox to catchup
-	time.Sleep(5 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	log.Print("[DEBUG] starting VM")
 	_, err := client.StartVm(vmr)
@@ -660,7 +665,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	prepareDiskSize(client, vmr, qemuDisks)
 
 	// give sometime to proxmox to catchup
-	time.Sleep(5 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	// Start VM only if it wasn't running.
 	vmState, err := client.GetVmState(vmr)
