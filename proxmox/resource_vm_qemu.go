@@ -106,6 +106,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  1,
 			},
+			"vcpus": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
 			"cpu": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -446,6 +451,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
+		QemuVcpus:    d.Get("vcpus").(int),
 		QemuCpu:      d.Get("cpu").(string),
 		QemuNuma:     d.Get("numa").(bool),
 		Hotplug:      d.Get("hotplug").(string),
@@ -636,6 +642,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Memory:       d.Get("memory").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
+		QemuVcpus:    d.Get("vcpus").(int),
 		QemuCpu:      d.Get("cpu").(string),
 		QemuNuma:     d.Get("numa").(bool),
 		Hotplug:      d.Get("hotplug").(string),
@@ -734,6 +741,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("memory", config.Memory)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
+	d.Set("vcpus", config.QemuVcpus)
 	d.Set("cpu", config.QemuCpu)
 	d.Set("numa", config.QemuNuma)
 	d.Set("hotplug", config.Hotplug)
