@@ -23,6 +23,8 @@ github.com/Telmate/proxmox-api-go v0.0.0-20191202165429-ba1b7dd050aa h1:Ypr/7Agl
 github.com/Telmate/proxmox-api-go v0.0.0-20191202165429-ba1b7dd050aa/go.mod h1:OGWyIMJ87/k/GCz8CGiWB2HOXsOVDM6Lpe/nFPkC4IQ=
 github.com/Telmate/proxmox-api-go v0.0.0-20191206171242-991c5ce7826d h1:OPRNmtQcU2EvGndXfW+G/rg3DYAxSoyHbWGCdG48Vg0=
 github.com/Telmate/proxmox-api-go v0.0.0-20191206171242-991c5ce7826d/go.mod h1:OGWyIMJ87/k/GCz8CGiWB2HOXsOVDM6Lpe/nFPkC4IQ=
+github.com/Telmate/proxmox-api-go v0.0.0-20191211195942-8274aed79394 h1:Alx7LVwIL9AyOLsxPmseNDlWNS8wlfUF4bgv6mAcUD0=
+github.com/Telmate/proxmox-api-go v0.0.0-20191211195942-8274aed79394/go.mod h1:OGWyIMJ87/k/GCz8CGiWB2HOXsOVDM6Lpe/nFPkC4IQ=
 github.com/Unknwon/com v0.0.0-20151008135407-28b053d5a292/go.mod h1:KYCjqMOeHpNuTOiFQU6WEcTG7poCJrUs0YgyHNtn1no=
 github.com/abdullin/seq v0.0.0-20160510034733-d5467c17e7af/go.mod h1:5Jv4cbFiHJMsVxt52+i0Ha45fjshj6wxYr1r19tB9bw=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
