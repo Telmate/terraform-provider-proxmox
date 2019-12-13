@@ -136,6 +136,14 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
   bootdisk = "virtio0"
   # HA, you need to use a shared disk for this feature (ex: rbd)
   hastate = ""
+  
+  #Display
+  vga {
+    type = "std"
+    #Between 4 and 512, ignored if type is defined to serial
+    memory = 4
+  }
+  
   network {
     id = 0
     model = "virtio"
