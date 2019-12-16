@@ -96,6 +96,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  512,
 			},
+			"balloon": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
 			"cores": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -259,6 +264,36 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
+						},
+						//Maximum r/w speed in megabytes per second
+						"mbps": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						//Maximum read speed in megabytes per second
+						"mbps_rd": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						//Maximum unthrottled read pool in megabytes per second
+						"mbps_rd_max": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						//Maximum write speed in megabytes per second
+						"mbps_wr": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						//Maximum unthrottled write pool in megabytes per second
+						"mbps_wr_max": &schema.Schema{
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
 						},
 					},
 				},
@@ -468,6 +503,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		BootDisk:     d.Get("bootdisk").(string),
 		Agent:        d.Get("agent").(int),
 		Memory:       d.Get("memory").(int),
+		Balloon:      d.Get("balloon").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
 		QemuVcpus:    d.Get("vcpus").(int),
@@ -664,6 +700,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		BootDisk:     d.Get("bootdisk").(string),
 		Agent:        d.Get("agent").(int),
 		Memory:       d.Get("memory").(int),
+		Balloon:      d.Get("balloon").(int),
 		QemuCores:    d.Get("cores").(int),
 		QemuSockets:  d.Get("sockets").(int),
 		QemuVcpus:    d.Get("vcpus").(int),
@@ -766,6 +803,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("bootdisk", config.BootDisk)
 	d.Set("agent", config.Agent)
 	d.Set("memory", config.Memory)
+	d.Set("balloon", config.Balloon)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
 	d.Set("vcpus", config.QemuVcpus)
