@@ -177,7 +177,7 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 						},
 						"hwaddr": {
-							Type:     schema.TypeBool,
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 						"ip": {
