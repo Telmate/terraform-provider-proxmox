@@ -429,6 +429,10 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"cicustom": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"searchdomain": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -519,6 +523,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
+		CIcustom:     d.Get("cicustom").(string),
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
@@ -716,6 +721,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
+		CIcustom:     d.Get("cicustom").(string),
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
@@ -816,6 +822,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	// Cloud-init.
 	d.Set("ciuser", config.CIuser)
 	d.Set("cipassword", config.CIpassword)
+	d.Set("cicustom", config.CIcustom)
 	d.Set("searchdomain", config.Searchdomain)
 	d.Set("nameserver", config.Nameserver)
 	d.Set("sshkeys", config.Sshkeys)

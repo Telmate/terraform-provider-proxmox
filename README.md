@@ -106,6 +106,84 @@ EOF
   }
 }
 
+/* Null resource that generates a cloud-config file per vm */
+data "template_file" "user_data" {
+  count    = var.vm_count
+  template = file("${path.module}/files/user_data.cfg")
+  vars = {
+    pubkey   = file("~/.ssh/id_rsa.pub")
+    hostname = "vm-${count.index}"
+    fqdn     = "vm-${count.index}.${var.domain_name}"
+  }
+}
+resource "local_file" "cloud_init_user_data_file" {
+  count    = var.vm_count
+  content  = data.template_file.user_data[count.index].rendered
+  filename = "${path.module}/files/user_data_${count.index}.cfg"
+}
+
+resource "null_resource" "cloud_init_config_files" {
+  count = var.vm_count
+  connection {
+    type     = "ssh"
+    user     = "${var.pve_user}"
+    password = "${var.pve_password}"
+    host     = "${var.pve_host}"
+  }
+
+  provisioner "file" {
+    source      = local_file.cloud_init_user_data_file[count.index].filename
+    destination = "/var/lib/vz/snippets/user_data_vm-${count.index}.yml"
+  }
+}
+
+/* Configure cloud-init User-Data with custom config file */
+resource "proxmox_vm_qemu" "cloudinit-test" {
+  depends_on = [
+    null_resource.cloud_init_config_files,
+  ]
+
+  name = "tftest1.xyz.com"
+  desc = "tf description"
+  target_node = "proxmox1-xx"
+
+  clone = "ci-ubuntu-template"
+
+  # The destination resource pool for the new VM
+  pool = "pool0"
+
+  storage = "local"
+  cores = 3
+  sockets = 1
+  memory = 2560
+  disk_gb = 4
+  nic = "virtio"
+  bridge = "vmbr0"
+
+  ssh_user = "root"
+  ssh_private_key = <<EOF
+-----BEGIN RSA PRIVATE KEY-----
+private ssh key root
+-----END RSA PRIVATE KEY-----
+EOF
+
+  os_type = "cloud-init"
+  ipconfig0 = "ip=10.0.2.99/16,gw=10.0.2.2"
+
+  /*
+    sshkeys and other User-Data parameters are specified with a custom config file.
+    In this example each VM has its own config file, previously generated and uploaded to
+    the snippets folder in the local storage in the Proxmox VE server.
+  */
+  cicustom = "user=local:snippets/user_data_vm-${count.index}.yml"
+
+  provisioner "remote-exec" {
+    inline = [
+      "ip a"
+    ]
+  }
+}
+
 /* Uses custom eth1 user-net SSH portforward */
 resource "proxmox_vm_qemu" "prepprovision-test" {
   name = "tftest1.xyz.com"
@@ -226,6 +304,10 @@ See: https://pve.proxmox.com/wiki/Cloud-Init_Support
 * sshkeys - public ssh keys, one per line
 * ipconfig0 - [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]
 * ipconfig1 - optional, same as ipconfig0 format
+
+Alternatively, cloud-init configuration can be customized with config files that reside in a volume in the Proxmox VE server. Use the attribute `cicustom` to indicate the location of these files. 
+
+* cicustom - location of cloud-config files that Proxmox will put in the generated cloud-init config iso image, e.g. `cicustom = "user=local:snippets/user_data.yaml"`. For more info about this attribute, see the details of the parameter `--cicustom` in the section "Custom Cloud-Init Configuration" from the [Proxmox Cloud-Init support](https://pve.proxmox.com/wiki/Cloud-Init_Support) page.
 
 ### Preprovision (internal alternative to Cloud-Init)
 
