@@ -298,6 +298,11 @@ func resourceLxc() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"vmid": {
+				Type:	  schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
 		},
 	}
 }
@@ -377,10 +382,16 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 
 	// get unique id
 	nextid, err := nextVmId(pconf)
-	if err != nil {
-		pmParallelEnd(pconf)
-		return err
+	vmID := d.Get("vmid").(int)
+	if vmID != 0 {
+		nextid = vmID	
+	} else {
+		if err != nil {
+			pmParallelEnd(pconf)
+			return err
+		}
 	}
+
 	vmr := pxapi.NewVmRef(nextid)
 	vmr.SetNode(targetNode)
 	err = config.CreateLxc(vmr, client)
