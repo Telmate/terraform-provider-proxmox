@@ -596,7 +596,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				return err
 			}
 
-			err = config.UpdateConfig(vmr, client)
+			err = config.UpdateConfig(vmr, client, true)
 			if err != nil {
 				// Set the id because when update config fail the vm is still created
 				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
@@ -628,7 +628,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 		client.StopVm(vmr)
 
-		err := config.UpdateConfig(vmr, client)
+		err := config.UpdateConfig(vmr, client, false)
 		if err != nil {
 			// Set the id because when update config fail the vm is still created
 			d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
@@ -749,7 +749,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
 
-	err = config.UpdateConfig(vmr, client)
+	err = config.UpdateConfig(vmr, client, false)
 	if err != nil {
 		pmParallelEnd(pconf)
 		return err
