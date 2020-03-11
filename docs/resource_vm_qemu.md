@@ -106,13 +106,6 @@ The following arguments are supported in the resource block:
 * `vga` - (Optional)
 * `network` - (Optional)
 * `disk` - (Optional)
-* `disk_gb` - (Optional; deprecated, use disk.size instead)
-* `storage` - (Optional; deprecated, use disk.storage instead)
-* `storage_type` - (Optional; deprecated, use disk.type instead)
-* `nic` - (Optional; deprecated, use network instead)
-* `bridge` - (Optional; deprecated, use network.bridge instead)
-* `vlan` - (Optional; deprecated, use network.tag instead)
-* `mac` - (Optional; deprecated, use network.macaddr instead)
 * `serial` - (Optional)
 * `pool` - (Optional)
 * `force_create` - (Optional; defaults to true)
@@ -142,3 +135,12 @@ The following arguments are specifically for Cloud-init for preprovisioning.
 * `ipconfig1` - (Optional) Cloud-init specific, see ipconfig0
 * `ipconfig2` - (Optional) Cloud-init specific, see ipconfig0
 
+Deprecated arguments.
+
+* `disk_gb` - (Optional; use disk.size instead)
+* `storage` - (Optional; use disk.storage instead)
+* `storage_type` - (Optional; use disk.type instead)
+* `nic` - (Optional; use network instead)
+* `bridge` - (Optional; use network.bridge instead)
+* `vlan` - (Optional; use network.tag instead)
+* `mac` - (Optional; use network.macaddr instead)
