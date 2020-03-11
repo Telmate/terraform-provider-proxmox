@@ -9,7 +9,7 @@ When connecting to the Proxmox API, the provider has to know at least three para
 One can supply fields using the provider syntax in Terraform. It is recommended to pass secrets through environment 
 variables.
 
-```
+```bash
 export PM_PASS=password
 ```
 
