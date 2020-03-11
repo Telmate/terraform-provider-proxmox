@@ -132,7 +132,7 @@ The following arguments are specifically for Linux for preprovisioning.
 The following arguments are specifically for Cloud-init for preprovisioning.
 
 * `ci_wait` - (Optional) Cloud-init specific, how to long to wait for preprovisioning.
-* `ciuser` - (Optional) Cloud-init specific, user name to change ssh keys and password for instead of the image’s configured default user.
+* `ciuser` - (Optional) Cloud-init specific, overwrite image default user.
 * `cipassword` - (Optional) Cloud-init specific, password to assign to the user.
 * `cicustom` - (Optional) Cloud-init specific, location of the custom cloud-config files.
 * `searchdomain` - (Optional) Cloud-init specific, sets DNS search domains for a container.
