@@ -104,9 +104,37 @@ The following arguments are supported in the resource block:
 * `hotplug` - (Optional; defaults to network,disk,usb)
 * `scsihw` - (Optional; defaults to the empty string)
 * `vga` - (Optional)
+    * `type` (Optional; defauls to std)
+    * `memory` (Optional)
 * `network` - (Optional)
+    * `id` (Required)
+    * `model` (Required)
+    * `macaddr` (Optional)
+    * `bridge` (Optional; defaults to nat)
+    * `tag` (Optional; defaults to -1)
+    * `firewall` (Optional; defaults to false)
+    * `rate` (Optional; defaults to -1)
+    * `queues` (Optional; defaults to -1)
+    * `link_down` (Optional; defaults to false)
 * `disk` - (Optional)
+    * `id` (Required)
+    * `type` (Required)
+    * `storage` (Required)
+    * `storage_type` (Optional; defaults to dir) One of PVE types [as described in their documentation](https://pve.proxmox.com/wiki/Storage).
+    * `size` (Required)
+    * `format` (Optional; defaults to raw)
+    * `cache` (Optional; defaults to none)
+    * `backup` (Optional; defaults to false)
+    * `iothread` (Optional; defaults to false)
+    * `replicate` (Optional; defaults to false)
+    * `mbps` (Optional; defaults to unlimited being 0) Maximum r/w speed in megabytes per second
+    * `mbps_rd` (Optional; defaults to unlimited being 0) Maximum read speed in megabytes per second
+    * `mbps_rd_max` (Optional; defaults to unlimited being 0) Maximum unthrottled read pool in megabytes per second
+    * `mbps_wr` (Optional; defaults to unlimited being 0) //Maximum write speed in megabytes per second
+    * `mbps_wr_max` (Optional; defaults to unlimited being 0) //Maximum unthrottled write pool in megabytes per second
 * `serial` - (Optional)
+    * `id` (Required)
+    * `type` (Required)
 * `pool` - (Optional)
 * `force_create` - (Optional; defaults to true)
 * `clone_wait` - (Optional)

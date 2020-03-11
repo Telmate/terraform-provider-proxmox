@@ -265,31 +265,26 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  false,
 						},
-						//Maximum r/w speed in megabytes per second
 						"mbps": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						//Maximum read speed in megabytes per second
 						"mbps_rd": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						//Maximum unthrottled read pool in megabytes per second
 						"mbps_rd_max": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						//Maximum write speed in megabytes per second
 						"mbps_wr": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						//Maximum unthrottled write pool in megabytes per second
 						"mbps_wr_max": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
