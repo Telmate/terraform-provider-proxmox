@@ -26,7 +26,7 @@ The following arguments are supported in the provider block:
 
 * `pm_api_url` - (Required; or use environment variable `PM_API_URL`) This is the target Proxmox API endpoint.
 * `pm_user` - (Required; or use environment variable `PM_USER`) The user, maybe required to include @pam.
-* `pm_password` - (Required; or use environment variable `PM_PASS`) The password.
+* `pm_password` - (Required; sensitive; or use environment variable `PM_PASS`) The password.
 * `pm_otp` - (Optional; or use environment variable `PM_OTP`) The  2FA OTP code.
 * `pm_tls_insecure` - (Optional) Disable TLS verification while connecting.
 * `pm_parallel` - (Optional; defaults to 4) Allowed simultaneous Proxmox processes (e.g. creating resources).
