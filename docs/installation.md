@@ -7,7 +7,7 @@ with executables that have to be placed in the plugin directory.
 ## Compile the executables with Go
 
 In order to build the required executables, [install Go](https://golang.org/doc/install) first. Then clone this
-repository. Then run the following commands inside the cloned repository. Since this plugin is both a provider and 
+repository and run the following commands inside the cloned repository. Since this plugin is both a provider and 
 provisioner in one, there are two install commands.
 
 ```
