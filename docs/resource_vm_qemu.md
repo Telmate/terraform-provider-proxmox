@@ -10,43 +10,135 @@ This resource manages a Proxmox VM Qemu container.
 You can start from either an ISO or clone an existing VM. Optimally, you could create a VM resource you will use a clone 
 base with an ISO, and make the rest of the VM resources depend on that base "template" and clone it.
 
+When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. The name and target node of the VM are
+the only required parameters.
+
+```tf
+resource "proxmox_vm_qemu" "resource-name" {
+    name = "VM name"
+    target_node = "Node to create the VM on"
+}
+```
+
 ## Preprovision
 
-With preprovision you can provision a VM directly from the resource block.
+With preprovision you can provision a VM directly from the resource block. This provisioning method is therefore ran
+**before** provision blocks. When using preprovision, there are three `os_type` options: `ubuntu`, `centos` or `cloud-init`.
 
 ```tf
 resource "proxmox_vm_qemu" "prepprovision-test" {
     ...
     preprovision = true
-    os_type = "ubuntu"  // ubuntu, centos or cloud-init
+    os_type = "ubuntu"
 }
 ```
 
 ### Preprovision for Linux (Ubuntu / CentOS)
 
 There is a pre-provision phase which is used to set a hostname, intialize eth0, and resize the VM disk to available 
-space. This is done over SSH with the ssh_forward_ip, ssh_user and ssh_private_key. Disk resize is done if the file 
+space. This is done over SSH with the `ssh_forward_ip`, `ssh_user` and `ssh_private_key`. Disk resize is done if the file 
 [/etc/auto_resize_vda.sh](https://github.com/Telmate/terraform-ubuntu-proxmox-iso/blob/master/auto_resize_vda.sh) exists.
+
+```tf
+resource "proxmox_vm_qemu" "prepprovision-test" {
+    ...
+    preprovision = true
+    os_type = "ubuntu"
+    ssh_forward_ip = "10.0.0.1"
+    ssh_user = "terraform"
+    ssh_private_key = <<EOF
+-----BEGIN RSA PRIVATE KEY-----
+private ssh key terraform
+-----END RSA PRIVATE KEY-----
+EOF
+    os_network_config =  <<EOF
+auto eth0
+iface eth0 inet dhcp
+EOF
+    
+    connection {
+        type = "ssh"
+        user = "${self.ssh_user}"
+        private_key = "${self.ssh_private_key}"
+        host = "${self.ssh_host}"
+        port = "${self.ssh_port}"
+    }
+}
+```
 
 
 ## Preprovision for Cloud-Init
 
-Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support).
+Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When
+creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig`
+parameter to create based on [https://cloudinit.readthedocs.io/en/latest/topics/examples.html](a Cloud-init configuration file)
+or use the Proxmox variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `searchdomain`, `nameserver` and `sshkeys`.
 
-* ciuser - User name to change ssh keys and password for instead of the image’s configured default user.
-* cipassword - Password to assign the user.
-* cicustom - location of cloud-config files that Proxmox will put in the generated cloud-init config iso image.
-* searchdomain - Sets DNS search domains for a container.
-* nameserver - Sets DNS server IP address for a container.
-* sshkeys - public ssh keys, one per line
-* ipconfig0 - [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]
-* ipconfig1 - optional, same as ipconfig0 format
-
+For more information, see the [Cloud-init guide](cloud_init_guide.md).
 
 ## Argument reference
 
-* `cicustom` - (Optional) Location of cloud-config files that Proxmox will put in the generated cloud-init config iso 
-  image, e.g. `cicustom = "user=local:snippets/user_data.yaml"`. For more info about this attribute, see the details of 
-  the parameter `--cicustom` in the section "Custom Cloud-Init Configuration" from the [Proxmox Cloud-Init support](https://pve.proxmox.com/wiki/Cloud-Init_Support) page.
-* `ssh_forward_ip` - (Optional) IP or hostname of the target node or bridge IP. This is where proxmox will create a port
-  forward to your VM with via a user_net. (for pre-cloud-init provisioning).
+The following arguments are supported in the resource block:
+
+* `name` - (Required) Name of the VM
+* `target_node` - (Required) Node to place the VM on
+* `desc` - (Optional) Description of the VM
+* `bios` - (Optional; defaults to seabios)
+* `onboot` - (Optional)
+* `boot` - (Optional; defaults to cdn)
+* `bootdisk` - (Optional; defaults to true)
+* `agent` - (Optional; defaults to 0)
+* `iso` - (Optional)
+* `clone` - (Optional)
+* `full_clone` - (Optional)
+* `hastate` - (Optional) 
+* `qemu_os` - (Optional; defaults to l26)
+* `memory` - (Optional; defaults to 512)
+* `balloon` - (Optional; defaults to 0)
+* `cores` - (Optional; defaults to 1)
+* `sockets` - (Optional; defaults to 1)
+* `vcpus` - (Optional; defaults to 0)
+* `vcpus` - (Optional; defaults to 0)
+* `cpu` - (Optional; defaults to host)
+* `numa` - (Optional; defaults to false)
+* `hotplug` - (Optional; defaults to network,disk,usb)
+* `scsihw` - (Optional; defaults to the empty string)
+* `vga` - (Optional)
+* `network` - (Optional)
+* `disk` - (Optional)
+* `disk_gb` - (Optional; deprecated, use disk.size instead)
+* `storage` - (Optional; deprecated, use disk.storage instead)
+* `storage_type` - (Optional; deprecated, use disk.type instead)
+* `nic` - (Optional; deprecated, use network instead)
+* `bridge` - (Optional; deprecated, use network.bridge instead)
+* `vlan` - (Optional; deprecated, use network.tag instead)
+* `mac` - (Optional; deprecated, use network.macaddr instead)
+* `serial` - (Optional)
+* `pool` - (Optional)
+* `force_create` - (Optional; defaults to true)
+* `clone_wait` - (Optional)
+* `preprovision` - (Optional; defaults to true)
+* `os_type` - (Optional) Which provisioning method to use, based on the OS type. Possible values: ubuntu, centos, cloud-init.
+
+The following arguments are specifically for Linux for preprovisioning.
+
+* `os_network_config` - (Optional) Linux provisioning specific, `/etc/network/interfaces` for Ubuntu and `/etc/sysconfig/network-scripts/ifcfg-eth0` for CentOS.
+* `ssh_forward_ip` - (Optional) Address used to connect to the VM
+* `ssh_host` - (Optional)
+* `ssh_port` - (Optional)
+* `ssh_user` - (Optional) Username to login in the VM when preprovisioning.
+* `ssh_private_key` - (Optional; sensitive) Private key to login in the VM when preprovisioning.
+
+The following arguments are specifically for Cloud-init for preprovisioning.
+
+* `ci_wait` - (Optional) Cloud-init specific, how to long to wait for preprovisioning.
+* `ciuser` - (Optional) Cloud-init specific, user name to change ssh keys and password for instead of the image’s configured default user.
+* `cipassword` - (Optional) Cloud-init specific, password to assign to the user.
+* `cicustom` - (Optional) Cloud-init specific, location of the custom cloud-config files.
+* `searchdomain` - (Optional) Cloud-init specific, sets DNS search domains for a container.
+* `nameserver` - (Optional) Cloud-init specific, sets DNS server IP address for a container.
+* `sshkeys` - (Optional) Cloud-init specific, public ssh keys, one per line
+* `ipconfig0` - (Optional) Cloud-init specific, [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]
+* `ipconfig1` - (Optional) Cloud-init specific, see ipconfig0
+* `ipconfig2` - (Optional) Cloud-init specific, see ipconfig0
+
