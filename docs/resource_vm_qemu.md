@@ -3,6 +3,8 @@
 Resources are the most important element in the Terraform language. Each resource block describes one or more 
 infrastructure objects, such as virtual networks, compute instances, or higher-level components such as DNS records.
 
+This resource manages a Proxmox VM Qemu container.
+
 ## Create a Qemu VM resource
 
 You can start from either an ISO or clone an existing VM. Optimally, you could create a VM resource you will use a clone 
