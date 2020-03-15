@@ -175,7 +175,7 @@ func resourceVmQemu() *schema.Resource {
 						"mac_manual": &schema.Schema{
 						    Type:     schema.TypeString,
 						    Optional: true,
-						}
+						},
 						"macaddr": &schema.Schema{
 							Type:     schema.TypeString,
 							Computed: true,
