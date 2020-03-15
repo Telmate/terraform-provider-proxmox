@@ -121,7 +121,7 @@ The following arguments are supported in the resource block:
     * `type` (Required)
     * `storage` (Required)
     * `storage_type` (Optional; defaults to dir) One of PVE types [as described in their documentation](https://pve.proxmox.com/wiki/Storage).
-    * `size` (Required)
+    * `size` (Required; integer) In gigabytes
     * `format` (Optional; defaults to raw)
     * `cache` (Optional; defaults to none)
     * `backup` (Optional; defaults to false)
