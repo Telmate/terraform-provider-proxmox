@@ -172,10 +172,12 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
+						"mac_manual": &schema.Schema{
+						    Type:     schema.TypeString,
+						    Optional: true,
+						}
 						"macaddr": &schema.Schema{
-							// TODO: Find a way to set MAC address in .tf config.
 							Type:     schema.TypeString,
-							Optional: true,
 							Computed: true,
 						},
 						"bridge": &schema.Schema{
@@ -492,6 +494,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	qemuDisks := DevicesSetToMap(disks)
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials := DevicesSetToMap(serials)
+	if d.Get("mac_manual").(string) != "" {
+		d.Set("macaddr", d.Get("mac_manual").(string))
+	}
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -686,6 +691,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	qemuNetworks := DevicesSetToMap(configNetworksSet)
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials := DevicesSetToMap(serials)
+	if d.Get("mac_manual").(string) != "" {
+		d.Set("macaddr", d.Get("mac_manual").(string))
+	}
 
 	d.Partial(true)
 	if d.HasChange("target_node") {

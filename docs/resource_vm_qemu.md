@@ -109,7 +109,8 @@ The following arguments are supported in the resource block:
 * `network` - (Optional)
     * `id` (Required)
     * `model` (Required)
-    * `macaddr` (Optional)
+    * `mac_manual` (Optional) Use if you to pass a manual mac address.
+    * `macaddr` (Computed) Will be either the automatic assigned address by Proxmox or the manual value of `mac_manual`.
     * `bridge` (Optional; defaults to nat)
     * `tag` (Optional; defaults to -1)
     * `firewall` (Optional; defaults to false)
