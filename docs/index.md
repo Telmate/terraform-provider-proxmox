@@ -8,3 +8,4 @@
 1. [Terraform LXC Resource](resource_lxc.md) 
 1. [Terraform Provisioner](provisioner.md) 
 1. [Cloud Init Guide](cloud_init_guide.md) 
+1. [Debug errors](debug.md) 
