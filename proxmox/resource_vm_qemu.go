@@ -494,8 +494,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	qemuDisks := DevicesSetToMap(disks)
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials := DevicesSetToMap(serials)
-	if d.Get("mac_manual").(string) != "" {
-		d.Set("macaddr", d.Get("mac_manual").(string))
+	mac_manual := d.Get("mac_manual")
+	if mac_manual != nil && mac_manual.(string) != "" {
+		d.Set("macaddr", mac_manual.(string))
 	}
 
 	config := pxapi.ConfigQemu{
@@ -691,8 +692,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	qemuNetworks := DevicesSetToMap(configNetworksSet)
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials := DevicesSetToMap(serials)
-	if d.Get("mac_manual").(string) != "" {
-		d.Set("macaddr", d.Get("mac_manual").(string))
+	mac_manual := d.Get("mac_manual")
+	if mac_manual != nil && mac_manual.(string) != "" {
+		d.Set("macaddr", mac_manual.(string))
 	}
 
 	d.Partial(true)
