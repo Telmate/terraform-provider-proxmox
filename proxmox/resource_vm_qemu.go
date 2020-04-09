@@ -343,7 +343,7 @@ func resourceVmQemu() *schema.Resource {
 			},
 			"mac": {
 				Type:       schema.TypeString,
-				Deprecated: "Use `network.macaddr` to access the auto generated MAC address",
+				Deprecated: "Use `network.macaddr` to access the auto generated MAC address, or `mac_manual` to set it manually",
 				Optional:   true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					if new == "" {
@@ -490,14 +490,15 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	qemuVgaList := vga.List()
 	networks := d.Get("network").(*schema.Set)
 	qemuNetworks := DevicesSetToMap(networks)
+	mac_manual := networks.Get("mac_manual")
+	if mac_manual != nil && mac_manual.(string) != "" {
+		qemuNetworks["macaddr"] = mac_manual.(string))
+	}
+    delete(qemuNetworks, "mac_manual")
 	disks := d.Get("disk").(*schema.Set)
 	qemuDisks := DevicesSetToMap(disks)
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials := DevicesSetToMap(serials)
-	mac_manual := d.Get("mac_manual")
-	if mac_manual != nil && mac_manual.(string) != "" {
-		d.Set("macaddr", mac_manual.(string))
-	}
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -690,12 +691,13 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	qemuVgaList := vga.List()
 	configNetworksSet := d.Get("network").(*schema.Set)
 	qemuNetworks := DevicesSetToMap(configNetworksSet)
+	mac_manual := configNetworksSet.Get("mac_manual")
+	if mac_manual != nil && mac_manual.(string) != "" {
+        qemuNetworks["macaddr"] = mac_manual.(string))
+    }
+    delete(qemuNetworks, "mac_manual")
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials := DevicesSetToMap(serials)
-	mac_manual := d.Get("mac_manual")
-	if mac_manual != nil && mac_manual.(string) != "" {
-		d.Set("macaddr", mac_manual.(string))
-	}
 
 	d.Partial(true)
 	if d.HasChange("target_node") {
