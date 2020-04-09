@@ -26,7 +26,7 @@ build: clean
 
 install: build 
 	cp bin/terraform-provider-proxmox $$GOPATH/bin/terraform-provider-proxmox
-	cp bin/terraform-provisioner-proxmox $$GOPATH/bin/terraform-provider-proxmox
+	cp bin/terraform-provisioner-proxmox $$GOPATH/bin/terraform-provisioner-proxmox
 
 clean:
 	@git clean -f -d -X
