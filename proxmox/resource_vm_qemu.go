@@ -1046,9 +1046,57 @@ func initConnInfo(
 			sshHost = d.Get("ssh_forward_ip").(string)
 		}
 		if sshHost == "" {
-			// parse IP address out of ipconfig0
-			ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
-			sshHost = ipMatch[1]
+			if d.Get("ipconfig0").(string) == "ip=dhcp" {
+				guestAgentSupported := false
+				guestAgentRunning := false
+				// look if this vm has set the qemu guest agent flag
+				vmState, err := client.GetVmState(vmr)
+				if err != nil {
+					return err
+				}
+				if vmState["agent"] != nil && vmState["agent"].(float64) == 1 {
+					// the chances are good that the vm will run a guest agent
+					guestAgentSupported = true
+				}
+				// wait until the os has started the guest agent
+				for end := time.Now().Add(60 * time.Second); guestAgentSupported ; {
+					_, err := client.GetVmAgentNetworkInterfaces(vmr)
+					if err == nil {
+						guestAgentRunning = true
+						break
+					} else if ! strings.Contains(err.Error(), "QEMU guest agent is not running") {
+						// "not running" means either not installed or not started yet.
+						// any other error should not happen here
+						return err
+					}
+					if time.Now().After(end) {
+						break
+					}
+					time.Sleep(10 * time.Second)
+				}
+				if guestAgentRunning {
+					ifs, err := client.GetVmAgentNetworkInterfaces(vmr)
+					if err != nil {
+						return err
+					}
+					for _, iface := range ifs {
+						for _, addr := range iface.IPAddresses {
+							if addr.IsLoopback() {
+								continue
+							}
+							sshHost = addr.String()
+							break
+						}
+						if sshHost != "" {
+							break
+						}
+					}
+				}
+			} else {
+				// parse IP address out of ipconfig0
+				ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
+				sshHost = ipMatch[1]
+			}
 		}
 		// Check if we got a speficied port
 		if strings.Contains(sshHost, ":") {
