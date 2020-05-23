@@ -21,12 +21,9 @@ build: clean
 	mkdir -p bin
 	CGO_ENABLED=0 go build  -o bin/terraform-provider-proxmox cmd/terraform-provider-proxmox/* 
 	@echo "Built terraform-provider-proxmox"
-	CGO_ENABLED=0 go build -v -o bin/terraform-provisioner-proxmox cmd/terraform-provisioner-proxmox/* 
-	@echo "Built terraform-provisioner-proxmox"
 
 install: build 
 	cp bin/terraform-provider-proxmox $$GOPATH/bin/terraform-provider-proxmox
-	cp bin/terraform-provisioner-proxmox $$GOPATH/bin/terraform-provisioner-proxmox
 
 clean:
 	@git clean -f -d -X

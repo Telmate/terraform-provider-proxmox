@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -11,12 +12,102 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
+// using a global variable here so that we have an internally accessible
+// way to look into our own resource definition. Useful for dynamically doing typecasts
+// so that we can print (debug) our ResourceData constructs
+var thisResource *schema.Resource
+
+func resourceDataToFlatValues(d *schema.ResourceData, resource *schema.Resource) (map[string]interface{}, error) {
+
+	flatValues := make(map[string]interface{})
+
+	for key, value := range resource.Schema {
+		switch value.Type {
+		case schema.TypeString:
+			flatValues[key] = d.Get(key).(string)
+		case schema.TypeBool:
+			flatValues[key] = d.Get(key).(bool)
+		case schema.TypeInt:
+			flatValues[key] = d.Get(key).(int)
+		case schema.TypeFloat:
+			flatValues[key] = d.Get(key).(float64)
+		case schema.TypeSet:
+			values, _ := schemaSetToFlatValues(d.Get(key).(*schema.Set), value.Elem.(*schema.Resource))
+			flatValues[key] = values
+		case schema.TypeList:
+			values, _ := schemaListToFlatValues(d.Get(key).([]interface{}), value.Elem.(*schema.Resource))
+			flatValues[key] = values
+		default:
+			flatValues[key] = "? Print Not Implemented ?"
+		}
+	}
+
+	return flatValues, nil
+}
+
+func schemaSetToFlatValues(set *schema.Set, resource *schema.Resource) ([]map[string]interface{}, error) {
+
+	flatValues := make([]map[string]interface{}, 0, 1)
+
+	for _, set := range set.List() {
+		innerFlatValues := make(map[string]interface{})
+
+		setAsMap := set.(map[string]interface{})
+		for key, value := range resource.Schema {
+			switch value.Type {
+			case schema.TypeString:
+				innerFlatValues[key] = setAsMap[key].(string)
+			case schema.TypeBool:
+				innerFlatValues[key] = setAsMap[key].(bool)
+			case schema.TypeInt:
+				innerFlatValues[key] = setAsMap[key].(int)
+			case schema.TypeFloat:
+				innerFlatValues[key] = setAsMap[key].(float64)
+			default:
+				innerFlatValues[key] = "? Print Not Implemented ?"
+			}
+		}
+
+		flatValues = append(flatValues, innerFlatValues)
+	}
+	return flatValues, nil
+}
+
+func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource) ([]map[string]interface{}, error) {
+
+	flatValues := make([]map[string]interface{}, 0, 1)
+
+	for _, item := range schemaList {
+		innerFlatValues := make(map[string]interface{})
+
+		itemAsMap := item.(map[string]interface{})
+		for key, value := range resource.Schema {
+			switch value.Type {
+			case schema.TypeString:
+				innerFlatValues[key] = itemAsMap[key].(string)
+			case schema.TypeBool:
+				innerFlatValues[key] = itemAsMap[key].(bool)
+			case schema.TypeInt:
+				innerFlatValues[key] = itemAsMap[key].(int)
+			case schema.TypeFloat:
+				innerFlatValues[key] = itemAsMap[key].(float64)
+			default:
+				innerFlatValues[key] = "? Print Not Implemented ?"
+			}
+		}
+
+		flatValues = append(flatValues, innerFlatValues)
+	}
+	return flatValues, nil
+}
+
 func resourceVmQemu() *schema.Resource {
+
 	*pxapi.Debug = true
-	return &schema.Resource{
+	thisResource = &schema.Resource{
 		Create: resourceVmQemuCreate,
 		Read:   resourceVmQemuRead,
 		Update: resourceVmQemuUpdate,
@@ -26,14 +117,19 @@ func resourceVmQemu() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-		    "vmid": {
-                Type:	  schema.TypeInt,
-                Optional: true,
-                Default:  0,
-            },
+			"vmid": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"define_connection_info": { // by default define SSH for provisioner info
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
 			},
 			"desc": {
 				Type:     schema.TypeString,
@@ -63,6 +159,7 @@ func resourceVmQemu() *schema.Resource {
 			},
 			"bootdisk": {
 				Type:     schema.TypeString,
+				Computed: true,
 				Optional: true,
 			},
 			"agent": {
@@ -149,7 +246,7 @@ func resourceVmQemu() *schema.Resource {
 			"scsihw": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "",
+				Computed: true,
 			},
 			"vga": &schema.Schema{
 				Type:     schema.TypeSet,
@@ -169,21 +266,21 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"network": &schema.Schema{
-				Type:          schema.TypeSet,
+				Type:          schema.TypeList,
 				Optional:      true,
 				ConflictsWith: []string{"nic", "bridge", "vlan", "mac"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": &schema.Schema{
-							Type:     schema.TypeInt,
-							Required: true,
-						},
+						//"id": &schema.Schema{
+						//	Type:     schema.TypeInt,
+						//	Deprecated:  "Id is no longer required. The order of the network blocks is used for the Id.",
+						//	Optional: true,
+						//},
 						"model": &schema.Schema{
 							Type:     schema.TypeString,
 							Required: true,
 						},
 						"macaddr": &schema.Schema{
-							// TODO: Find a way to set MAC address in .tf config.
 							Type:     schema.TypeString,
 							Optional: true,
 							Computed: true,
@@ -207,12 +304,12 @@ func resourceVmQemu() *schema.Resource {
 						"rate": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
-							Default:  -1,
+							Computed: true,
 						},
 						"queues": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
-							Default:  -1,
+							Computed: true,
 						},
 						"link_down": &schema.Schema{
 							Type:     schema.TypeBool,
@@ -223,15 +320,11 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"disk": &schema.Schema{
-				Type:          schema.TypeSet,
+				Type:          schema.TypeList,
 				Optional:      true,
 				ConflictsWith: []string{"disk_gb", "storage", "storage_type"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": &schema.Schema{
-							Type:     schema.TypeInt,
-							Required: true,
-						},
 						"type": &schema.Schema{
 							Type:     schema.TypeString,
 							Required: true,
@@ -316,6 +409,10 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
+						},
+						"file": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
@@ -448,20 +545,30 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 			},
 			"cipassword": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if new == "**********" {
+						return true // api returns astericks instead of password so can't diff
+					}
+					return false
+				},
 			},
 			"cicustom": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"searchdomain": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true, // could be pre-existing if we clone from a template with it defined
 			},
 			"nameserver": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true, // could be pre-existing if we clone from a template with it defined
 			},
 			"sshkeys": {
 				Type:     schema.TypeString,
@@ -473,14 +580,17 @@ func resourceVmQemu() *schema.Resource {
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"ipconfig1": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"ipconfig2": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"preprovision": {
 				Type:          schema.TypeBool,
@@ -500,25 +610,40 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"force_recreate_on_change_of": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 		},
 	}
+	return thisResource
 }
 
 var rxIPconfig = regexp.MustCompile("ip6?=([0-9a-fA-F:\\.]+)")
 
 func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
+
+	// create a logger for this function
+	logger, _ := CreateSubLogger("resource_vm_create")
+
+	// DEBUG print out the create request
+	flatValue, _ := resourceDataToFlatValues(d, thisResource)
+	jsonString, _ := json.Marshal(flatValue)
+	logger.Debug().Str("vmid", d.Id()).Msgf("Invoking VM create with Id '%v' and resource data:  '%+v'", string(jsonString))
+
 	pconf := meta.(*providerConfiguration)
 	pmParallelBegin(pconf)
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
-	networks := d.Get("network").(*schema.Set)
-	qemuNetworks := DevicesSetToMap(networks)
-	disks := d.Get("disk").(*schema.Set)
-	qemuDisks := DevicesSetToMap(disks)
+
+	qemuNetworks, _ := ExpandDevicesList(d.Get("network").([]interface{}))
+	qemuDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
+
 	serials := d.Get("serial").(*schema.Set)
-	qemuSerials := DevicesSetToMap(serials)
+	qemuSerials, _ := DevicesSetToMap(serials)
 
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
@@ -587,14 +712,14 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		// get unique id
 		nextid, err := nextVmId(pconf)
 		vmID := d.Get("vmid").(int)
-        if vmID != 0 {
-            nextid = vmID
-        } else {
-            if err != nil {
-                pmParallelEnd(pconf)
-                return err
-            }
-        }
+		if vmID != 0 {
+			nextid = vmID
+		} else {
+			if err != nil {
+				pmParallelEnd(pconf)
+				return err
+			}
+		}
 
 		vmr = pxapi.NewVmRef(nextid)
 		vmr.SetNode(targetNode)
@@ -615,6 +740,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				pmParallelEnd(pconf)
 				return err
 			}
+
 			log.Print("[DEBUG] cloning VM")
 			err = config.CloneVm(sourceVmr, vmr, client)
 
@@ -673,6 +799,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 	d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
+	logger.Debug().Int("vmid", vmr.VmId()).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
 	time.Sleep(15 * time.Second)
@@ -689,9 +816,6 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	// Apply pre-provision if enabled.
-	preprovision(d, pconf, client, vmr, true)
-
 	pmParallelTransfer(pconf)
 
 	return resourceVmQemuRead(d, meta)
@@ -699,6 +823,10 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
+
+	// create a logger for this function
+	logger, _ := CreateSubLogger("resource_vm_update")
+
 	pmParallelBegin(pconf)
 	client := pconf.Client
 	_, _, vmID, err := parseResourceId(d.Id())
@@ -706,20 +834,27 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		pmParallelEnd(pconf)
 		return err
 	}
+
+	logger.Info().Int("vmid", vmID).Msg("Starting update of the VM resource")
+
 	vmr := pxapi.NewVmRef(vmID)
 	_, err = client.GetVmInfo(vmr)
 	if err != nil {
 		pmParallelEnd(pconf)
 		return err
 	}
-	configDisksSet := d.Get("disk").(*schema.Set)
-	qemuDisks := DevicesSetToMap(configDisksSet)
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
-	configNetworksSet := d.Get("network").(*schema.Set)
-	qemuNetworks := DevicesSetToMap(configNetworksSet)
+
+	qemuDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
+	qemuNetworks, err := ExpandDevicesList(d.Get("network").([]interface{}))
+	if err != nil {
+		return fmt.Errorf("Error while processing Network configuration: %v", err)
+	}
+	logger.Debug().Int("vmid", vmID).Msgf("Processed NetworkSet into qemuNetworks as %+v", qemuNetworks)
+
 	serials := d.Get("serial").(*schema.Set)
-	qemuSerials := DevicesSetToMap(serials)
+	qemuSerials, _ := DevicesSetToMap(serials)
 
 	d.Partial(true)
 	if d.HasChange("target_node") {
@@ -780,6 +915,8 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
 
+	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
+
 	err = config.UpdateConfig(vmr, client)
 	if err != nil {
 		pmParallelEnd(pconf)
@@ -809,9 +946,6 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	// Apply pre-provision if enabled.
-	preprovision(d, pconf, client, vmr, false)
-
 	// give sometime to bootup
 	time.Sleep(9 * time.Second)
 	if _, err = client.StopVm(vmr); err != nil {
@@ -834,23 +968,38 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
 	pmParallelBegin(pconf)
 	client := pconf.Client
+
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
 		pmParallelEnd(pconf)
 		d.SetId("")
-		return err
+		return fmt.Errorf("Unexpected error when trying to read and parse the resource: %v", err)
 	}
+
+	// create a logger for this function
+	logger, _ := CreateSubLogger("resource_vm_read")
+	logger.Info().Int("vmid", vmID).Msg("Reading configuration for vmid")
+
 	vmr := pxapi.NewVmRef(vmID)
+
+	// Try to get information on the vm. If this call err's out
+	// that indicates the VM does not exist. We indicate that to terraform
+	// by calling a SetId("")
 	_, err = client.GetVmInfo(vmr)
 	if err != nil {
 		pmParallelEnd(pconf)
-		return err
+		d.SetId("")
+		return nil
 	}
+
 	config, err := pxapi.NewConfigQemuFromApi(vmr, client)
 	if err != nil {
 		pmParallelEnd(pconf)
 		return err
 	}
+
+	logger.Debug().Int("vmid", vmID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
+
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
@@ -875,7 +1024,9 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("qemu_os", config.QemuOs)
 	// Cloud-init.
 	d.Set("ciuser", config.CIuser)
-	d.Set("cipassword", config.CIpassword)
+	// we purposely use the password from the terraform config here
+	// because the proxmox api will always return "**********" leading to diff issues
+	d.Set("cipassword", d.Get("cipassword").(string))
 	d.Set("cicustom", config.CIcustom)
 	d.Set("searchdomain", config.Searchdomain)
 	d.Set("nameserver", config.Nameserver)
@@ -883,19 +1034,46 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig0", config.Ipconfig0)
 	d.Set("ipconfig1", config.Ipconfig1)
 	d.Set("ipconfig2", config.Ipconfig2)
+
 	// Disks.
-	configDisksSet := d.Get("disk").(*schema.Set)
-	activeDisksSet := UpdateDevicesSet(configDisksSet, config.QemuDisks)
-	d.Set("disk", activeDisksSet)
+	// add an explicit check that the keys in the config.QemuDisks map are a strict subset of
+	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
+	for _, diskEntry := range config.QemuDisks {
+		for key, _ := range diskEntry {
+			if _, ok := thisResource.Schema["disk"].Elem.(*schema.Resource).Schema[key]; !ok {
+				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
+					continue
+				}
+				return fmt.Errorf("Proxmox Provider Error: proxmox API returned new disk parameter '%v' we cannot process", key)
+			}
+		}
+	}
+	flatDisks, _ := FlattenDevicesList(config.QemuNetworks)
+	d.Set("disk", flatDisks)
+
 	// Display.
 	activeVgaSet := d.Get("vga").(*schema.Set)
 	if len(activeVgaSet.List()) > 0 {
 		d.Set("features", UpdateDeviceConfDefaults(config.QemuVga, activeVgaSet))
 	}
+
 	// Networks.
-	configNetworksSet := d.Get("network").(*schema.Set)
-	activeNetworksSet := UpdateDevicesSet(configNetworksSet, config.QemuNetworks)
-	d.Set("network", activeNetworksSet)
+	// add an explicit check that the keys in the config.QemuNetworks map are a strict subset of
+	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
+	logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", d.Get("network"))
+	for _, networkEntry := range config.QemuNetworks {
+		for key, _ := range networkEntry {
+			if _, ok := thisResource.Schema["network"].Elem.(*schema.Resource).Schema[key]; !ok {
+				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
+					continue
+				}
+				return fmt.Errorf("Proxmox Provider Error: proxmox API returned new network parameter '%v' we cannot process", key)
+			}
+		}
+	}
+	flatNetworks, _ := FlattenDevicesList(config.QemuNetworks)
+	d.Set("network", flatNetworks)
+
 	// Deprecated single disk config.
 	d.Set("storage", config.Storage)
 	d.Set("disk_gb", config.DiskSize)
@@ -912,6 +1090,12 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("serial", activeSerialSet)
 
 	pmParallelEnd(pconf)
+
+	// DEBUG print out the read result
+	flatValue, _ := resourceDataToFlatValues(d, thisResource)
+	jsonString, _ := json.Marshal(flatValue)
+	logger.Debug().Int("vmid", vmID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
+
 	return nil
 }
 
@@ -999,30 +1183,99 @@ func diskSizeGB(dcSize interface{}) float64 {
 
 // Converting from schema.TypeSet to map of id and conf for each device,
 // which will be sent to Proxmox API.
-func DevicesSetToMap(devicesSet *schema.Set) pxapi.QemuDevices {
+func DevicesSetToMap(devicesSet *schema.Set) (pxapi.QemuDevices, error) {
 
+	var err error
 	devicesMap := pxapi.QemuDevices{}
 
 	for _, set := range devicesSet.List() {
 		setMap, isMap := set.(map[string]interface{})
 		if isMap {
 			setID := setMap["id"].(int)
-			devicesMap[setID] = setMap
+			if _, ok := devicesMap[setID]; !ok {
+				devicesMap[setID] = setMap
+			} else {
+				return nil, fmt.Errorf("Unable to process set, received a duplicate ID '%v' check your configuration file", setID)
+			}
 		}
 	}
-	return devicesMap
+	return devicesMap, err
+}
+
+// Consumes an API return (pxapi.QemuDevices) and "flattens" it into a []map[string]interface{} as
+// expected by the terraform interface for TypeList
+func FlattenDevicesList(proxmoxDevices pxapi.QemuDevices) ([]map[string]interface{}, error) {
+	flattenedDevices := make([]map[string]interface{}, 0, 1)
+
+	numDevices := len(proxmoxDevices)
+	if numDevices == 0 {
+		return flattenedDevices, nil
+	}
+
+	// QemuDevices is a map[int]map[string]interface{}
+	// we loop by index here to ensure that the devices remain in the same order
+	for index := 0; index < numDevices; index++ {
+		thisDevice := proxmoxDevices[index]
+		thisFlattenedDevice := make(map[string]interface{})
+
+		if thisDevice == nil {
+			continue
+		}
+
+		for configuration, value := range thisDevice {
+			thisFlattenedDevice[configuration] = value
+		}
+
+		flattenedDevices = append(flattenedDevices, thisFlattenedDevice)
+	}
+
+	return flattenedDevices, nil
+}
+
+// Consumes a terraform TypeList of a Qemu Device (network, hard drive, etc) and returns the "Expanded"
+// version of the equivalent configuration that the API understands (the struct pxapi.QemuDevices).
+// NOTE this expects the provided deviceList to be []map[string]interface{}.
+func ExpandDevicesList(deviceList []interface{}) (pxapi.QemuDevices, error) {
+	expandedDevices := make(pxapi.QemuDevices)
+
+	if len(deviceList) == 0 {
+		return expandedDevices, nil
+	}
+
+	for index, deviceInterface := range deviceList {
+		thisDeviceMap := deviceInterface.(map[string]interface{})
+
+		// allocate an expandedDevice, we'll append it to the list at the end of this loop
+		thisExpandedDevice := make(map[string]interface{})
+
+		// bail out if the device is empty, it is meaningless in this context
+		if thisDeviceMap == nil {
+			continue
+		}
+
+		// this is a map of string->interface, loop over it and move it into
+		// the qemuDevices struct
+		for configuration, value := range thisDeviceMap {
+			thisExpandedDevice[configuration] = value
+		}
+
+		expandedDevices[index] = thisExpandedDevice
+	}
+
+	return expandedDevices, nil
 }
 
 // Update schema.TypeSet with new values comes from Proxmox API.
-// TODO: Maybe it's better to create a new Set instead add to current one.
+// TODO: remove these set functions and convert attributes using a set to a list instead.
 func UpdateDevicesSet(
 	devicesSet *schema.Set,
 	devicesMap pxapi.QemuDevices,
 ) *schema.Set {
 
-	configDevicesMap := DevicesSetToMap(devicesSet)
+	//configDevicesMap, _ := DevicesSetToMap(devicesSet)
 
-	activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
+	//activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
+	activeDevicesMap := devicesMap
 
 	for _, setConf := range devicesSet.List() {
 		devicesSet.Remove(setConf)
@@ -1052,8 +1305,8 @@ func UpdateDevicesSet(
 			default:
 				setConfMap[key] = value
 			}
-			devicesSet.Add(setConfMap)
 		}
+		devicesSet.Add(setConfMap)
 	}
 
 	return devicesSet
@@ -1087,6 +1340,11 @@ func initConnInfo(
 	vmr *pxapi.VmRef,
 	config *pxapi.ConfigQemu) error {
 
+	// allow user to opt-out of setting the connection info for the resource
+	if !d.Get("define_connection_info").(bool) {
+		return nil
+	}
+
 	sshPort := "22"
 	sshHost := ""
 	var err error
@@ -1108,12 +1366,12 @@ func initConnInfo(
 					guestAgentSupported = true
 				}
 				// wait until the os has started the guest agent
-				for end := time.Now().Add(60 * time.Second); guestAgentSupported ; {
+				for end := time.Now().Add(60 * time.Second); guestAgentSupported; {
 					_, err := client.GetVmAgentNetworkInterfaces(vmr)
 					if err == nil {
 						guestAgentRunning = true
 						break
-					} else if ! strings.Contains(err.Error(), "QEMU guest agent is not running") {
+					} else if !strings.Contains(err.Error(), "QEMU guest agent is not running") {
 						// "not running" means either not installed or not started yet.
 						// any other error should not happen here
 						return err
@@ -1125,14 +1383,14 @@ func initConnInfo(
 				}
 				if guestAgentRunning {
 					// wait until we find a valid ipv4 address
-					for end := time.Now().Add(60 * time.Second); guestAgentSupported ; {
+					for end := time.Now().Add(60 * time.Second); guestAgentSupported; {
 						ifs, err := client.GetVmAgentNetworkInterfaces(vmr)
 						if err != nil {
 							return err
 						}
 						for _, iface := range ifs {
 							for _, addr := range iface.IPAddresses {
-								if (addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2) {
+								if addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2 {
 									sshHost = addr.String()
 									break
 								}
@@ -1141,7 +1399,7 @@ func initConnInfo(
 								break
 							}
 						}
-						if (time.Now().After(end) || sshHost != "") {
+						if time.Now().After(end) || sshHost != "" {
 							break
 						}
 						time.Sleep(10 * time.Second)
@@ -1189,48 +1447,5 @@ func initConnInfo(
 		"pm_otp":          client.Otp,
 		"pm_tls_insecure": "true", // TODO - pass pm_tls_insecure state around, but if we made it this far, default insecure
 	})
-	return nil
-}
-
-// Internal pre-provision.
-func preprovision(
-	d *schema.ResourceData,
-	pconf *providerConfiguration,
-	client *pxapi.Client,
-	vmr *pxapi.VmRef,
-	systemPreProvision bool,
-) error {
-
-	if d.Get("preprovision").(bool) {
-
-		if systemPreProvision {
-			switch d.Get("os_type").(string) {
-
-			case "ubuntu":
-				// give sometime to bootup
-				time.Sleep(9 * time.Second)
-				err := preProvisionUbuntu(d)
-				if err != nil {
-					return err
-				}
-
-			case "centos":
-				// give sometime to bootup
-				time.Sleep(9 * time.Second)
-				err := preProvisionCentos(d)
-				if err != nil {
-					return err
-				}
-
-			case "cloud-init":
-				// wait for OS too boot awhile...
-				log.Print("[DEBUG] sleeping for OS bootup...")
-				time.Sleep(time.Duration(d.Get("ci_wait").(int)) * time.Second)
-
-			default:
-				return fmt.Errorf("Unknown os_type: %s", d.Get("os_type").(string))
-			}
-		}
-	}
 	return nil
 }
