@@ -82,6 +82,7 @@ The following arguments are supported in the resource block:
 
 * `name` - (Required) Name of the VM
 * `target_node` - (Required) Node to place the VM on
+* `vmid` - (Optional; integer) ID of the VM in Proxmox, defaults to next number in the sequence
 * `desc` - (Optional) Description of the VM
 * `bios` - (Optional; defaults to seabios)
 * `onboot` - (Optional)
