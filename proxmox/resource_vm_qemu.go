@@ -270,6 +270,13 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  false,
 						},
+						//SSD emulation
+						"ssd": &schema.Schema{
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+						},
+						//Maximum r/w speed in megabytes per second
 						"mbps": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
