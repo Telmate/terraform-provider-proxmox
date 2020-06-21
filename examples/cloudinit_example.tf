@@ -39,6 +39,8 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
         storage = "ceph-storage-pool"
         storage_type = "rbd"
         iothread = true
+        ssd = true
+        discard = "on"
     }
 
     # Setup the network interface and assign a vlan tag: 256
