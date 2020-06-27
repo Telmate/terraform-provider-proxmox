@@ -283,7 +283,7 @@ func resourceVmQemu() *schema.Resource {
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !strings.Contains(v, "ignore") && !strings.Contains(v, "on") {
-									errs = append(errs, fmt.Errorf("%q, must be 'ignore'(default) or 'on', got %d", key, v))
+									errs = append(errs, fmt.Errorf("%q, must be 'ignore'(default) or 'on', got %s", key, v))
 								}
 								return
 							},
