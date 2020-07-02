@@ -274,12 +274,10 @@ func resourceVmQemu() *schema.Resource {
 						"ssd": &schema.Schema{
 							Type:     schema.TypeBool,
 							Optional: true,
-							Default:  false,
 						},
 						"discard": &schema.Schema{
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "ignore",
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !strings.Contains(v, "ignore") && !strings.Contains(v, "on") {
