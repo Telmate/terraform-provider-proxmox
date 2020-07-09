@@ -128,6 +128,8 @@ The following arguments are supported in the resource block:
     * `backup` (Optional; defaults to false)
     * `iothread` (Optional; defaults to false)
     * `replicate` (Optional; defaults to false)
+    * `ssd` (Optional; defaults to false) //Whether to expose this drive as an SSD, rather than a rotational hard disk.
+    * `discard` (Optional; defaults to ignore) //Controls whether to pass discard/trim requests to the underlying storage. discard=<ignore | on>
     * `mbps` (Optional; defaults to unlimited being 0) Maximum r/w speed in megabytes per second
     * `mbps_rd` (Optional; defaults to unlimited being 0) Maximum read speed in megabytes per second
     * `mbps_rd_max` (Optional; defaults to unlimited being 0) Maximum unthrottled read pool in megabytes per second

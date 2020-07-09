@@ -270,6 +270,23 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  false,
 						},
+						//SSD emulation
+						"ssd": &schema.Schema{
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"discard": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								v := val.(string)
+								if !strings.Contains(v, "ignore") && !strings.Contains(v, "on") {
+									errs = append(errs, fmt.Errorf("%q, must be 'ignore'(default) or 'on', got %s", key, v))
+								}
+								return
+							},
+						},
+						//Maximum r/w speed in megabytes per second
 						"mbps": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
