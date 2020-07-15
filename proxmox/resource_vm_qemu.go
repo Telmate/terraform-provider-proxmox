@@ -136,6 +136,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  false,
 			},
+			"kvm": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
 			"hotplug": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -531,6 +536,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		QemuVcpus:    d.Get("vcpus").(int),
 		QemuCpu:      d.Get("cpu").(string),
 		QemuNuma:     d.Get("numa").(bool),
+		QemuKVM:      d.Get("kvm").(bool),
 		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
 		HaState:      d.Get("hastate").(string),
@@ -741,6 +747,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		QemuVcpus:    d.Get("vcpus").(int),
 		QemuCpu:      d.Get("cpu").(string),
 		QemuNuma:     d.Get("numa").(bool),
+		QemuKVM:      d.Get("kvm").(bool),
 		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
 		HaState:      d.Get("hastate").(string),
@@ -846,6 +853,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("vcpus", config.QemuVcpus)
 	d.Set("cpu", config.QemuCpu)
 	d.Set("numa", config.QemuNuma)
+	d.Set("kvm", config.QemuKVM)
 	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
 	d.Set("hastate", vmr.HaState())
