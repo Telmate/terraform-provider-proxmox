@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
@@ -31,6 +32,7 @@ func Provisioner() terraform.ResourceProvisioner {
 var currentClient *pxapi.Client
 
 func applyFn(ctx context.Context) error {
+	var pm_timeout int
 	data := ctx.Value(schema.ProvConfigDataKey).(*schema.ResourceData)
 	state := ctx.Value(schema.ProvRawStateKey).(*terraform.InstanceState)
 
@@ -45,7 +47,11 @@ func applyFn(ctx context.Context) error {
 	vmr.SetNode(targetNode)
 	client := currentClient
 	if client == nil {
-		client, err = getClient(connInfo["pm_api_url"], connInfo["pm_user"], connInfo["pm_password"], connInfo["pm_otp"], connInfo["pm_tls_insecure"] == "true")
+		pm_timeout, err = strconv.Atoi(connInfo["timeout"])
+		if err != nil {
+			pm_timeout = 300
+		}
+		client, err = getClient(connInfo["pm_api_url"], connInfo["pm_user"], connInfo["pm_password"], connInfo["pm_otp"], connInfo["pm_tls_insecure"] == "true", pm_timeout)
 		if err != nil {
 			return err
 		}

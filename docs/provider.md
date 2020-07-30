@@ -30,5 +30,6 @@ The following arguments are supported in the provider block:
 * `pm_otp` - (Optional; or use environment variable `PM_OTP`) The  2FA OTP code.
 * `pm_tls_insecure` - (Optional) Disable TLS verification while connecting.
 * `pm_parallel` - (Optional; defaults to 4) Allowed simultaneous Proxmox processes (e.g. creating resources).
+* `pm_timeout` - (Optional; defaults to 300) Timeout value (seconds) for proxmox API calls.
 
 Additionally, one can set the `PM_OTP_PROMPT` environment variable to prompt for OTP 2FA code (if required).
