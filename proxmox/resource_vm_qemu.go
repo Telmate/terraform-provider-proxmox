@@ -120,7 +120,8 @@ func resourceVmQemu() *schema.Resource {
 			"vmid": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  0,
+				Computed: true,
+				ForceNew: true,
 			},
 			"name": {
 				Type:     schema.TypeString,
@@ -414,6 +415,10 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
+						"media": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -630,7 +635,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// DEBUG print out the create request
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Debug().Str("vmid", d.Id()).Msgf("Invoking VM create with Id '%v' and resource data:  '%+v'", string(jsonString))
+	logger.Debug().Str("vmid", d.Id()).Msgf("Invoking VM create with resource data:  '%+v'", string(jsonString))
 
 	pconf := meta.(*providerConfiguration)
 	pmParallelBegin(pconf)
@@ -712,7 +717,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		// get unique id
 		nextid, err := nextVmId(pconf)
 		vmID := d.Get("vmid").(int)
-		if vmID != 0 {
+		if vmID != 0 { // 0 is the "no value" for int in golang
 			nextid = vmID
 		} else {
 			if err != nil {

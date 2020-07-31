@@ -1,15 +1,15 @@
 package proxmox
 
 import (
-	"log"
 	"fmt"
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/rs/zerolog"
-	"os"
 	"io"
-	"time"
+	"log"
+	"os"
 	"strconv"
+	"time"
 )
 
 // given a string, return the appropriate zerolog level
@@ -18,8 +18,8 @@ func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
 		"panic": zerolog.PanicLevel,
 		"fatal": zerolog.FatalLevel,
 		"error": zerolog.ErrorLevel,
-		"warn": zerolog.WarnLevel,
-		"info": zerolog.InfoLevel,
+		"warn":  zerolog.WarnLevel,
+		"info":  zerolog.InfoLevel,
 		"debug": zerolog.DebugLevel,
 		"trace": zerolog.TraceLevel,
 	}
@@ -54,7 +54,7 @@ var logLevels map[string]string
 //    (any other string) - the level to set that SubLogger to
 //
 //   Eventually we'll have a list of all subloggers that can be displayed/generated but for now, unfortuantely,
-//   the code is the manual on that. I'll do my best to keep this doc string updated. 
+//   the code is the manual on that. I'll do my best to keep this doc string updated.
 //
 //   Known Subloggers:
 //    * resource_vm_create - logs from the create function
@@ -117,7 +117,6 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 	// note there is no initialization here. we WANT this to be set to the global logger
 	rootLogger = zerolog.New(multi).With().Timestamp().Caller().Logger().Level(rootLevel)
 
-
 	// mirror Stdout to the debug log file as well
 	// useful as we can debug the communication to/from the plugin and terraform
 	origStdout := os.Stdout
@@ -145,21 +144,19 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 	//create channel to control exit | will block until all copies are finished
 	communicateLogExit := make(chan bool)
 
-
 	go func() {
 		// copy all reads from pipe to multiwriter, which writes to stdout and file
-		_,_ = io.Copy(mwriter, reader)
+		_, _ = io.Copy(mwriter, reader)
 		// when r or w is closed copy will finish and true will be sent to channel
 		communicateLogExit <- true
 	}()
 
 	go func() {
 		// copy all reads from pipe to multiwriter, which writes to stdout and file
-		_,_ = io.Copy(mwriterStderr, readerStderr)
+		_, _ = io.Copy(mwriterStderr, readerStderr)
 		// when r or w is closed copy will finish and true will be sent to channel
 		communicateLogExit <- true
 	}()
-
 
 	// yep this is a huge leak.. need to figure out a better way to close stuff down,
 	// but for now, yolo!  we're just debugging.
@@ -206,8 +203,6 @@ func CreateSubLogger(loggerName string) (zerolog.Logger, error) {
 	thisLogger := rootLogger.With().Str("loggerName", loggerName).Logger().Level(level)
 	return thisLogger, nil
 }
-
-
 
 func UpdateDeviceConfDefaults(
 	activeDeviceConf pxapi.QemuDevice,

@@ -82,8 +82,9 @@ The following arguments are supported in the resource block:
 
 * `name` - (Required) Name of the VM
 * `target_node` - (Required) Node to place the VM on
-* `vmid` - (Optional; integer) ID of the VM in Proxmox, defaults to next number in the sequence
+* `vmid` - (Optional; integer) ID of the VM in Proxmox, defaults to 0 which indicates it should use the next number in the sequence.
 * `desc` - (Optional) Description of the VM
+* `define_connection_info` - (Optional; defaults to true) define the (SSH) connection parameters for preprovisioners, see config block below.
 * `bios` - (Optional; defaults to seabios)
 * `onboot` - (Optional)
 * `boot` - (Optional; defaults to cdn)
@@ -129,6 +130,8 @@ The following arguments are supported in the resource block:
     * `iothread` (Optional; defaults to false)
     * `replicate` (Optional; defaults to false)
     * `ssd` (Optional; defaults to false) //Whether to expose this drive as an SSD, rather than a rotational hard disk.
+    * `file` (Optional)
+    * `media` (Optional)
     * `discard` (Optional; defaults to ignore) //Controls whether to pass discard/trim requests to the underlying storage. discard=<ignore | on>
     * `mbps` (Optional; defaults to unlimited being 0) Maximum r/w speed in megabytes per second
     * `mbps_rd` (Optional; defaults to unlimited being 0) Maximum read speed in megabytes per second
@@ -143,8 +146,9 @@ The following arguments are supported in the resource block:
 * `clone_wait` - (Optional)
 * `preprovision` - (Optional; defaults to true)
 * `os_type` - (Optional) Which provisioning method to use, based on the OS type. Possible values: ubuntu, centos, cloud-init.
+* `force_recreate_on_change_of` (Optional) // Allows this to depend on another resource, that when changed, needs to re-create this vm. An example where this is useful is a cloudinit configuration (as the `cicustom` attribute points to a file not the content).
 
-The following arguments are specifically for Linux for preprovisioning.
+The following arguments are specifically for Linux for preprovisioning (requires `define_connection_info` to be true).
 
 * `os_network_config` - (Optional) Linux provisioning specific, `/etc/network/interfaces` for Ubuntu and `/etc/sysconfig/network-scripts/ifcfg-eth0` for CentOS.
 * `ssh_forward_ip` - (Optional) Address used to connect to the VM

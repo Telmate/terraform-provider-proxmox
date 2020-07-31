@@ -28,8 +28,7 @@ created.
 
 ```shell
 mkdir ~/.terraform.d/plugins
-cp bin/terraform-provider-proxmox ~/.terraform.d/plugins
-cp bin/terraform-provisioner-proxmox ~/.terraform.d/plugins
+cp bin/terraform-provider-proxmox_v2.0.0 ~/.terraform.d/plugins
 ```
 
 ## Copy executables to plugin directory (Terraform >=0.13)
