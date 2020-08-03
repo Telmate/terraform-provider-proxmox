@@ -69,6 +69,11 @@ func Provider() *schema.Provider {
 				Optional: true,
 				Default:  false,
 			},
+			"pm_timeout": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  300,
+			},
 			"pm_otp": &pmOTPprompt,
 		},
 
@@ -85,7 +90,7 @@ func Provider() *schema.Provider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	client, err := getClient(d.Get("pm_api_url").(string), d.Get("pm_user").(string), d.Get("pm_password").(string), d.Get("pm_otp").(string), d.Get("pm_tls_insecure").(bool))
+	client, err := getClient(d.Get("pm_api_url").(string), d.Get("pm_user").(string), d.Get("pm_password").(string), d.Get("pm_otp").(string), d.Get("pm_tls_insecure").(bool), d.Get("pm_timeout").(int))
 	if err != nil {
 		return nil, err
 	}
@@ -100,12 +105,12 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	}, nil
 }
 
-func getClient(pm_api_url string, pm_user string, pm_password string, pm_otp string, pm_tls_insecure bool) (*pxapi.Client, error) {
+func getClient(pm_api_url string, pm_user string, pm_password string, pm_otp string, pm_tls_insecure bool, pm_timeout int) (*pxapi.Client, error) {
 	tlsconf := &tls.Config{InsecureSkipVerify: true}
 	if !pm_tls_insecure {
 		tlsconf = nil
 	}
-	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf)
+	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_timeout)
 	err := client.Login(pm_user, pm_password, pm_otp)
 	if err != nil {
 		return nil, err
