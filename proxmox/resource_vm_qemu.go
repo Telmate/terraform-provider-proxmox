@@ -338,11 +338,18 @@ func resourceVmQemu() *schema.Resource {
 							Type:        schema.TypeString,
 							Optional:    true,
 							Default:     "dir",
-							Description: "One of PVE types as described: https://pve.proxmox.com/wiki/Storage",
+							Description: "One of PVE types as described: https://pve.proxmox.com/wiki/Storage. This is not a proxmox configuration directly is required to format the disk storage path correctly.",
 						},
 						"size": &schema.Schema{
 							Type:     schema.TypeString,
 							Required: true,
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								v := val.(string)
+								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+								}
+								return
+							},
 						},
 						"format": &schema.Schema{
 							Type:     schema.TypeString,
@@ -414,10 +421,12 @@ func resourceVmQemu() *schema.Resource {
 						"file": &schema.Schema{
 							Type:     schema.TypeString,
 							Optional: true,
+							Computed: true,
 						},
 						"media": &schema.Schema{
 							Type:     schema.TypeString,
 							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -851,7 +860,16 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
+	// okay, so the proxmox-api-go library is a bit weird about the updates. we can only send certain
+	// parameters about the disk over otherwise a crash happens (if we send file), or it sends duplicate keys
+	// to proxmox (if we send media). this is a bit hacky.. but it should paper over these issues until a more
+	// robust solution can be found.
 	qemuDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
+	for _, diskParamMap := range qemuDisks {
+		delete(diskParamMap, "file")  // removed; causes a crash in proxmox-api-go
+		delete(diskParamMap, "media") // removed; results in a duplicate key issue causing a 400 from proxmox
+	}
+
 	qemuNetworks, err := ExpandDevicesList(d.Get("network").([]interface{}))
 	if err != nil {
 		return fmt.Errorf("Error while processing Network configuration: %v", err)
@@ -1053,8 +1071,27 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 			}
 		}
 	}
-	flatDisks, _ := FlattenDevicesList(config.QemuNetworks)
-	d.Set("disk", flatDisks)
+	// the attribute storage_type is a value only used by proxmox-api-go and IS NOT SET by the library
+	// when we read data back from proxmox unfortunately. A ticket is open with the library to
+	// find a better solution than simply reading the current state (https://github.com/Telmate/proxmox-api-go/issues/88)
+	//
+	// we need to do the same thing with cache because proxmox-api-go requires a value for cache but doesn't return a value for
+	// it when it is empty. thus if cache is "" then we should insert "none" instead for consistency
+	stateDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
+	for _, qemuDisk := range config.QemuDisks {
+		thisDiskId := qemuDisk["id"].(int)
+		qemuDisk["storage_type"] = stateDisks[thisDiskId]["storage_type"] // copy type from terraform state for this disk
+
+		// cache == "none" is required for disk creation/updates but proxmox-api-go returns cache == "" or cache == nil in reads
+		if qemuDisk["cache"] == "" || qemuDisk["cache"] == nil {
+			qemuDisk["cache"] = "none"
+		}
+	}
+	flatDisks, _ := FlattenDevicesList(config.QemuDisks)
+	flatDisks, _ = DropElementsFromMap([]string{"id"}, flatDisks)
+	if d.Set("disk", flatDisks); err != nil {
+		return err
+	}
 
 	// Display.
 	activeVgaSet := d.Get("vga").(*schema.Set)
@@ -1065,7 +1102,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	// Networks.
 	// add an explicit check that the keys in the config.QemuNetworks map are a strict subset of
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
-	logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", d.Get("network"))
+	logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", config.QemuNetworks)
 	for _, networkEntry := range config.QemuNetworks {
 		for key, _ := range networkEntry {
 			if _, ok := thisResource.Schema["network"].Elem.(*schema.Resource).Schema[key]; !ok {
@@ -1076,8 +1113,13 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 			}
 		}
 	}
+	// flatten the structure into the format terraform needs and remove the "id" attribute as that will be encoded into
+	// the list structure.
 	flatNetworks, _ := FlattenDevicesList(config.QemuNetworks)
-	d.Set("network", flatNetworks)
+	flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
+	if err = d.Set("network", flatNetworks); err != nil {
+		return err
+	}
 
 	// Deprecated single disk config.
 	d.Set("storage", config.Storage)
@@ -1099,6 +1141,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
+	logger.Debug().Int("vmid", vmID).Msgf("VM Net Config '%+v' from '%+v' set as '%+v' type of '%T'", config.QemuNetworks, flatNetworks, d.Get("network"), flatNetworks[0]["macaddr"])
 	logger.Debug().Int("vmid", vmID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return nil
@@ -1205,6 +1248,19 @@ func DevicesSetToMap(devicesSet *schema.Set) (pxapi.QemuDevices, error) {
 		}
 	}
 	return devicesMap, err
+}
+
+// Drops an element from each map in a []map[string]interface{}
+// this allows a quick and easy way to remove things like "id" that is added by the proxmox api go library
+// when we instead encode that id as the list index (and thus terraform would reject it in a d.Set(..) call
+// WARNING mutates the list fed in!  make a copy if you need to keep the original
+func DropElementsFromMap(elements []string, mapList []map[string]interface{}) ([]map[string]interface{}, error) {
+	for _, mapItem := range mapList {
+		for _, elem := range elements {
+			delete(mapItem, elem)
+		}
+	}
+	return mapList, nil
 }
 
 // Consumes an API return (pxapi.QemuDevices) and "flattens" it into a []map[string]interface{} as
