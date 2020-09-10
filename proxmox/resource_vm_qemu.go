@@ -812,6 +812,17 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	// give sometime to bootup
 	time.Sleep(9 * time.Second)
+	if _, err = client.StopVm(vmr); err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
+
+	time.Sleep(9 * time.Second)
+	if _, err = client.StartVm(vmr); err != nil {
+		pmParallelEnd(pconf)
+		return err
+	}
+
 	return nil
 }
 
