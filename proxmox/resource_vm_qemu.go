@@ -1120,21 +1120,27 @@ func initConnInfo(
 					time.Sleep(10 * time.Second)
 				}
 				if guestAgentRunning {
-					ifs, err := client.GetVmAgentNetworkInterfaces(vmr)
-					if err != nil {
-						return err
-					}
-					for _, iface := range ifs {
-						for _, addr := range iface.IPAddresses {
-							if addr.IsLoopback() {
-								continue
+					// wait until we find a valid ipv4 address
+					for end := time.Now().Add(60 * time.Second); guestAgentSupported ; {
+						ifs, err := client.GetVmAgentNetworkInterfaces(vmr)
+						if err != nil {
+							return err
+						}
+						for _, iface := range ifs {
+							for _, addr := range iface.IPAddresses {
+								if (addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2) {
+									sshHost = addr.String()
+									break
+								}
 							}
-							sshHost = addr.String()
+							if sshHost != "" {
+								break
+							}
+						}
+						if (time.Now().After(end) || sshHost != "") {
 							break
 						}
-						if sshHost != "" {
-							break
-						}
+						time.Sleep(10 * time.Second)
 					}
 				}
 			} else {
