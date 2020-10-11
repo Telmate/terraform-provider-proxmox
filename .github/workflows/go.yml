@@ -29,9 +29,17 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-
-    - name: Build
-      run: go build -v .
-
+    
+    - name: Make bin dir
+      run: mkdir -p bin
+    
+    - name: build terraform-provider-proxmox
+      run: |
+        go build  -o bin/terraform-provider-proxmox cmd/terraform-provider-proxmox/*
+    
+    - name: build terraform-provisioner-proxmox
+      run: |
+         go build -v -o bin/terraform-provisioner-proxmox cmd/terraform-provisioner-proxmox/*
+    
     - name: Test
       run: go test -v ./...
