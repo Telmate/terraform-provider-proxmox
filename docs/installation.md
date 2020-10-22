@@ -40,29 +40,30 @@ As of Terraform v0.13, locally-installed, third-party plugins must [conform to a
 
 Use the format: [host.domain]/telmate/proxmox/[version]/[arch].
 
-Examples:  
+In our case, we will use `registry.example.com` as our virtual source registry in the following examples.
 
-macOS  
-`mkdir -p ~/.terraform.d/plugins/terraform.example.com/telmate/proxmox/1.0.0/darwin_amd64/`
+```shell
+# Uncomment for macOS
+# PLUGIN_ARCH=darwin_amd64
+PLUGIN_ARCH=linux_amd64
 
-Linux   
-``~/.terraform.d/plugins/terraform.example.com/telmate/proxmox/1.0.0/linux_amd64/``
-
+# Create the directory holding the newly built Terraform plugins
+mkdir -p ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/$PLUGIN_ARCH
+```
 Then, copy the executables to the directory you just created.
 
 ```shell
-mkdir ~/.terraform.d/plugins/registry.example.com/
-cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/terraform.example.com/telmate/proxmox/1.0.0/darwin_amd64/
-cp bin/terraform-provisioner-proxmox ~/.terraform.d/plugins/terraform.example.com/telmate/proxmox/1.0.0/darwin_amd64/
+cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/$PLUGIN_ARCH/
+cp bin/terraform-provisioner-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/$PLUGIN_ARCH/
 ```
 
-Add the source to required_providers like so:
+Add the source to `main.tf` `required_providers` section like so:
 
 ```
 terraform {
   required_providers {
     proxmox = {
-      source  = "terraform.example.com/telmate/proxmox"
+      source  = "registry.example.com/telmate/proxmox"
       version = ">=1.0.0"
     }
   }
@@ -72,8 +73,23 @@ terraform {
 
 ## Initialize Terraform
 
-Now the plugin is installed, you can simply create a new terraform directory and do usual terraforming.
+Initialize Terraform so that it installs the new plugins:
 
 ```
 terraform init
 ```
+
+You should see the following marking the successful plugin installation:
+
+```shell
+[...]
+Initializing provider plugins...
+- Finding registry.example.com/telmate/proxmox versions matching ">= 1.0.0"...
+- Installing registry.example.com/telmate/proxmox v1.0.0...              
+- Installed registry.example.com/telmate/proxmox v1.0.0 (unauthenticated)
+                                                           
+Terraform has been successfully initialized!
+[...]
+```
+
+Now that the plugin is installed, you can simply create a new terraform directory and do usual terraforming.
