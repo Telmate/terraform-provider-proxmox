@@ -10,6 +10,7 @@ import (
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 type providerConfiguration struct {
@@ -24,7 +25,7 @@ type providerConfiguration struct {
 }
 
 // Provider - Terrafrom properties for proxmox
-func Provider() *schema.Provider {
+func Provider() terraform.ResourceProvider {
 	pmOTPprompt := schema.Schema{
 		Type:        schema.TypeString,
 		Optional:    true,
