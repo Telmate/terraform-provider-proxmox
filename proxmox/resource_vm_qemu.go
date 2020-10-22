@@ -692,7 +692,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// Apply pre-provision if enabled.
 	preprovision(d, pconf, client, vmr, true)
 
-	return nil
+	pmParallelTransfer(pconf)
+
+	return resourceVmQemuRead(d, meta)
 }
 
 func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -823,7 +825,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	return nil
+	pmParallelTransfer(pconf)
+
+	return resourceVmQemuRead(d, meta)
 }
 
 func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {

@@ -145,6 +145,12 @@ func pmParallelEnd(pconf *providerConfiguration) {
 	pconf.Mutex.Unlock()
 }
 
+func pmParallelTransfer(pconf *providerConfiguration) {
+	pconf.Mutex.Lock()
+	pconf.CurrentParallel--
+	pconf.Mutex.Unlock()
+}
+
 func resourceId(targetNode string, resType string, vmId int) string {
 	return fmt.Sprintf("%s/%s/%d", targetNode, resType, vmId)
 }
