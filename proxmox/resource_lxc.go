@@ -403,6 +403,8 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
+	pmParallelTransfer(pconf)
+
 	return resourceLxcRead(d, meta)
 }
 
@@ -493,7 +495,9 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	return nil
+	pmParallelTransfer(pconf)
+
+	return resourceLxcRead(d, meta)
 }
 
 func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
