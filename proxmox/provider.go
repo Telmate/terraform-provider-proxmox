@@ -168,7 +168,17 @@ func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
 	return nextId, nil
 }
 
-func pmParallelBegin(pconf *providerConfiguration) {
+type pmApiLockHolder struct {
+	locked bool
+	pconf  *providerConfiguration
+}
+
+func (lock *pmApiLockHolder) lock() {
+	if lock.locked {
+		return
+	}
+	lock.locked = true
+	pconf := lock.pconf
 	pconf.Mutex.Lock()
 	for pconf.CurrentParallel >= pconf.MaxParallel {
 		pconf.Cond.Wait()
@@ -176,18 +186,25 @@ func pmParallelBegin(pconf *providerConfiguration) {
 	pconf.CurrentParallel++
 	pconf.Mutex.Unlock()
 }
-
-func pmParallelEnd(pconf *providerConfiguration) {
+func (lock *pmApiLockHolder) unlock() {
+	if !lock.locked {
+		return
+	}
+	lock.locked = false
+	pconf := lock.pconf
 	pconf.Mutex.Lock()
 	pconf.CurrentParallel--
 	pconf.Cond.Signal()
 	pconf.Mutex.Unlock()
 }
 
-func pmParallelTransfer(pconf *providerConfiguration) {
-	pconf.Mutex.Lock()
-	pconf.CurrentParallel--
-	pconf.Mutex.Unlock()
+func pmParallelBegin(pconf *providerConfiguration) *pmApiLockHolder {
+	lock := &pmApiLockHolder{
+		pconf:  pconf,
+		locked: false,
+	}
+	lock.lock()
+	return lock
 }
 
 func resourceId(targetNode string, resType string, vmId int) string {

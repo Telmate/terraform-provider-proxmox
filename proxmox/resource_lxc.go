@@ -310,7 +310,10 @@ func resourceLxc() *schema.Resource {
 
 func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
-	pmParallelBegin(pconf)
+
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
+
 	client := pconf.Client
 	vmName := d.Get("hostname").(string)
 
@@ -388,7 +391,6 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		nextid = vmID
 	} else {
 		if err != nil {
-			pmParallelEnd(pconf)
 			return err
 		}
 	}
@@ -397,32 +399,29 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	vmr.SetNode(targetNode)
 	err = config.CreateLxc(vmr, client)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
-	pmParallelTransfer(pconf)
-
-	return resourceLxcRead(d, meta)
+	return _resourceLxcRead(d, meta)
 }
 
 func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
-	pmParallelBegin(pconf)
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
+
 	client := pconf.Client
 
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 	vmr := pxapi.NewVmRef(vmID)
 	_, err = client.GetVmInfo(vmr)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 
@@ -492,34 +491,34 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	err = config.UpdateConfig(vmr, client)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 
-	pmParallelTransfer(pconf)
-
-	return resourceLxcRead(d, meta)
+	return _resourceLxcRead(d, meta)
 }
 
 func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
-	pmParallelBegin(pconf)
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
+	return _resourceLxcRead(d, meta)
+}
+
+func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
+	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
-		pmParallelEnd(pconf)
 		d.SetId("")
 		return err
 	}
 	vmr := pxapi.NewVmRef(vmID)
 	_, err = client.GetVmInfo(vmr)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 	config, err := pxapi.NewConfigLxcFromApi(vmr, client)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
@@ -585,6 +584,5 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("unprivileged", config.Unprivileged)
 	d.Set("unused", config.Unused)
 
-	pmParallelEnd(pconf)
 	return nil
 }
