@@ -71,7 +71,7 @@ EOF
 
 Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When
 creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig`
-parameter to create based on [https://cloudinit.readthedocs.io/en/latest/topics/examples.html](a Cloud-init configuration file)
+parameter to create based on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html)
 or use the Proxmox variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `searchdomain`, `nameserver` and `sshkeys`.
 
 For more information, see the [Cloud-init guide](cloud_init_guide.md).
