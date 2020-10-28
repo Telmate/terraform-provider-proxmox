@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	//pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // using a global variable here so that we have an internally accessible
@@ -345,7 +345,7 @@ func resourceVmQemu() *schema.Resource {
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
-								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
 									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
 								}
 								return
@@ -886,7 +886,6 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 			pmParallelEnd(pconf)
 			return err
 		}
-		d.SetPartial("target_node")
 		vmr.SetNode(d.Get("target_node").(string))
 	}
 	d.Partial(false)
@@ -1087,6 +1086,7 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 			qemuDisk["cache"] = "none"
 		}
 	}
+
 	flatDisks, _ := FlattenDevicesList(config.QemuDisks)
 	flatDisks, _ = DropElementsFromMap([]string{"id"}, flatDisks)
 	if d.Set("disk", flatDisks); err != nil {
@@ -1191,14 +1191,15 @@ func prepareDiskSize(
 			return err
 		}
 
-		diffSize := int(math.Ceil(diskSize - clonedDiskSize))
 		if diskSize > clonedDiskSize {
 			log.Print("[DEBUG] resizing disk " + diskName)
-			_, err = client.ResizeQemuDisk(vmr, diskName, diffSize)
+			_, err = client.ResizeQemuDiskRaw(vmr, diskName, diskConf["size"].(string))
 			if err != nil {
 				return err
 			}
-		}
+		} else {
+			return fmt.Errorf("Proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%v' to '%v'", diskName, clonedDiskSize, diskSize)		}
+
 	}
 	return nil
 }
