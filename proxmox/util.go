@@ -2,15 +2,15 @@ package proxmox
 
 import (
 	"fmt"
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	//pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/rs/zerolog"
 	"io"
 	"log"
 	"os"
 	"strconv"
 	"time"
+
+	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/rs/zerolog"
 )
 
 // given a string, return the appropriate zerolog level
@@ -231,7 +231,6 @@ func UpdateDeviceConfDefaults(
 }
 
 func DevicesSetToMapWithoutId(devicesSet *schema.Set) pxapi.QemuDevices {
-
 	devicesMap := pxapi.QemuDevices{}
 	i := 1
 	for _, set := range devicesSet.List() {
@@ -241,6 +240,37 @@ func DevicesSetToMapWithoutId(devicesSet *schema.Set) pxapi.QemuDevices {
 			devicesMap[i] = setMap
 			i += 1
 		}
+	}
+	return devicesMap
+}
+
+type KeyedDeviceMap map[interface{}]pxapi.QemuDevice
+
+func DevicesSetToMapByKey(devicesSet *schema.Set, key string) KeyedDeviceMap {
+	devicesMap := KeyedDeviceMap{}
+	for i, set := range devicesSet.List() {
+		setMap, isMap := set.(map[string]interface{})
+		if isMap {
+			if key != "" {
+				devicesMap[setMap[key]] = setMap
+			} else {
+				devicesMap[i] = setMap
+			}
+		}
+	}
+	return devicesMap
+}
+
+func DeviceToMap(device pxapi.QemuDevice, key interface{}) KeyedDeviceMap {
+	kdm := KeyedDeviceMap{}
+	kdm[key] = device
+	return kdm
+}
+
+func DevicesSetToDevices(devicesSet *schema.Set, key string) pxapi.QemuDevices {
+	devicesMap := pxapi.QemuDevices{}
+	for key, set := range DevicesSetToMapByKey(devicesSet, key) {
+		devicesMap[key.(int)] = set
 	}
 	return devicesMap
 }

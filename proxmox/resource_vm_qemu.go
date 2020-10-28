@@ -334,12 +334,6 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"storage_type": &schema.Schema{
-							Type:        schema.TypeString,
-							Optional:    true,
-							Default:     "dir",
-							Description: "One of PVE types as described: https://pve.proxmox.com/wiki/Storage. This is not a proxmox configuration directly is required to format the disk storage path correctly.",
-						},
 						"size": &schema.Schema{
 							Type:     schema.TypeString,
 							Required: true,
@@ -418,12 +412,18 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  0,
 						},
+						// Misc
 						"file": &schema.Schema{
 							Type:     schema.TypeString,
 							Optional: true,
 							Computed: true,
 						},
 						"media": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+						"volume": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Computed: true,
@@ -488,6 +488,7 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
+			// Other
 			"serial": &schema.Schema{
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -1117,7 +1118,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("pool", vmr.Pool())
 	//Serials
 	configSerialsSet := d.Get("serial").(*schema.Set)
-	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials)
+	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials, "id")
 	d.Set("serial", activeSerialSet)
 
 	// DEBUG print out the read result
@@ -1163,13 +1164,13 @@ func prepareDiskSize(
 	for diskID, diskConf := range diskConfMap {
 		diskName := fmt.Sprintf("%v%v", diskConf["type"], diskID)
 
-		diskSize := diskSizeGB(diskConf["size"])
+		diskSize := pxapi.DiskSizeGB(diskConf["size"])
 
 		if _, diskExists := clonedConfig.QemuDisks[diskID]; !diskExists {
 			return err
 		}
 
-		clonedDiskSize := diskSizeGB(clonedConfig.QemuDisks[diskID]["size"])
+		clonedDiskSize := pxapi.DiskSizeGB(clonedConfig.QemuDisks[diskID]["size"])
 
 		if err != nil {
 			return err
@@ -1186,32 +1187,6 @@ func prepareDiskSize(
 
 	}
 	return nil
-}
-
-func diskSizeGB(dcSize interface{}) float64 {
-	var diskSize float64
-	switch dcSize.(type) {
-	case string:
-		diskString := strings.ToUpper(dcSize.(string))
-		re := regexp.MustCompile("([0-9]+)([A-Z]*)")
-		diskArray := re.FindStringSubmatch(diskString)
-
-		diskSize, _ = strconv.ParseFloat(diskArray[1], 64)
-
-		if len(diskArray) >= 3 {
-			switch diskArray[2] {
-			case "G", "GB":
-				//Nothing to do
-			case "M", "MB":
-				diskSize /= 1000
-			case "K", "KB":
-				diskSize /= 1000000
-			}
-		}
-	case float64:
-		diskSize = dcSize.(float64)
-	}
-	return diskSize
 }
 
 // Converting from schema.TypeSet to map of id and conf for each device,
@@ -1316,6 +1291,7 @@ func ExpandDevicesList(deviceList []interface{}) (pxapi.QemuDevices, error) {
 func UpdateDevicesSet(
 	devicesSet *schema.Set,
 	devicesMap pxapi.QemuDevices,
+	idKey string,
 ) *schema.Set {
 
 	//configDevicesMap, _ := DevicesSetToMap(devicesSet)
@@ -1326,36 +1302,45 @@ func UpdateDevicesSet(
 	for _, setConf := range devicesSet.List() {
 		devicesSet.Remove(setConf)
 		setConfMap := setConf.(map[string]interface{})
-		deviceID := setConfMap["id"].(int)
-		// Value type should be one of types allowed by Terraform schema types.
-		for key, value := range activeDevicesMap[deviceID] {
-			// This nested switch is used for nested config like in `net[n]`,
-			// where Proxmox uses `key=<0|1>` in string" at the same time
-			// a boolean could be used in ".tf" files.
-			switch setConfMap[key].(type) {
-			case bool:
-				switch value.(type) {
-				// If the key is bool and value is int (which comes from Proxmox API),
-				// should be converted to bool (as in ".tf" conf).
-				case int:
-					sValue := strconv.Itoa(value.(int))
-					bValue, err := strconv.ParseBool(sValue)
-					if err == nil {
-						setConfMap[key] = bValue
-					}
-				// If value is bool, which comes from Terraform conf, add it directly.
-				case bool:
-					setConfMap[key] = value
-				}
-			// Anything else will be added as it is.
-			default:
-				setConfMap[key] = value
-			}
-		}
+		deviceID := setConfMap[idKey].(int)
+		setConfMap = adaptDeviceToConf(setConfMap, activeDevicesMap[deviceID])
 		devicesSet.Add(setConfMap)
 	}
 
 	return devicesSet
+}
+
+func adaptDeviceToConf(
+	conf map[string]interface{},
+	device pxapi.QemuDevice,
+) map[string]interface{} {
+	// Value type should be one of types allowed by Terraform schema types.
+	for key, value := range device {
+		// This nested switch is used for nested config like in `net[n]`,
+		// where Proxmox uses `key=<0|1>` in string" at the same time
+		// a boolean could be used in ".tf" files.
+		switch conf[key].(type) {
+		case bool:
+			switch value.(type) {
+			// If the key is bool and value is int (which comes from Proxmox API),
+			// should be converted to bool (as in ".tf" conf).
+			case int:
+				sValue := strconv.Itoa(value.(int))
+				bValue, err := strconv.ParseBool(sValue)
+				if err == nil {
+					conf[key] = bValue
+				}
+			// If value is bool, which comes from Terraform conf, add it directly.
+			case bool:
+				conf[key] = value
+			}
+		// Anything else will be added as it is.
+		default:
+			conf[key] = value
+		}
+	}
+
+	return conf
 }
 
 // Because default values are not stored in Proxmox, so the API returns only active values.
