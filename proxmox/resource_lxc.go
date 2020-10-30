@@ -807,7 +807,7 @@ func processDiskResize(
 	newSize, ok := newDisk["size"]
 	if ok && newSize != prevDisk["size"] {
 		log.Print("[DEBUG] resizing disk " + diskName)
-		_, err := pconf.Client.ResizeDisk(vmr, diskName, newDisk["size"].(string))
+		_, err := pconf.Client.ResizeQemuDiskRaw(vmr, diskName, newDisk["size"].(string))
 		if err != nil {
 			return err
 		}
