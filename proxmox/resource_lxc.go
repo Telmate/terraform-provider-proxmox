@@ -671,8 +671,6 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("protection", config.Protection)
 	d.Set("restore", config.Restore)
 	d.Set("searchdomain", config.SearchDomain)
-	d.Set("ssh_public_keys", config.SSHPublicKeys)
-	d.Set("start", config.Start)
 	d.Set("startup", config.Startup)
 	d.Set("swap", config.Swap)
 	d.Set("template", config.Template)
@@ -682,8 +680,10 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("unused", config.Unused)
 
 	// Only applicable on create and not readable
+	// d.Set("start", config.Start)
 	// d.Set("ostemplate", config.Ostemplate)
 	// d.Set("password", config.Password)
+	// d.Set("ssh_public_keys", config.SSHPublicKeys)
 
 	return nil
 }
