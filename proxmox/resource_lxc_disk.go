@@ -145,12 +145,9 @@ func resourceLxcDiskCreate(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("Error updating LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
 	}
 
-	d.Partial(true)
 	if err = _resourceLxcDiskRead(d, meta); err != nil {
 		return err
 	}
-
-	d.Partial(false)
 
 	return nil
 }
@@ -174,12 +171,8 @@ func resourceLxcDiskUpdate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	oldValue, newValue := d.GetChange("")
-	oldDisk := oldValue.(map[string]interface{})
-	newDisk := newValue.(map[string]interface{})
-
-	if mountoptions, ok := newDisk["mountoptions"]; ok && len(mountoptions.([]interface{})) > 0 {
-		newDisk["mountoptions"] = mountoptions.([]interface{})[0]
-	}
+	oldDisk := extractDiskOptions(oldValue.(map[string]interface{}))
+	newDisk := extractDiskOptions(newValue.(map[string]interface{}))
 
 	// Apply Changes
 	err = processLxcDiskChanges(DeviceToMap(oldDisk, 0), DeviceToMap(newDisk, 0), pconf, vmr)
@@ -219,14 +212,21 @@ func _resourceLxcDiskRead(d *schema.ResourceData, meta interface{}) error {
 
 	diskName := fmt.Sprintf("mp%v", d.Get("slot").(int))
 	diskString := apiResult[diskName].(string)
-	disk := pxapi.ParsePMConf(diskString, "volume")
-
-	if mountoptions, ok := disk["mountoptions"]; ok && len(mountoptions.([]interface{})) > 0 {
-		disk["mountoptions"] = []interface{}{mountoptions}
-	}
+	disk := pxapi.ParseLxcDisk(diskString)
+	disk["slot"] = d.Get("slot").(int)
 
 	d.SetId(disk["volume"].(string))
-	d.Set("", disk)
+	d.Set("volume", disk["volume"])
+	d.Set("mountoptions", []interface{}{disk["mountoptions"]})
+	d.Set("slot", disk["slot"])
+	d.Set("storage", disk["storage"])
+	d.Set("mp", disk["mp"])
+	d.Set("acl", disk["acl"])
+	d.Set("backup", disk["backup"])
+	d.Set("quota", disk["quota"])
+	d.Set("replicate", disk["replicate"])
+	d.Set("shared", disk["shared"])
+	d.Set("size", disk["size"])
 
 	return nil
 }
@@ -255,4 +255,14 @@ func resourceLxcDiskDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	return nil
+}
+
+func extractDiskOptions(diskOptions map[string]interface{}) map[string]interface{} {
+	if mountoptions, ok := diskOptions["mountoptions"]; ok && len(mountoptions.([]interface{})) > 0 {
+		diskOptions["mountoptions"] = mountoptions.([]interface{})[0]
+	} else {
+		delete(diskOptions, "mountoptions")
+	}
+
+	return diskOptions
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -729,7 +728,8 @@ func processLxcDiskChanges(
 
 		if ok {
 			for k, v := range prevDisk {
-				if reflect.ValueOf(newDisk[k]).IsZero() {
+				_, ok := newDisk[k]
+				if !ok {
 					newDisk[k] = v
 				}
 			}
@@ -759,9 +759,16 @@ func processLxcDiskChanges(
 			// 2. Move disks with mismatching storage
 			newStorage, ok := newDisk["storage"].(string)
 			if ok && newStorage != prevDisk["storage"] {
-				_, err := pconf.Client.MoveQemuDisk(vmr, diskSlotName(prevDisk), newStorage)
-				if err != nil {
-					return err
+				if vmr.GetVmType() == "lxc" {
+					_, err := pconf.Client.MoveLxcDisk(vmr, diskSlotName(prevDisk), newStorage)
+					if err != nil {
+						return err
+					}
+				} else {
+					_, err := pconf.Client.MoveQemuDisk(vmr, diskSlotName(prevDisk), newStorage)
+					if err != nil {
+						return err
+					}
 				}
 			}
 
