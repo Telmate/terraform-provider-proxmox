@@ -246,16 +246,14 @@ func DevicesSetToMapWithoutId(devicesSet *schema.Set) pxapi.QemuDevices {
 
 type KeyedDeviceMap map[interface{}]pxapi.QemuDevice
 
-func DevicesSetToMapByKey(devicesSet *schema.Set, key string) KeyedDeviceMap {
+func DevicesListToMapByKey(devicesList []interface{}, key string) KeyedDeviceMap {
 	devicesMap := KeyedDeviceMap{}
-	for i, set := range devicesSet.List() {
-		setMap, isMap := set.(map[string]interface{})
-		if isMap {
-			if key != "" {
-				devicesMap[setMap[key]] = setMap
-			} else {
-				devicesMap[i] = setMap
-			}
+	for i, set := range devicesList {
+		setMap := set.(map[string]interface{})
+		if key != "" {
+			devicesMap[setMap[key]] = setMap
+		} else {
+			devicesMap[i] = setMap
 		}
 	}
 	return devicesMap
@@ -267,34 +265,64 @@ func DeviceToMap(device pxapi.QemuDevice, key interface{}) KeyedDeviceMap {
 	return kdm
 }
 
-func DevicesSetToDevices(devicesSet *schema.Set, key string) pxapi.QemuDevices {
+func DevicesListToDevices(devicesList []interface{}, key string) pxapi.QemuDevices {
 	devicesMap := pxapi.QemuDevices{}
-	for key, set := range DevicesSetToMapByKey(devicesSet, key) {
+	for key, set := range DevicesListToMapByKey(devicesList, key) {
 		devicesMap[key.(int)] = set
 	}
 	return devicesMap
 }
 
-func AddIds(configSet *schema.Set) *schema.Set {
-	// add device config ids
-	var i = 1
-	for _, setConf := range configSet.List() {
-		configSet.Remove(setConf)
-		setConfMap := setConf.(map[string]interface{})
-		setConfMap["id"] = i
-		i += 1
-		configSet.Add(setConfMap)
+func AssertNoNonSchemaValues(
+	devices pxapi.QemuDevices,
+	schemaDef *schema.Schema,
+) error {
+	// add an explicit check that the keys in the config.QemuNetworks map are a strict subset of
+	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
+	for _, deviceEntry := range devices {
+		for key, _ := range deviceEntry {
+			if _, ok := schemaDef.Elem.(*schema.Resource).Schema[key]; !ok {
+				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
+					continue
+				}
+				return fmt.Errorf("Proxmox Provider Error: proxmox API returned new parameter '%v' we cannot process", key)
+			}
+		}
 	}
-	return configSet
+
+	return nil
 }
 
-func RemoveIds(configSet *schema.Set) *schema.Set {
-	// remove device config ids
-	for _, setConf := range configSet.List() {
-		configSet.Remove(setConf)
-		setConfMap := setConf.(map[string]interface{})
-		delete(setConfMap, "id")
-		configSet.Add(setConfMap)
+// Further parses a QemuDevice by normalizing types
+func adaptDeviceToConf(
+	conf map[string]interface{},
+	device pxapi.QemuDevice,
+) map[string]interface{} {
+	// Value type should be one of types allowed by Terraform schema types.
+	for key, value := range device {
+		// This nested switch is used for nested config like in `net[n]`,
+		// where Proxmox uses `key=<0|1>` in string" at the same time
+		// a boolean could be used in ".tf" files.
+		switch conf[key].(type) {
+		case bool:
+			switch value.(type) {
+			// If the key is bool and value is int (which comes from Proxmox API),
+			// should be converted to bool (as in ".tf" conf).
+			case int:
+				sValue := strconv.Itoa(value.(int))
+				bValue, err := strconv.ParseBool(sValue)
+				if err == nil {
+					conf[key] = bValue
+				}
+			// If value is bool, which comes from Terraform conf, add it directly.
+			case bool:
+				conf[key] = value
+			}
+		// Anything else will be added as it is.
+		default:
+			conf[key] = value
+		}
 	}
-	return configSet
+
+	return conf
 }

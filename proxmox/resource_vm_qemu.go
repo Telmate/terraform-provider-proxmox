@@ -1310,39 +1310,6 @@ func UpdateDevicesSet(
 	return devicesSet
 }
 
-func adaptDeviceToConf(
-	conf map[string]interface{},
-	device pxapi.QemuDevice,
-) map[string]interface{} {
-	// Value type should be one of types allowed by Terraform schema types.
-	for key, value := range device {
-		// This nested switch is used for nested config like in `net[n]`,
-		// where Proxmox uses `key=<0|1>` in string" at the same time
-		// a boolean could be used in ".tf" files.
-		switch conf[key].(type) {
-		case bool:
-			switch value.(type) {
-			// If the key is bool and value is int (which comes from Proxmox API),
-			// should be converted to bool (as in ".tf" conf).
-			case int:
-				sValue := strconv.Itoa(value.(int))
-				bValue, err := strconv.ParseBool(sValue)
-				if err == nil {
-					conf[key] = bValue
-				}
-			// If value is bool, which comes from Terraform conf, add it directly.
-			case bool:
-				conf[key] = value
-			}
-		// Anything else will be added as it is.
-		default:
-			conf[key] = value
-		}
-	}
-
-	return conf
-}
-
 // Because default values are not stored in Proxmox, so the API returns only active values.
 // So to prevent Terraform doing unnecessary diffs, this function reads default values
 // from Terraform itself, and fill empty fields.

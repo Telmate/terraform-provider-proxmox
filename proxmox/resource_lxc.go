@@ -1,20 +1,21 @@
 package proxmox
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/Telmate/terraform-provider-proxmox/proxmox/hashcode"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+var lxcResourceDef *schema.Resource
+
 func resourceLxc() *schema.Resource {
 	*pxapi.Debug = true
-	return &schema.Resource{
+
+	lxcResourceDef = &schema.Resource{
 		Create: resourceLxcCreate,
 		Read:   resourceLxcRead,
 		Update: resourceLxcUpdate,
@@ -117,7 +118,7 @@ func resourceLxc() *schema.Resource {
 				Default:  512,
 			},
 			"mountpoint": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -181,28 +182,13 @@ func resourceLxc() *schema.Resource {
 						},
 					},
 				},
-				Set: func(v interface{}) int {
-					var buf bytes.Buffer
-					m := v.(map[string]interface{})
-					buf.WriteString(fmt.Sprintf("%s-", m["key"].(string)))
-					buf.WriteString(fmt.Sprintf("%v-", m["slot"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["storage"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["mp"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["acl"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["backup"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["quota"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["replicate"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["shared"]))
-					buf.WriteString(fmt.Sprintf("%v-", m["size"]))
-					return hashcode.String(buf.String())
-				},
 			},
 			"nameserver": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"network": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -382,6 +368,8 @@ func resourceLxc() *schema.Resource {
 			},
 		},
 	}
+
+	return lxcResourceDef
 }
 
 func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
@@ -416,13 +404,6 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.Lock = d.Get("lock").(string)
 	config.Memory = d.Get("memory").(int)
 	config.Nameserver = d.Get("nameserver").(string)
-	// proxmox api allows multiple network sets,
-	// having a unique 'id' parameter foreach set
-	networks := d.Get("network").(*schema.Set)
-	if len(networks.List()) > 0 {
-		lxcNetworks := DevicesSetToMapWithoutId(networks)
-		config.Networks = lxcNetworks
-	}
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
@@ -449,14 +430,22 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 
 	targetNode := d.Get("target_node").(string)
 
+	// proxmox api allows multiple network sets,
+	// having a unique 'id' parameter foreach set
+	networks := d.Get("network").([]interface{})
+	if len(networks) > 0 {
+		lxcNetworks := DevicesListToDevices(networks, "")
+		config.Networks = lxcNetworks
+	}
+
 	rootfs := d.Get("rootfs").([]interface{})[0].(map[string]interface{})
 	config.RootFs = rootfs
 
 	// proxmox api allows multiple mountpoint sets,
 	// having a unique 'id' parameter foreach set
-	mountpoints := d.Get("mountpoint").(*schema.Set)
-	if len(mountpoints.List()) > 0 {
-		lxcMountpoints := DevicesSetToDevices(mountpoints, "slot")
+	mountpoints := d.Get("mountpoint").([]interface{})
+	if len(mountpoints) > 0 {
+		lxcMountpoints := DevicesListToDevices(mountpoints, "slot")
 		config.Mountpoints = lxcMountpoints
 	}
 
@@ -525,13 +514,6 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Lock = d.Get("lock").(string)
 	config.Memory = d.Get("memory").(int)
 	config.Nameserver = d.Get("nameserver").(string)
-	// proxmox api allows multiple network sets,
-	// having a unique 'id' parameter foreach set
-	networks := d.Get("network").(*schema.Set)
-	if len(networks.List()) > 0 {
-		lxcNetworks := DevicesSetToMapWithoutId(networks)
-		config.Networks = lxcNetworks
-	}
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
@@ -556,6 +538,15 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	}
 	config.Unused = volumes
 
+	if d.HasChange("network") {
+		// TODO Delete extra networks
+		networks := d.Get("network").([]interface{})
+		if len(networks) > 0 {
+			lxcNetworks := DevicesListToDevices(networks, "")
+			config.Networks = lxcNetworks
+		}
+	}
+
 	if d.HasChange("rootfs") {
 		oldSet, newSet := d.GetChange("rootfs")
 
@@ -568,11 +559,11 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	if d.HasChange("mountpoint") {
 		oldSet, newSet := d.GetChange("mountpoint")
-		oldMounts := DevicesSetToMapByKey(oldSet.(*schema.Set), "key")
-		newMounts := DevicesSetToMapByKey(newSet.(*schema.Set), "key")
+		oldMounts := DevicesListToMapByKey(oldSet.([]interface{}), "key")
+		newMounts := DevicesListToMapByKey(newSet.([]interface{}), "key")
 		processLxcDiskChanges(oldMounts, newMounts, pconf, vmr)
 
-		lxcMountpoints := DevicesSetToDevices(newSet.(*schema.Set), "slot")
+		lxcMountpoints := DevicesListToDevices(newSet.([]interface{}), "slot")
 		config.Mountpoints = lxcMountpoints
 	}
 
@@ -621,16 +612,23 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Read Mountpoints
-	configMountpointSet := d.Get("mountpoint").(*schema.Set)
-	configMountpointMap := DevicesSetToMapByKey(configMountpointSet, "slot")
-	if len(configMountpointSet.List()) > 0 {
+	configMountpointSet := d.Get("mountpoint").([]interface{})
+	configMountpointMap := DevicesListToMapByKey(configMountpointSet, "slot")
+	if len(configMountpointSet) > 0 {
 		for slot, device := range config.Mountpoints {
 			if confDevice, ok := configMountpointMap[slot]; ok {
 				device["key"] = confDevice["key"]
 			}
 		}
-		activeMountpointSet := UpdateDevicesSet(configMountpointSet, config.Mountpoints, "slot")
-		d.Set("mountpoint", activeMountpointSet)
+
+		if err = AssertNoNonSchemaValues(config.Mountpoints, lxcResourceDef.Schema["mountpoint"]); err != nil {
+			return err
+		}
+
+		flatMountpoints, _ := FlattenDevicesList(config.Networks)
+		if err = d.Set("mountpoint", flatMountpoints); err != nil {
+			return err
+		}
 	}
 
 	// Read RootFs
@@ -639,12 +637,16 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("rootfs.0", adaptedRootFs)
 
 	// Read Networks
-	configNetworksSet := d.Get("network").(*schema.Set)
-	configNetworksSet = AddIds(configNetworksSet)
-	if len(configNetworksSet.List()) > 0 {
-		activeNetworksSet := UpdateDevicesSet(configNetworksSet, config.Networks, "id")
-		activeNetworksSet = RemoveIds(activeNetworksSet)
-		d.Set("network", activeNetworksSet)
+	configNetworksSet := d.Get("network").([]interface{})
+	if len(configNetworksSet) > 0 {
+		if err = AssertNoNonSchemaValues(config.Networks, lxcResourceDef.Schema["network"]); err != nil {
+			return err
+		}
+		flatNetworks, _ := FlattenDevicesList(config.Networks)
+		flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
+		if err = d.Set("network", flatNetworks); err != nil {
+			return err
+		}
 	}
 
 	// Read Misc
