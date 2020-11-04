@@ -9,7 +9,8 @@ import (
 	"sync"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 type providerConfiguration struct {
@@ -19,10 +20,12 @@ type providerConfiguration struct {
 	MaxVMID         int
 	Mutex           *sync.Mutex
 	Cond            *sync.Cond
+	LogFile         string
+	LogLevels       map[string]string
 }
 
 // Provider - Terrafrom properties for proxmox
-func Provider() *schema.Provider {
+func Provider() terraform.ResourceProvider {
 	pmOTPprompt := schema.Schema{
 		Type:        schema.TypeString,
 		Optional:    true,
@@ -69,6 +72,20 @@ func Provider() *schema.Provider {
 				Optional: true,
 				Default:  false,
 			},
+			"pm_log_enable": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+			"pm_log_levels": {
+				Type:     schema.TypeMap,
+				Optional: true,
+			},
+			"pm_log_file": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "terraform-plugin-proxmox.log",
+			},
 			"pm_timeout": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -94,6 +111,26 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// look to see what logging we should be outputting according to the provider configuration
+	logLevels := make(map[string]string)
+	for logger, level := range d.Get("pm_log_levels").(map[string]interface{}) {
+		levelAsString, ok := level.(string)
+		if ok {
+			logLevels[logger] = levelAsString
+		} else {
+			return nil, fmt.Errorf("Invalid logging level %v for %v. Be sure to use a string.", level, logger)
+		}
+	}
+
+	// actually configure logging
+	// note that if enable is false here, the configuration will squash all output
+	ConfigureLogger(
+		d.Get("pm_log_enable").(bool),
+		d.Get("pm_log_file").(string),
+		logLevels,
+	)
+
 	var mut sync.Mutex
 	return &providerConfiguration{
 		Client:          client,
@@ -102,6 +139,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		MaxVMID:         -1,
 		Mutex:           &mut,
 		Cond:            sync.NewCond(&mut),
+		LogFile:         d.Get("pm_log_file").(string),
+		LogLevels:       logLevels,
 	}, nil
 }
 

@@ -2,7 +2,7 @@ package proxmox
 
 import (
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 func resourceLxc() *schema.Resource {
@@ -299,7 +299,7 @@ func resourceLxc() *schema.Resource {
 				ForceNew: true,
 			},
 			"vmid": {
-				Type:	  schema.TypeInt,
+				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  0,
 			},
@@ -384,7 +384,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	nextid, err := nextVmId(pconf)
 	vmID := d.Get("vmid").(int)
 	if vmID != 0 {
-		nextid = vmID	
+		nextid = vmID
 	} else {
 		if err != nil {
 			pmParallelEnd(pconf)

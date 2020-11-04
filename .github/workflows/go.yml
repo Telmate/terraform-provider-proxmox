@@ -37,10 +37,6 @@ jobs:
       run: |
         go build  -o bin/terraform-provider-proxmox cmd/terraform-provider-proxmox/*
     
-    - name: build terraform-provisioner-proxmox
-      run: |
-         go build -v -o bin/terraform-provisioner-proxmox cmd/terraform-provisioner-proxmox/*
-    
     - name: Test
       run: go test -v ./...
     
