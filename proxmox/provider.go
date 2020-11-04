@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"sync"
 
-	//pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
+	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	//pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -70,7 +70,7 @@ func Provider() *schema.Provider {
 			"pm_tls_insecure": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  false,
+				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", false),
 			},
 			"pm_log_enable": {
 				Type:     schema.TypeBool,

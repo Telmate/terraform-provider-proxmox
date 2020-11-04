@@ -1,8 +1,8 @@
 package proxmox
 
 import (
-	//pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
+	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	//pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 

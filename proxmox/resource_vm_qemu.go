@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	//pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
+	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	//pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -1141,7 +1141,9 @@ func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Debug().Int("vmid", vmID).Msgf("VM Net Config '%+v' from '%+v' set as '%+v' type of '%T'", config.QemuNetworks, flatNetworks, d.Get("network"), flatNetworks[0]["macaddr"])
+	if len(flatNetworks) > 0 {
+		logger.Debug().Int("vmid", vmID).Msgf("VM Net Config '%+v' from '%+v' set as '%+v' type of '%T'", config.QemuNetworks, flatNetworks, d.Get("network"), flatNetworks[0]["macaddr"])
+	}
 	logger.Debug().Int("vmid", vmID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return nil
