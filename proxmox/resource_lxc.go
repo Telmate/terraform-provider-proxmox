@@ -1,14 +1,21 @@
 package proxmox
 
 import (
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
+
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	//pxapi "github.com/doransmestad/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+var lxcResourceDef *schema.Resource
+
 func resourceLxc() *schema.Resource {
 	*pxapi.Debug = true
-	return &schema.Resource{
+
+	lxcResourceDef = &schema.Resource{
 		Create: resourceLxcCreate,
 		Read:   resourceLxcRead,
 		Update: resourceLxcUpdate,
@@ -21,6 +28,7 @@ func resourceLxc() *schema.Resource {
 			"ostemplate": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"arch": {
 				Type:     schema.TypeString,
@@ -61,6 +69,7 @@ func resourceLxc() *schema.Resource {
 			},
 			"features": {
 				Type:     schema.TypeSet,
+				MaxItems: 1,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -109,11 +118,20 @@ func resourceLxc() *schema.Resource {
 				Default:  512,
 			},
 			"mountpoint": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"volume": {
+						// Total Hackery here. A TypeMap would be amazing if it supported Resources as values...
+						"key": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"slot": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"storage": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -124,26 +142,43 @@ func resourceLxc() *schema.Resource {
 						"acl": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"backup": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"quota": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"replicate": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"shared": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"size": {
-							Type:     schema.TypeInt,
+							Type:     schema.TypeString,
+							Required: true,
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								v := val.(string)
+								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+								}
+								return
+							},
+						},
+						"volume": {
+							Type:     schema.TypeString,
 							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -153,7 +188,7 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 			},
 			"network": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -180,6 +215,7 @@ func resourceLxc() *schema.Resource {
 						"hwaddr": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Computed: true,
 						},
 						"ip": {
 							Type:     schema.TypeString,
@@ -200,14 +236,17 @@ func resourceLxc() *schema.Resource {
 						"tag": {
 							Type:     schema.TypeInt,
 							Optional: true,
+							Computed: true,
 						},
 						"trunks": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Computed: true,
 						},
 						"type": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -220,10 +259,13 @@ func resourceLxc() *schema.Resource {
 			"ostype": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"password": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
+				ForceNew:  true, // Proxmox doesn't support password changes
 			},
 			"pool": {
 				Type:     schema.TypeString,
@@ -239,8 +281,33 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 			},
 			"rootfs": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeList,
+				MaxItems: 1,
 				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"storage": &schema.Schema{
+							Type:     schema.TypeString,
+							ForceNew: true,
+							Required: true,
+						},
+						"size": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								v := val.(string)
+								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+								}
+								return
+							},
+						},
+						"volume": &schema.Schema{
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
 			},
 			"searchdomain": {
 				Type:     schema.TypeString,
@@ -258,11 +325,6 @@ func resourceLxc() *schema.Resource {
 			"startup": {
 				Type:     schema.TypeString,
 				Optional: true,
-			},
-			"storage": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "local",
 			},
 			"swap": {
 				Type:     schema.TypeInt,
@@ -306,13 +368,17 @@ func resourceLxc() *schema.Resource {
 			},
 		},
 	}
+
+	return lxcResourceDef
 }
 
 func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
-	pmParallelBegin(pconf)
+
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
+
 	client := pconf.Client
-	vmName := d.Get("hostname").(string)
 
 	config := pxapi.NewConfigLxc()
 	config.Ostemplate = d.Get("ostemplate").(string)
@@ -333,37 +399,21 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 	config.Force = d.Get("force").(bool)
 	config.Hookscript = d.Get("hookscript").(string)
-	config.Hostname = vmName
+	config.Hostname = d.Get("hostname").(string)
 	config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
 	config.Lock = d.Get("lock").(string)
 	config.Memory = d.Get("memory").(int)
-	// proxmox api allows multiple mountpoint sets,
-	// having a unique 'id' parameter foreach set
-	mountpoints := d.Get("mountpoint").(*schema.Set)
-	if len(mountpoints.List()) > 0 {
-		lxcMountpoints := DevicesSetToMapWithoutId(mountpoints)
-		config.Mountpoints = lxcMountpoints
-	}
 	config.Nameserver = d.Get("nameserver").(string)
-	// proxmox api allows multiple network sets,
-	// having a unique 'id' parameter foreach set
-	networks := d.Get("network").(*schema.Set)
-	if len(networks.List()) > 0 {
-		lxcNetworks := DevicesSetToMapWithoutId(networks)
-		config.Networks = lxcNetworks
-	}
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
 	config.Pool = d.Get("pool").(string)
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
-	config.RootFs = d.Get("rootfs").(string)
 	config.SearchDomain = d.Get("searchdomain").(string)
 	config.SSHPublicKeys = d.Get("ssh_public_keys").(string)
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
-	config.Storage = d.Get("storage").(string)
 	config.Swap = d.Get("swap").(int)
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
@@ -379,7 +429,25 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.Unused = volumes
 
 	targetNode := d.Get("target_node").(string)
-	//vmr, _ := client.GetVmRefByName(vmName)
+
+	// proxmox api allows multiple network sets,
+	// having a unique 'id' parameter foreach set
+	networks := d.Get("network").([]interface{})
+	if len(networks) > 0 {
+		lxcNetworks := DevicesListToDevices(networks, "")
+		config.Networks = lxcNetworks
+	}
+
+	rootfs := d.Get("rootfs").([]interface{})[0].(map[string]interface{})
+	config.RootFs = rootfs
+
+	// proxmox api allows multiple mountpoint sets,
+	// having a unique 'id' parameter foreach set
+	mountpoints := d.Get("mountpoint").([]interface{})
+	if len(mountpoints) > 0 {
+		lxcMountpoints := DevicesListToDevices(mountpoints, "slot")
+		config.Mountpoints = lxcMountpoints
+	}
 
 	// get unique id
 	nextid, err := nextVmId(pconf)
@@ -388,7 +456,6 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		nextid = vmID
 	} else {
 		if err != nil {
-			pmParallelEnd(pconf)
 			return err
 		}
 	}
@@ -397,32 +464,29 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	vmr.SetNode(targetNode)
 	err = config.CreateLxc(vmr, client)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
-	pmParallelTransfer(pconf)
-
-	return resourceLxcRead(d, meta)
+	return _resourceLxcRead(d, meta)
 }
 
 func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
-	pmParallelBegin(pconf)
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
+
 	client := pconf.Client
 
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 	vmr := pxapi.NewVmRef(vmID)
 	_, err = client.GetVmInfo(vmr)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 
@@ -449,33 +513,17 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
 	config.Lock = d.Get("lock").(string)
 	config.Memory = d.Get("memory").(int)
-	// proxmox api allows multiple mountpoint sets,
-	// having a unique 'id' parameter foreach set
-	mountpoints := d.Get("mountpoint").(*schema.Set)
-	if len(mountpoints.List()) > 0 {
-		lxcMountpoints := DevicesSetToMapWithoutId(mountpoints)
-		config.Mountpoints = lxcMountpoints
-	}
 	config.Nameserver = d.Get("nameserver").(string)
-	// proxmox api allows multiple network sets,
-	// having a unique 'id' parameter foreach set
-	networks := d.Get("network").(*schema.Set)
-	if len(networks.List()) > 0 {
-		lxcNetworks := DevicesSetToMapWithoutId(networks)
-		config.Networks = lxcNetworks
-	}
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
 	config.Pool = d.Get("pool").(string)
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
-	config.RootFs = d.Get("rootfs").(string)
 	config.SearchDomain = d.Get("searchdomain").(string)
 	config.SSHPublicKeys = d.Get("ssh_public_keys").(string)
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
-	config.Storage = d.Get("storage").(string)
 	config.Swap = d.Get("swap").(int)
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
@@ -490,41 +538,118 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	}
 	config.Unused = volumes
 
+	if d.HasChange("network") {
+		// TODO Delete extra networks
+		networks := d.Get("network").([]interface{})
+		if len(networks) > 0 {
+			lxcNetworks := DevicesListToDevices(networks, "")
+			config.Networks = lxcNetworks
+		}
+	}
+
+	if d.HasChange("rootfs") {
+		oldSet, newSet := d.GetChange("rootfs")
+
+		oldRootFs := oldSet.([]interface{})[0].(map[string]interface{})
+		newRootFs := newSet.([]interface{})[0].(map[string]interface{})
+
+		processLxcDiskChanges(DeviceToMap(oldRootFs, 0), DeviceToMap(newRootFs, 0), pconf, vmr)
+		config.RootFs = newRootFs
+	}
+
+	if d.HasChange("mountpoint") {
+		oldSet, newSet := d.GetChange("mountpoint")
+		oldMounts := DevicesListToMapByKey(oldSet.([]interface{}), "key")
+		newMounts := DevicesListToMapByKey(newSet.([]interface{}), "key")
+		processLxcDiskChanges(oldMounts, newMounts, pconf, vmr)
+
+		lxcMountpoints := DevicesListToDevices(newSet.([]interface{}), "slot")
+		config.Mountpoints = lxcMountpoints
+	}
+
+	// TODO: Detect changes requiring Reboot
+
 	err = config.UpdateConfig(vmr, client)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 
-	pmParallelTransfer(pconf)
-
-	return resourceLxcRead(d, meta)
+	return _resourceLxcRead(d, meta)
 }
 
 func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
-	pmParallelBegin(pconf)
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
+	return _resourceLxcRead(d, meta)
+}
+
+func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
+	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
-		pmParallelEnd(pconf)
 		d.SetId("")
 		return err
 	}
 	vmr := pxapi.NewVmRef(vmID)
 	_, err = client.GetVmInfo(vmr)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 	config, err := pxapi.NewConfigLxcFromApi(vmr, client)
 	if err != nil {
-		pmParallelEnd(pconf)
 		return err
 	}
 	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
 	d.Set("target_node", vmr.Node())
 
+	// Read Features
+	defaultFeatures := d.Get("features").(*schema.Set)
+	if len(defaultFeatures.List()) > 0 {
+		featuresWithDefaults := UpdateDeviceConfDefaults(config.Features, defaultFeatures)
+		d.Set("features", featuresWithDefaults)
+	}
+
+	// Read Mountpoints
+	configMountpointSet := d.Get("mountpoint").([]interface{})
+	configMountpointMap := DevicesListToMapByKey(configMountpointSet, "slot")
+	if len(configMountpointSet) > 0 {
+		for slot, device := range config.Mountpoints {
+			if confDevice, ok := configMountpointMap[slot]; ok {
+				device["key"] = confDevice["key"]
+			}
+		}
+
+		if err = AssertNoNonSchemaValues(config.Mountpoints, lxcResourceDef.Schema["mountpoint"]); err != nil {
+			return err
+		}
+
+		flatMountpoints, _ := FlattenDevicesList(config.Networks)
+		if err = d.Set("mountpoint", flatMountpoints); err != nil {
+			return err
+		}
+	}
+
+	// Read RootFs
+	confRootFs := d.Get("rootfs").([]interface{})[0]
+	adaptedRootFs := adaptDeviceToConf(confRootFs.(map[string]interface{}), config.RootFs)
+	d.Set("rootfs.0", adaptedRootFs)
+
+	// Read Networks
+	configNetworksSet := d.Get("network").([]interface{})
+	if len(configNetworksSet) > 0 {
+		if err = AssertNoNonSchemaValues(config.Networks, lxcResourceDef.Schema["network"]); err != nil {
+			return err
+		}
+		flatNetworks, _ := FlattenDevicesList(config.Networks)
+		flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
+		if err = d.Set("network", flatNetworks); err != nil {
+			return err
+		}
+	}
+
+	// Read Misc
 	d.Set("arch", config.Arch)
 	d.Set("bwlimit", config.BWLimit)
 	d.Set("cmode", config.CMode)
@@ -533,51 +658,20 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("cpulimit", config.CPULimit)
 	d.Set("cpuunits", config.CPUUnits)
 	d.Set("description", config.Description)
-
-	defaultFeatures := d.Get("features").(*schema.Set)
-	if len(defaultFeatures.List()) > 0 {
-		featuresWithDefaults := UpdateDeviceConfDefaults(config.Features, defaultFeatures)
-		d.Set("features", featuresWithDefaults)
-	}
-
 	d.Set("force", config.Force)
 	d.Set("hookscript", config.Hookscript)
 	d.Set("hostname", config.Hostname)
 	d.Set("ignore_unpack_errors", config.IgnoreUnpackErrors)
 	d.Set("lock", config.Lock)
 	d.Set("memory", config.Memory)
-
-	configMountpointSet := d.Get("mountpoint").(*schema.Set)
-	configMountpointSet = AddIds(configMountpointSet)
-	if len(configMountpointSet.List()) > 0 {
-		activeMountpointSet := UpdateDevicesSet(configMountpointSet, config.Mountpoints)
-		activeMountpointSet = RemoveIds(activeMountpointSet)
-		d.Set("mountpoint", activeMountpointSet)
-	}
-
 	d.Set("nameserver", config.Nameserver)
-
-	configNetworksSet := d.Get("network").(*schema.Set)
-	configNetworksSet = AddIds(configNetworksSet)
-	if len(configNetworksSet.List()) > 0 {
-		activeNetworksSet := UpdateDevicesSet(configNetworksSet, config.Networks)
-		activeNetworksSet = RemoveIds(activeNetworksSet)
-		d.Set("network", activeNetworksSet)
-	}
-
 	d.Set("onboot", config.OnBoot)
-	d.Set("ostemplate", config.Ostemplate)
 	d.Set("ostype", config.OsType)
-	d.Set("password", config.Password)
 	d.Set("pool", config.Pool)
 	d.Set("protection", config.Protection)
 	d.Set("restore", config.Restore)
-	d.Set("rootfs", config.RootFs)
 	d.Set("searchdomain", config.SearchDomain)
-	d.Set("ssh_public_keys", config.SSHPublicKeys)
-	d.Set("start", config.Start)
 	d.Set("startup", config.Startup)
-	d.Set("storage", config.Storage)
 	d.Set("swap", config.Swap)
 	d.Set("template", config.Template)
 	d.Set("tty", config.Tty)
@@ -585,6 +679,147 @@ func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("unprivileged", config.Unprivileged)
 	d.Set("unused", config.Unused)
 
-	pmParallelEnd(pconf)
+	// Only applicable on create and not readable
+	// d.Set("start", config.Start)
+	// d.Set("ostemplate", config.Ostemplate)
+	// d.Set("password", config.Password)
+	// d.Set("ssh_public_keys", config.SSHPublicKeys)
+
+	return nil
+}
+
+func processLxcDiskChanges(
+	prevDiskSet KeyedDeviceMap, newDiskSet KeyedDeviceMap, pconf *providerConfiguration,
+	vmr *pxapi.VmRef,
+) error {
+	// 1. Delete slots that either a. Don't exist in the new set or b. Have a different volume in the new set
+	deleteDisks := []pxapi.QemuDevice{}
+	for key, prevDisk := range prevDiskSet {
+		newDisk, ok := (newDiskSet)[key]
+		// The Rootfs can't be deleted
+		if ok && diskSlotName(newDisk) == "rootfs" {
+			continue
+		}
+		if !ok || (newDisk["volume"] != "" && prevDisk["volume"] != newDisk["volume"]) || (prevDisk["slot"] != newDisk["slot"]) {
+			deleteDisks = append(deleteDisks, prevDisk)
+		}
+	}
+	if len(deleteDisks) > 0 {
+		deleteDiskKeys := []string{}
+		for _, disk := range deleteDisks {
+			deleteDiskKeys = append(deleteDiskKeys, diskSlotName(disk))
+		}
+		params := map[string]interface{}{}
+		params["delete"] = strings.Join(deleteDiskKeys, ", ")
+		if vmr.GetVmType() == "lxc" {
+			if _, err := pconf.Client.SetLxcConfig(vmr, params); err != nil {
+				return err
+			}
+		} else {
+			if _, err := pconf.Client.SetVmConfig(vmr, params); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Create New Disks and Re-reference Slot-Changed Disks
+	newParams := map[string]interface{}{}
+	for key, newDisk := range newDiskSet {
+		prevDisk, ok := prevDiskSet[key]
+		diskName := diskSlotName(newDisk)
+
+		if ok {
+			for k, v := range prevDisk {
+				_, ok := newDisk[k]
+				if !ok {
+					newDisk[k] = v
+				}
+			}
+		}
+
+		if !ok || newDisk["slot"] != prevDisk["slot"] {
+			newParams[diskName] = pxapi.FormatDiskParam(newDisk)
+		}
+	}
+	if len(newParams) > 0 {
+		if vmr.GetVmType() == "lxc" {
+			if _, err := pconf.Client.SetLxcConfig(vmr, newParams); err != nil {
+				return err
+			}
+		} else {
+			if _, err := pconf.Client.SetVmConfig(vmr, newParams); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Move and Resize Existing Disks
+	for key, prevDisk := range prevDiskSet {
+		newDisk, ok := newDiskSet[key]
+		diskName := diskSlotName(newDisk)
+		if ok {
+			// 2. Move disks with mismatching storage
+			newStorage, ok := newDisk["storage"].(string)
+			if ok && newStorage != prevDisk["storage"] {
+				if vmr.GetVmType() == "lxc" {
+					_, err := pconf.Client.MoveLxcDisk(vmr, diskSlotName(prevDisk), newStorage)
+					if err != nil {
+						return err
+					}
+				} else {
+					_, err := pconf.Client.MoveQemuDisk(vmr, diskSlotName(prevDisk), newStorage)
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+			// 3. Resize disks with different sizes
+			if err := processDiskResize(prevDisk, newDisk, diskName, pconf, vmr); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Update Volume info
+	apiResult, err := pconf.Client.GetVmConfig(vmr)
+	if err != nil {
+		return err
+	}
+	for _, newDisk := range newDiskSet {
+		diskName := diskSlotName(newDisk)
+		apiConfigStr := apiResult[diskName].(string)
+		apiDevice := pxapi.ParsePMConf(apiConfigStr, "volume")
+		newDisk["volume"] = apiDevice["volume"]
+	}
+
+	return nil
+}
+
+func diskSlotName(disk pxapi.QemuDevice) string {
+	diskType, ok := disk["type"].(string)
+	if !ok || diskType == "" {
+		diskType = "mp"
+	}
+	diskSlot, ok := disk["slot"].(int)
+	if !ok {
+		return "rootfs"
+	}
+	return diskType + strconv.Itoa(diskSlot)
+}
+
+func processDiskResize(
+	prevDisk pxapi.QemuDevice, newDisk pxapi.QemuDevice,
+	diskName string,
+	pconf *providerConfiguration, vmr *pxapi.VmRef,
+) error {
+	newSize, ok := newDisk["size"]
+	if ok && newSize != prevDisk["size"] {
+		log.Print("[DEBUG] resizing disk " + diskName)
+		_, err := pconf.Client.ResizeQemuDiskRaw(vmr, diskName, newDisk["size"].(string))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
