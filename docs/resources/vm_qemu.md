@@ -1,4 +1,4 @@
-# Terraform VM Qemu Resource
+# VM Qemu Resource
 
 Resources are the most important element in the Terraform language. Each resource block describes one or more 
 infrastructure objects, such as virtual networks, compute instances, or higher-level components such as DNS records.
@@ -13,7 +13,7 @@ base with an ISO, and make the rest of the VM resources depend on that base "tem
 When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. The name and target node of the VM are
 the only required parameters.
 
-```tf
+```hcl
 resource "proxmox_vm_qemu" "resource-name" {
     name = "VM name"
     target_node = "Node to create the VM on"
@@ -25,7 +25,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 With preprovision you can provision a VM directly from the resource block. This provisioning method is therefore ran
 **before** provision blocks. When using preprovision, there are three `os_type` options: `ubuntu`, `centos` or `cloud-init`.
 
-```tf
+```hcl
 resource "proxmox_vm_qemu" "prepprovision-test" {
     ...
     preprovision = true
@@ -39,7 +39,7 @@ There is a pre-provision phase which is used to set a hostname, intialize eth0, 
 space. This is done over SSH with the `ssh_forward_ip`, `ssh_user` and `ssh_private_key`. Disk resize is done if the file 
 [/etc/auto_resize_vda.sh](https://github.com/Telmate/terraform-ubuntu-proxmox-iso/blob/master/auto_resize_vda.sh) exists.
 
-```tf
+```hcl
 resource "proxmox_vm_qemu" "prepprovision-test" {
     ...
     preprovision = true
@@ -74,7 +74,7 @@ creating a resource that is using Cloud-Init, there are multi configurations pos
 parameter to create based on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html)
 or use the Proxmox variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `searchdomain`, `nameserver` and `sshkeys`.
 
-For more information, see the [Cloud-init guide](cloud_init_guide.md).
+For more information, see the [Cloud-init guide](docs/guides/cloud_init.md).
 
 ## Argument reference
 
