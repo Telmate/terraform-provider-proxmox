@@ -68,8 +68,8 @@ func Provider() *schema.Provider {
 				Default:  4,
 			},
 			"pm_tls_insecure": {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", false),
 			},
 			"pm_log_enable": {
