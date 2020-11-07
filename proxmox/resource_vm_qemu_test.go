@@ -2,11 +2,11 @@ package proxmox
 
 import (
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	//"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -28,7 +28,7 @@ func testAccPreCheck(t *testing.T) {
 }
 
 func testAccProxmoxProviderFactory() map[string]*schema.Provider {
-	providers := map[string]*schema.Provider {
+	providers := map[string]*schema.Provider{
 		"proxmox": Provider(),
 	}
 	// TODO move this log configuration elsewhere, it doesn't make sense here but
@@ -73,18 +73,78 @@ func testAccProxmoxProviderFactory() map[string]*schema.Provider {
 //	return nil
 //}
 
-func testAccExampleResource(name string, target_node string) string {
+// testAccExampleQemuBasic generates the most simplistic VM we're able to make
+// this confirms we can spin up a vm using just default values
+func testAccExampleQemuBasic(name string, targetNode string) string {
 	return fmt.Sprintf(`
 resource "proxmox_vm_qemu" "%s" {
   name = "%s"
   target_node = "%s"
   iso = "local:iso/SpinRite.iso"
 }
-`, name, name, target_node)
+`, name, name, targetNode)
 }
 
+// testAccExampleResource generates a virtual machine and uses the disk
+// slot setting to assign a non-standard disk position (scsi5 vs scsi0)
+func testAccExampleQemuWithDiskSlot(name string, diskSlot int, targetNode string) string {
+	return fmt.Sprintf(`
+resource "proxmox_vm_qemu" "%s" {
+  name = "%s"
+  target_node = "%s"
+  iso = "local:iso/SpinRite.iso"
+  disk {
+    size = "1G"
+    type = "scsi"
+    storage = "local"
+    slot = %v
+  }
+}
+`, name, name, targetNode, diskSlot)
+}
+
+// testAccExampleResource generates a configured VM with a 1G disk
+// the goal with this resource is to make a "basic" but "standard" virtual machine
+// using a configuration that would apply to a usable vm (but NOT a cloud config'd one)
+func testAccExampleQemuStandard(name string, targetNode string) string {
+	return fmt.Sprintf(`
+resource "proxmox_vm_qemu" "%s" {
+  name = "%s"
+  target_node = "%s"
+  iso = "local:iso/SpinRite.iso"
+  disk {
+    size = "1G"
+    type = "scsi"
+    storage = "local"
+  }
+}
+`, name, name, targetNode)
+}
+
+// testAccExampleResourceClone generate two simply configured VMs where the second is a
+// clone of the first.
+func testAccExampleQemuClone(name string, name_clone string, targetNode string) string {
+	source_resource := testAccExampleQemuStandard(name, targetNode)
+	clone_resource := fmt.Sprintf(`
+resource "proxmox_vm_qemu" "%s" {
+  name = "%s"
+  target_node = "%s"
+  clone = "%s"
+  disk {
+    size = "1G"
+    type = "scsi"
+    storage = "local"
+  }
+  depends_on = [proxmox_vm_qemu.%s]
+}
+`, name_clone, name_clone, targetNode, name, name)
+	return strings.Join([]string{source_resource, clone_resource}, "\n")
+}
+
+// TestAccProxmoxVmQemu_BasicCreate tests a simple creation and destruction of the smallest, but
+// but still viable, configuration for a VM we can create.
 func TestAccProxmoxVmQemu_BasicCreate(t *testing.T) {
-	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
+	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
 
 	resource.Test(t, resource.TestCase{
@@ -93,9 +153,77 @@ func TestAccProxmoxVmQemu_BasicCreate(t *testing.T) {
 		//CheckDestroy: testAccCheckExampleResourceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccExampleResource(resourceName, testAccProxmoxTargetNode),
+				Config: testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
+				),
+			},
+		},
+	})
+}
+
+// TestAccProxmoxVmQemu_BasicCreate tests a simple creation and destruction of the smallest, but
+// but still viable, configuration for a VM we can create.
+func TestAccProxmoxVmQemu_StandardCreate(t *testing.T) {
+	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProxmoxProviderFactory(),
+		//CheckDestroy: testAccCheckExampleResourceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccExampleQemuStandard(resourceName, testAccProxmoxTargetNode),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
+				),
+			},
+		},
+	})
+}
+
+// TODO:  this test FAILS - it looks like the api library isn't actually sending the slot request to proxmox? needs further investigation.
+// TestAccProxmoxVmQemu_DiskSlot tests we can correctly create a vm disk assigned to a particular disk slot
+//func TestAccProxmoxVmQemu_DiskSlot(t *testing.T) {
+//	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+//	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
+//	diskSlot := 5
+//
+//	resource.Test(t, resource.TestCase{
+//		PreCheck:  func() { testAccPreCheck(t) },
+//		Providers: testAccProxmoxProviderFactory(),
+//		//CheckDestroy: testAccCheckExampleResourceDestroy,
+//		Steps: []resource.TestStep{
+//			{
+//				Config: testAccExampleQemuWithDiskSlot(resourceName, diskSlot, testAccProxmoxTargetNode),
+//				Check: resource.ComposeTestCheckFunc(
+//					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
+//					resource.TestCheckResourceAttr(resourcePath, "disk.0.slot", fmt.Sprintf("%v", diskSlot)),
+//				),
+//			},
+//		},
+//	})
+//}
+
+// TestAccProxmoxVmQemu_BasicCreateClone create a minimally configured VM, then creates a similar
+// minimally configured clone from the original VM.
+func TestAccProxmoxVmQemu_BasicCreateClone(t *testing.T) {
+	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
+	cloneName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	clonePath := fmt.Sprintf("proxmox_vm_qemu.%s", cloneName)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProxmoxProviderFactory(),
+		//CheckDestroy: testAccCheckExampleResourceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccExampleQemuClone(resourceName, cloneName, testAccProxmoxTargetNode),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
+					resource.TestCheckResourceAttr(clonePath, "name", cloneName),
 				),
 			},
 		},

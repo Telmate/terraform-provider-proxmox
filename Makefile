@@ -21,8 +21,9 @@ build: clean
 	CGO_ENABLED=0 go build  -o bin/terraform-provider-proxmox_v2.0.0 cmd/terraform-provider-proxmox/* 
 	@echo "Built terraform-provider-proxmox"
 
-acctest:
-	TF_ACC=1 go test ./proxmox
+acctest: build
+	# to run only certain tests, run something of the form:  make acctest TESTARGS='-run=TestAccProxmoxVmQemu_DiskSlot'
+	TF_ACC=1 go test ./proxmox $(TESTARGS)
 
 install: build 
 	cp bin/terraform-provider-proxmox_v2.0.0 $$GOPATH/bin/terraform-provider-proxmox

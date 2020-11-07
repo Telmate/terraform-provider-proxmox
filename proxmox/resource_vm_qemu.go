@@ -348,7 +348,7 @@ func resourceVmQemu() *schema.Resource {
 						"format": &schema.Schema{
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "raw",
+							Computed: true,
 						},
 						"cache": &schema.Schema{
 							Type:     schema.TypeString,
@@ -425,6 +425,11 @@ func resourceVmQemu() *schema.Resource {
 						},
 						"volume": {
 							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+						"slot": {
+							Type:     schema.TypeInt,
 							Optional: true,
 							Computed: true,
 						},
@@ -1055,17 +1060,10 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 			}
 		}
 	}
-	// the attribute storage_type is a value only used by proxmox-api-go and IS NOT SET by the library
-	// when we read data back from proxmox unfortunately. A ticket is open with the library to
-	// find a better solution than simply reading the current state (https://github.com/Telmate/proxmox-api-go/issues/88)
-	//
-	// we need to do the same thing with cache because proxmox-api-go requires a value for cache but doesn't return a value for
-	// it when it is empty. thus if cache is "" then we should insert "none" instead for consistency
-	stateDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
-	for _, qemuDisk := range config.QemuDisks {
-		thisDiskId := qemuDisk["id"].(int)
-		qemuDisk["storage_type"] = stateDisks[thisDiskId]["storage_type"] // copy type from terraform state for this disk
 
+	// need to set cache because proxmox-api-go requires a value for cache but doesn't return a value for
+	// it when it is empty. thus if cache is "" then we should insert "none" instead for consistency
+	for _, qemuDisk := range config.QemuDisks {
 		// cache == "none" is required for disk creation/updates but proxmox-api-go returns cache == "" or cache == nil in reads
 		if qemuDisk["cache"] == "" || qemuDisk["cache"] == nil {
 			qemuDisk["cache"] = "none"
@@ -1156,6 +1154,7 @@ func prepareDiskSize(
 	vmr *pxapi.VmRef,
 	diskConfMap pxapi.QemuDevices,
 ) error {
+	logger, _ := CreateSubLogger("prepareDiskSize")
 	clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
 	if err != nil {
 		return err
@@ -1176,14 +1175,18 @@ func prepareDiskSize(
 			return err
 		}
 
+		logger.Debug().Int("diskId", diskID).Msgf("Checking disk sizing. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
 		if diskSize > clonedDiskSize {
-			log.Print("[DEBUG] resizing disk " + diskName)
+			logger.Debug().Int("diskId", diskID).Msgf("Resizing disk. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
 			_, err = client.ResizeQemuDiskRaw(vmr, diskName, diskConf["size"].(string))
 			if err != nil {
 				return err
 			}
+		} else if diskSize == clonedDiskSize {
+			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
 		} else {
-			return fmt.Errorf("Proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%v' to '%v'", diskName, clonedDiskSize, diskSize)		}
+			return fmt.Errorf("Proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%v' to '%v'", diskName, clonedDiskSize, diskSize)
+		}
 
 	}
 	return nil
