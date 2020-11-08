@@ -27,19 +27,17 @@ terraform init
 
 ## How to get terraform to recognize third party provider
 
-Third-party plugins (both providers and provisioners) can be manually installed into the user plugins directory,
+Third-party plugins  can be manually installed into the user plugins directory,
 located at `%APPDATA%\terraform.d\plugins` on Windows and `~/.terraform.d/plugins` on other systems. Plugins come
 with executables that have to be placed in the plugin directory.
 
 ## Compile the executables with Go
 
 In order to build the required executables, [install Go](https://golang.org/doc/install) first. Then clone this
-repository and run the following commands inside the cloned repository. Since this plugin is both a provider and
-provisioner in one, there are two install commands.
+repository and run the following commands inside the cloned repository.
 
 ```shell
 go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
-go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provisioner-proxmox
 ```
 
 Then create the executables. They are placed in the `bin` folder inside the repository.
@@ -80,7 +78,6 @@ Then, copy the executables to the directory you just created.
 
 ```shell
 cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/$PLUGIN_ARCH/
-cp bin/terraform-provisioner-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/$PLUGIN_ARCH/
 ```
 
 Add the source to `main.tf` `required_providers` section like so:

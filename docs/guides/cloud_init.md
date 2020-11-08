@@ -210,10 +210,6 @@ EOF
       "ip a"
     ]
   }
-
-  provisioner "proxmox" {
-    action = "sshbackward"
-  }
 }
 
 ```

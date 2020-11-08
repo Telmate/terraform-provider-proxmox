@@ -2,12 +2,12 @@
 
 # Terraform provider plugin for Proxmox
 
-This repository provides both a Terraform provider and provisioner for the [Proxmox virtualization platform](https://pve.proxmox.com/pve-docs/). 
+This repository provides both a Terraform provider for the [Proxmox virtualization platform](https://pve.proxmox.com/pve-docs/).
 
 ## Getting started
 
 In order to get started, use [the documentation included in this repository](docs/index.md). The documentation contains
-a list of the options for both the provider and the provisioner. Moreover, there are some guides available how to combine
+a list of the options for the provider. Moreover, there are some guides available how to combine
 options and start specific VMs.
 
 ## Known Limitations
