@@ -141,6 +141,31 @@ resource "proxmox_vm_qemu" "%s" {
 	return strings.Join([]string{source_resource, clone_resource}, "\n")
 }
 
+// testAccExampleResourceClone generate two simply configured VMs where the second is a
+// clone of the first.
+func testAccExampleQemuCloneWithTwoDisks(name string, name_clone string, targetNode string) string {
+	source_resource := testAccExampleQemuStandard(name, targetNode)
+	clone_resource := fmt.Sprintf(`
+resource "proxmox_vm_qemu" "%s" {
+  name = "%s"
+  target_node = "%s"
+  clone = "%s"
+  disk {
+    size = "2G"
+    type = "scsi"
+    storage = "local"
+  }
+  disk {
+    size = "3G"
+    type = "scsi"
+    storage = "local"
+  }
+  depends_on = [proxmox_vm_qemu.%s]
+}
+`, name_clone, name_clone, targetNode, name, name)
+	return strings.Join([]string{source_resource, clone_resource}, "\n")
+}
+
 // TestAccProxmoxVmQemu_BasicCreate tests a simple creation and destruction of the smallest, but
 // but still viable, configuration for a VM we can create.
 func TestAccProxmoxVmQemu_BasicCreate(t *testing.T) {
@@ -224,6 +249,38 @@ func TestAccProxmoxVmQemu_BasicCreateClone(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
 					resource.TestCheckResourceAttr(clonePath, "name", cloneName),
+					// check for unused_disk.0.file existance as that means an extra disk popped up
+					// which would be a regression of https://github.com/Telmate/terraform-provider-proxmox/issues/239
+					resource.TestCheckNoResourceAttr(clonePath, "unused_disk.0.file"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccProxmoxVmQemu_CreateCloneWithTwoDisks create a minimally configured VM, then creates a cloned vm
+// with two disks, each increased in size compared to the original vm
+func TestAccProxmoxVmQemu_CreateCloneWithTwoDisks(t *testing.T) {
+	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
+	cloneName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	clonePath := fmt.Sprintf("proxmox_vm_qemu.%s", cloneName)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProxmoxProviderFactory(),
+		//CheckDestroy: testAccCheckExampleResourceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccExampleQemuCloneWithTwoDisks(resourceName, cloneName, testAccProxmoxTargetNode),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
+					resource.TestCheckResourceAttr(clonePath, "name", cloneName),
+					// check for unused_disk.0.file existance as that means an extra disk popped up
+					// which would be a regression of https://github.com/Telmate/terraform-provider-proxmox/issues/239
+					resource.TestCheckNoResourceAttr(clonePath, "unused_disk.0.file"),
+					resource.TestCheckResourceAttr(clonePath, "disk.0.size", "2G"),
+					resource.TestCheckResourceAttr(clonePath, "disk.1.size", "3G"),
 				),
 			},
 		},

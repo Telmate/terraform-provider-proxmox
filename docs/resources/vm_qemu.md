@@ -91,7 +91,7 @@ The following arguments are supported in the resource block:
 * `bootdisk` - (Optional; defaults to true)
 * `agent` - (Optional; defaults to 0)
 * `iso` - (Optional)
-* `clone` - (Optional)
+* `clone` - (Optional) - The name of the VM to clone into a new VM
 * `full_clone` - (Optional)
 * `hastate` - (Optional) 
 * `qemu_os` - (Optional; defaults to l26)
@@ -122,7 +122,6 @@ The following arguments are supported in the resource block:
     * `id` (Required)
     * `type` (Required)
     * `storage` (Required)
-    * `storage_type` (Optional; defaults to dir) One of PVE types [as described in their documentation](https://pve.proxmox.com/wiki/Storage).
     * `size` (Required)
     * `format` (Optional; defaults to raw)
     * `cache` (Optional; defaults to none)
