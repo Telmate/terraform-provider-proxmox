@@ -1068,6 +1068,11 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 		if qemuDisk["cache"] == "" || qemuDisk["cache"] == nil {
 			qemuDisk["cache"] = "none"
 		}
+		if qemuDisk["backup"] == 0 {
+			qemuDisk["backup"] = false
+		} else if qemuDisk["backup"] == 1 {
+			qemuDisk["backup"] = true
+		}
 	}
 
 	flatDisks, _ := FlattenDevicesList(config.QemuDisks)
