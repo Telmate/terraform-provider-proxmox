@@ -1047,6 +1047,14 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig1", config.Ipconfig1)
 	d.Set("ipconfig2", config.Ipconfig2)
 
+	// Some dirty hacks to populate undefined keys with default values.
+	checkedKeys := []string{"clone_wait", "force_create", "full_clone", "define_connection_info", "preprovision"}
+	for _, key := range checkedKeys {
+		if _, ok := d.GetOk(key); !ok {
+			d.Set(key, thisResource.Schema[key].Default)
+		}
+	}
+
 	// Disks.
 	// add an explicit check that the keys in the config.QemuDisks map are a strict subset of
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
@@ -1092,6 +1100,10 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
 	logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", config.QemuNetworks)
 	for _, networkEntry := range config.QemuNetworks {
+		// If network tag was not set, assign default value.
+		if networkEntry["tag"] == "" || networkEntry["tag"] == nil {
+			networkEntry["tag"] = thisResource.Schema["network"].Elem.(*schema.Resource).Schema["tag"].Default
+		}
 		for key, _ := range networkEntry {
 			if _, ok := thisResource.Schema["network"].Elem.(*schema.Resource).Schema[key]; !ok {
 				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
