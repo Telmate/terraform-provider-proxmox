@@ -20,7 +20,6 @@ resource "proxmox_lxc" "lxc-test" {
     ostemplate = "shared:vztmpl/centos-7-default_20171212_amd64.tar.xz"
     password = "rootroot"
     pool = "terraform"
-    storage = "local-lvm"
     target_node = "node-01"
     unprivileged = true
 }
