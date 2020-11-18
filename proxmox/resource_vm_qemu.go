@@ -320,6 +320,28 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
+			"unused_disk": &schema.Schema{
+				Type:          schema.TypeList,
+				Computed:      true,
+				//Optional:      true,
+				Description:   "Record unused disks in proxmox. This is intended to be read-only for now.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"storage": &schema.Schema{
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"slot": &schema.Schema{
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"file": &schema.Schema{
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"disk": &schema.Schema{
 				Type:          schema.TypeList,
 				Optional:      true,
@@ -765,6 +787,31 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				return err
 			}
 
+			// give sometime to proxmox to catchup
+			// TODO use a real try-retry loop here instead of a simple wait
+			time.Sleep(time.Duration(d.Get("clone_wait").(int)/2) * time.Second)
+
+			// read back all the current disk configurations from proxmox
+			// this allows us to receive updates on the post-clone state of the vm we're building
+			config_post_clone, err := pxapi.NewConfigQemuFromApi(vmr, client)
+			logger.Debug().Str("vmid", d.Id()).Msgf("Original disks: '%+v', Clone Disks '%+v'", config.QemuDisks, config_post_clone.QemuDisks)
+
+			// update the current working state to use the appropriate file specification
+			// proxmox needs so we can correctly update the existing disks (post-clone)
+			// instead of accidentially causing the existing disk to be detached.
+			// see https://github.com/Telmate/terraform-provider-proxmox/issues/239
+			for slot, disk := range(config_post_clone.QemuDisks) {
+				// only update the desired configuration if it was not set by the user
+				// we do not want to overwrite the desired config with the results from
+				// proxmox if the user indicates they wish a particular file or volume config
+				if config.QemuDisks[slot]["file"] == "" {
+					config.QemuDisks[slot]["file"] = disk["file"]
+				}
+				if config.QemuDisks[slot]["volume"] == "" {
+					config.QemuDisks[slot]["volume"] = disk["volume"]
+				}
+			}
+
 			err = config.UpdateConfig(vmr, client)
 			if err != nil {
 				// Set the id because when update config fail the vm is still created
@@ -1064,7 +1111,9 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
 					continue
 				}
-				return fmt.Errorf("Proxmox Provider Error: proxmox API returned new disk parameter '%v' we cannot process", key)
+				if !pconf.DangerouslyIgnoreUnknownAttributes {
+					return fmt.Errorf("Proxmox Provider Error: proxmox API returned new disk parameter '%v' we cannot process", key)
+				}
 			}
 		}
 	}
@@ -1086,6 +1135,13 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	flatDisks, _ := FlattenDevicesList(config.QemuDisks)
 	flatDisks, _ = DropElementsFromMap([]string{"id"}, flatDisks)
 	if d.Set("disk", flatDisks); err != nil {
+		return err
+	}
+
+	// read in the unused disks
+	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
+	logger.Debug().Int("vmid", vmID).Msgf("Unused Disk Block Processed '%v'", config.QemuNetworks)
+	if d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return err
 	}
 
@@ -1202,7 +1258,7 @@ func prepareDiskSize(
 		} else if diskSize == clonedDiskSize {
 			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
 		} else {
-			return fmt.Errorf("Proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%v' to '%v'", diskName, clonedDiskSize, diskSize)
+			return fmt.Errorf("Proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%vG' to '%vG'", diskName, clonedDiskSize, diskSize)
 		}
 
 	}

@@ -14,14 +14,15 @@ import (
 )
 
 type providerConfiguration struct {
-	Client          *pxapi.Client
-	MaxParallel     int
-	CurrentParallel int
-	MaxVMID         int
-	Mutex           *sync.Mutex
-	Cond            *sync.Cond
-	LogFile         string
-	LogLevels       map[string]string
+	Client                             *pxapi.Client
+	MaxParallel                        int
+	CurrentParallel                    int
+	MaxVMID                            int
+	Mutex                              *sync.Mutex
+	Cond                               *sync.Cond
+	LogFile                            string
+	LogLevels                          map[string]string
+	DangerouslyIgnoreUnknownAttributes bool
 }
 
 // Provider - Terrafrom properties for proxmox
@@ -91,6 +92,12 @@ func Provider() *schema.Provider {
 				Optional: true,
 				Default:  300,
 			},
+			"pm_dangerously_ignore_unknown_attributes": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_DANGEROUSLY_IGNORE_UNKNOWN_ATTRIBUTES", false),
+				Description: "By default this provider will exit if an unknown attribute is found. This is to prevent the accidential destruction of VMs or Data when something in the proxmox API has changed/updated and is not confirmed to work with this provider. Set this to true at your own risk. It may allow you to proceed in cases when the provider refuses to work, but be aware of the danger in doing so.",
+			},
 			"pm_otp": &pmOTPprompt,
 		},
 
@@ -134,14 +141,15 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
 	var mut sync.Mutex
 	return &providerConfiguration{
-		Client:          client,
-		MaxParallel:     d.Get("pm_parallel").(int),
-		CurrentParallel: 0,
-		MaxVMID:         -1,
-		Mutex:           &mut,
-		Cond:            sync.NewCond(&mut),
-		LogFile:         d.Get("pm_log_file").(string),
-		LogLevels:       logLevels,
+		Client:                             client,
+		MaxParallel:                        d.Get("pm_parallel").(int),
+		CurrentParallel:                    0,
+		MaxVMID:                            -1,
+		Mutex:                              &mut,
+		Cond:                               sync.NewCond(&mut),
+		LogFile:                            d.Get("pm_log_file").(string),
+		LogLevels:                          logLevels,
+		DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
 	}, nil
 }
 
