@@ -55,6 +55,8 @@ github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdko
 github.com/QcloudApi/qcloud_sign_golang v0.0.0-20141224014652-e4130a326409/go.mod h1:1pk82RBxDY/JZnPQrtqHlUFfCctgdorsd9M06fMynOM=
 github.com/Telmate/proxmox-api-go v0.0.0-20201117145754-91653da2c903 h1:UUUl64ncc1fNPKZA8xbIzh5B0+5kYndKhFQ9moNalXY=
 github.com/Telmate/proxmox-api-go v0.0.0-20201117145754-91653da2c903/go.mod h1:ayPkdmEKnlssqLQ9K1BE1jlsaYhXVwkoduXI30oQF0I=
+github.com/Telmate/proxmox-api-go v0.0.0-20201119162508-829786e5b8df h1:ED8m/7BU/FEx2qa3L+HB08lSI3yWyJYuzwqcaeRzlLI=
+github.com/Telmate/proxmox-api-go v0.0.0-20201119162508-829786e5b8df/go.mod h1:ayPkdmEKnlssqLQ9K1BE1jlsaYhXVwkoduXI30oQF0I=
 github.com/abdullin/seq v0.0.0-20160510034733-d5467c17e7af/go.mod h1:5Jv4cbFiHJMsVxt52+i0Ha45fjshj6wxYr1r19tB9bw=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
