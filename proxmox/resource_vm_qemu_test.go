@@ -33,7 +33,7 @@ func testAccProxmoxProviderFactory() map[string]*schema.Provider {
 	}
 	// TODO move this log configuration elsewhere, it doesn't make sense here but
 	// it's a short term solution to test the testing out
-	ConfigureLogger(true, "acctest.log", map[string]string{"_default": "debug", "_capturelog": ""})
+	ConfigureLogger(true, "../../acctest.log", map[string]string{"_default": "debug", "_capturelog": ""})
 	return providers
 }
 

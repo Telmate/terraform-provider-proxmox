@@ -455,6 +455,11 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
+						"storage_type": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: false,
+							Computed: true,
+						},
 					},
 				},
 			},
