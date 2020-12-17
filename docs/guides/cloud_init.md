@@ -52,7 +52,7 @@ This allows you to create a NoCloud (v1) or ConfigDrive (v2) configuration
 file instead of using the one that will be automatically generated for you.
 The example below shows how to use this.  For help writing the config file,
 see the
-[NoCloud](riv://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html)
+[NoCloud](https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html)
 or
 [ConfigDrive](https://cloudinit.readthedocs.io/en/latest/topics/datasources/configdrive.html)
 docs.
