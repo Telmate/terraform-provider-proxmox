@@ -142,7 +142,8 @@ The following arguments are supported in the resource block:
     * `type` (Required)
 * `pool` - (Optional)
 * `force_create` - (Optional; defaults to true)
-* `clone_wait` - (Optional)
+* `clone_wait` - (Optional; defaults to 15 seconds) Amount of time to wait after a clone operation and after an UpdateConfig operation.
+* `additional_wait` - (Optional; defaults to 15 seconds) Provider will wait n/2 seconds after a clone operation and n seconds after an UpdateConfig operation.
 * `preprovision` - (Optional; defaults to true)
 * `os_type` - (Optional) Which provisioning method to use, based on the OS type. Possible values: ubuntu, centos, cloud-init.
 * `force_recreate_on_change_of` (Optional) // Allows this to depend on another resource, that when changed, needs to re-create this vm. An example where this is useful is a cloudinit configuration (as the `cicustom` attribute points to a file not the content).

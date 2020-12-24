@@ -576,6 +576,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  15,
 			},
+			"additional_wait": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  15,
+			},
 			"ci_wait": { // how long to wait before provision
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -865,7 +870,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
-	time.Sleep(15 * time.Second)
+	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 	log.Print("[DEBUG] starting VM")
 	_, err := client.StartVm(vmr)
@@ -1100,7 +1105,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig2", config.Ipconfig2)
 
 	// Some dirty hacks to populate undefined keys with default values.
-	checkedKeys := []string{"clone_wait", "force_create", "full_clone", "define_connection_info", "preprovision"}
+	checkedKeys := []string{"clone_wait", "additional_wait", "force_create", "full_clone", "define_connection_info", "preprovision"}
 	for _, key := range checkedKeys {
 		if _, ok := d.GetOk(key); !ok {
 			d.Set(key, thisResource.Schema[key].Default)
