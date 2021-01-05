@@ -169,6 +169,7 @@ The following arguments may be optionally defined when using this resource:
     * `mp` __(required)__ - The path to the mount point as seen from inside the container. The path must not contain symlinks for security reasons.
     * `size` __(required)__ - Size of the underlying volume. Must end in G, M, or K (e.g. `"1G"`, `"1024M"`, `"1048576K"`). Note that this is a read only value.
     * `slot` __(required)__ - A string containing the number that identifies the mount point (i.e. the `n` in [`mp[n]`](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_mount_points)).
+    * `key` __(required)__ - The number that identifies the mount point (i.e. the `n` in [`mp[n]`](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_mount_points)).
     * `storage` __(required)__ - A string containing the [volume](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_storage_backed_mount_points), [directory](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_bind_mount_points), or [device](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_device_mount_points) to be mounted into the container (at the path specified by `mp`). E.g. `local-lvm`, `local-zfs`, `local` etc.
     * `acl` - A boolean for enabling ACL support. Default is `false`.
     * `backup` - A boolean for including the mount point in backups. Default is `false`.
