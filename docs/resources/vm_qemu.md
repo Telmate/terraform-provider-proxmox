@@ -84,14 +84,12 @@ The following arguments are supported in the resource block.
 |--------|----|---------|-------------|-----------|
 |`name`|`string`|**Yes**||The name of the VM.|
 |`target_node`|`string`|**Yes**||The name of the Proxmox Node on which to place the VM.|
-|`desc`|`string`|**Yes**|``||
-
 |`vmid`|`integer`|No|`0`|The ID of the VM in Proxmox. The default value of `0` indicates it should use the next available ID in the sequence.|
 |`desc`|`string`|No|`""`|The description of the VM. Shows as the 'Notes' field in the Proxmox GUI.|
 |`define_connection_info`|`bool`|No|`true`|Define the (SSH) connection parameters for preprovisioners, see config block below.|
 |`bios`|`string`|No|`"seabios"`|The BIOS to use, options are `seabios` or `ovmf` for UEFI.|
 |`onboot`|`bool`|No|`true`|Whether to have the VM startup after the PVE node starts.|
-|`boot`|`string`|No|`"cdn"`|The boot order for the VM. Ordered string of characters representing: floppy (a), hard disk (c), CD-ROM (d), or network (n).|
+|`boot`|`string`|No|`"cdn"`|The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).|
 |`bootdisk`|`string`|No|*Computed*|Enable booting from specified disk. This value is computed by terraform, so you shouldn't need to change it under most circumstances.|
 |`agent`|`integer`|No|`0`|Whether to enable the QEMU Guest Agent. Note, you must still install the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.|
 |`iso`|`string`|No|`""`|The name of the ISO image to mount to the VM. Only applies when `clone` is not set.|
@@ -99,18 +97,16 @@ The following arguments are supported in the resource block.
 |`full_clone`|`bool`|No|`true`|Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.|
 |`hastate`|`string`|No|`""`|Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.|
 |`qemu_os`|`string`|No|`"l26"`|The type of OS in the guest. Set properly to allow Proxmox to enable optimizations for the appropriate guest OS.|
-|`memory`|``|No|``||
+|`memory`|`integer`|No|`512`|The amount of memory to allocate to the VM in bytes.|
+|`balloon`|`integer`|No|`0`|Whether to add the ballooning device to the VM. Options are `1` and `0`. See the [docs about memory](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_memory) for more info.|
+|`sockets`|`integer`|No|`1`|The number of CPU sockets to allocate to the VM.|
+|`cores`|`integer`|No|`1`|The number of CPU cores per CPU socket to allocate to the VM.|
+|`vcpus`|`integer`|No|`0`|The number of vCPUs plugged into the VM when it starts. If 0, this is set automatically by Proxmox to `sockets * cores`.|
+|`cpu`|`string`|No|`"host"`|The type of CPU to emulate in the Guest. See the [docs about CPU Types](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) for more info.|
+|`numa`|`bool`|No|`false`|Whether to enable [Non-Uniform Memory Access](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) in the guest.|
+|`hotplug`|`string`|No|`"network,disk,usb"`|Comma delimited list of hotplug features to enable. Options: `network`, `disk`, `cpu`, `memory`, `usb`. Set to `0` to disable hotplug.|
+|`scsihw`|`string`|No|*Computed*|The SCSI controller to emulate, if left empty, proxmox default to `lsi`. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`.|
 
-* `` - (Optional; defaults to 512)
-* `balloon` - (Optional; defaults to 0)
-* `cores` - (Optional; defaults to 1)
-* `sockets` - (Optional; defaults to 1)
-* `vcpus` - (Optional; defaults to 0)
-* `vcpus` - (Optional; defaults to 0)
-* `cpu` - (Optional; defaults to host)
-* `numa` - (Optional; defaults to false)
-* `hotplug` - (Optional; defaults to network,disk,usb)
-* `scsihw` - (Optional; defaults to the empty string)
 * `vga` - (Optional)
     * `type` (Optional; defauls to std)
     * `memory` (Optional)
