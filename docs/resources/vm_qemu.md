@@ -78,24 +78,30 @@ For more information, see the [Cloud-init guide](docs/guides/cloud_init.md).
 
 ## Argument reference
 
-The following arguments are supported in the resource block:
+The following arguments are supported in the resource block.
 
-* `name` - (Required) Name of the VM
-* `target_node` - (Required) Node to place the VM on
-* `vmid` - (Optional; integer) ID of the VM in Proxmox, defaults to 0 which indicates it should use the next number in the sequence.
-* `desc` - (Optional) Description of the VM
-* `define_connection_info` - (Optional; defaults to true) define the (SSH) connection parameters for preprovisioners, see config block below.
-* `bios` - (Optional; defaults to seabios)
-* `onboot` - (Optional)
-* `boot` - (Optional; defaults to cdn)
-* `bootdisk` - (Optional; defaults to true)
-* `agent` - (Optional; defaults to 0)
-* `iso` - (Optional)
-* `clone` - (Optional) - The name of the VM to clone into a new VM
-* `full_clone` - (Optional)
-* `hastate` - (Optional) 
-* `qemu_os` - (Optional; defaults to l26)
-* `memory` - (Optional; defaults to 512)
+|Argument|Type|Required?|Default Value|Description|
+|--------|----|---------|-------------|-----------|
+|`name`|`string`|**Yes**||The name of the VM.|
+|`target_node`|`string`|**Yes**||The name of the Proxmox Node on which to place the VM.|
+|`desc`|`string`|**Yes**|``||
+
+|`vmid`|`integer`|No|`0`|The ID of the VM in Proxmox. The default value of `0` indicates it should use the next available ID in the sequence.|
+|`desc`|`string`|No|`""`|The description of the VM. Shows as the 'Notes' field in the Proxmox GUI.|
+|`define_connection_info`|`bool`|No|`true`|Define the (SSH) connection parameters for preprovisioners, see config block below.|
+|`bios`|`string`|No|`"seabios"`|The BIOS to use, options are `seabios` or `ovmf` for UEFI.|
+|`onboot`|`bool`|No|`true`|Whether to have the VM startup after the PVE node starts.|
+|`boot`|`string`|No|`"cdn"`|The boot order for the VM. Ordered string of characters representing: floppy (a), hard disk (c), CD-ROM (d), or network (n).|
+|`bootdisk`|`string`|No|*Computed*|Enable booting from specified disk. This value is computed by terraform, so you shouldn't need to change it under most circumstances.|
+|`agent`|`integer`|No|`0`|Whether to enable the QEMU Guest Agent. Note, you must still install the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.|
+|`iso`|`string`|No|`""`|The name of the ISO image to mount to the VM. Only applies when `clone` is not set.|
+|`clone`|`string`|No|`""`|The base VM from which to clone to create the new VM.|
+|`full_clone`|`bool`|No|`true`|Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.|
+|`hastate`|`string`|No|`""`|Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.|
+|`qemu_os`|`string`|No|`"l26"`|The type of OS in the guest. Set properly to allow Proxmox to enable optimizations for the appropriate guest OS.|
+|`memory`|``|No|``||
+
+* `` - (Optional; defaults to 512)
 * `balloon` - (Optional; defaults to 0)
 * `cores` - (Optional; defaults to 1)
 * `sockets` - (Optional; defaults to 1)
