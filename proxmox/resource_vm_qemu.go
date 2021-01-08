@@ -378,24 +378,25 @@ func resourceVmQemu() *schema.Resource {
 							Default:  "none",
 						},
 						"backup": &schema.Schema{
-							Type:     schema.TypeBool,
+							Type:     schema.TypeInt,
 							Optional: true,
-							Default:  false,
+							Default:  0,
 						},
 						"iothread": &schema.Schema{
-							Type:     schema.TypeBool,
+							Type:     schema.TypeInt,
 							Optional: true,
-							Default:  false,
+							Default:  0,
 						},
 						"replicate": &schema.Schema{
-							Type:     schema.TypeBool,
+							Type:     schema.TypeInt,
 							Optional: true,
-							Default:  false,
+							Default:  0,
 						},
 						//SSD emulation
 						"ssd": &schema.Schema{
-							Type:     schema.TypeBool,
+							Type:     schema.TypeInt,
 							Optional: true,
+							Default: 0,
 						},
 						"discard": &schema.Schema{
 							Type:     schema.TypeString,
