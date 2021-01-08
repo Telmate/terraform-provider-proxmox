@@ -67,6 +67,8 @@ For more information, see the [Cloud-init guide](docs/guides/cloud_init.md).
 
 ## Argument reference
 
+**Note: Except where explicitly stated in the description, all arguments are assumed to be optional.**
+
 ### Top Level Block
 
 The following arguments are supported in the top level resource block.
