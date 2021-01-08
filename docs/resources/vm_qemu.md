@@ -119,6 +119,15 @@ The following arguments are supported in the resource block.
 |`ipconfig1`|`string`|No|`""`|The second IP address to assign to the guest. Same format as `ipconfig0`|
 |`ipconfig2`|`string`|No|`""`|The third IP address to assign to the guest. Same format as `ipconfig0`|
 
+### VGA Block
+
+The `vga` block is used to configure the display device. It may be specified multiple times, however only the first instance of the block will be used.
+
+|Argument|Type|Required?|Default Value|Description|
+|--------|----|---------|-------------|-----------|
+|`type`|`string`|No|`"std"`|The type of display to virtualize. See the [docs about display](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_display) for more details. Options: `cirrus`, `none`, `qxl`, `qxl2`, `qxl3`, `qxl4`, `serial0`, `serial1`, `serial2`, `serial3`, `std`, `virtio`, `vmware`|
+|`type`|`integer`|No||Sets the VGA memory (in MiB). Has no effect with serial display type.|
+
 * `vga` - (Optional)
     * `type` (Optional; defauls to std)
     * `memory` (Optional)
