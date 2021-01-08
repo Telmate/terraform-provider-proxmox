@@ -164,25 +164,14 @@ The following arguments are supported in the resource block.
     * `id` (Required)
     * `type` (Required)
 
-* `os_network_config` - (Optional) Linux provisioning specific, `/etc/network/interfaces` for Ubuntu and `/etc/sysconfig/network-scripts/ifcfg-eth0` for CentOS.
-* `ssh_forward_ip` - (Optional) Address used to connect to the VM
-* `ssh_host` - (Optional)
-* `ssh_port` - (Optional)
-* `ssh_user` - (Optional) Username to login in the VM when preprovisioning.
-* `ssh_private_key` - (Optional; sensitive) Private key to login in the VM when preprovisioning.
+## Attribute Reference
 
-The following arguments are specifically for Cloud-init for preprovisioning.
+In addition to all the arguments above, the following attributes can be referenced from this resource.
 
-* `ci_wait` - (Optional) Cloud-init specific, how to long to wait for preprovisioning.
-* `ciuser` - (Optional) Cloud-init specific, overwrite image default user.
-* `cipassword` - (Optional) Cloud-init specific, password to assign to the user.
-* `cicustom` - (Optional) Cloud-init specific, location of the custom cloud-config files.
-* `searchdomain` - (Optional) Cloud-init specific, sets DNS search domains for a container.
-* `nameserver` - (Optional) Cloud-init specific, sets DNS server IP address for a container.
-* `sshkeys` - (Optional) Cloud-init specific, public ssh keys, one per line
-* `ipconfig0` - (Optional) Cloud-init specific, [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]
-* `ipconfig1` - (Optional) Cloud-init specific, see ipconfig0
-* `ipconfig2` - (Optional) Cloud-init specific, see ipconfig0
+|Attribute|Type|Description|
+|---------|----|-----------|
+|`ssh_host`|`string`|Read-only attribute. Only applies when `define_connection_info` is true. The hostname or IP to use to connect to the VM for preprovisioning. This can be overridden by defining `ssh_forward_ip`, but if you're using cloud-init and `ipconfig0=dhcp`, the IP reported by qemu-guest-agent is used, otherwise the IP defined in `ipconfig0` is used.|
+|`ssh_port`|`string`|Read-only attribute. Only applies when `define_connection_info` is true. The port to connect to the VM over SSH for preprovisioning. If using cloud-init and a port is not specified in `ssh_forward_ip`, then 22 is used. If not using cloud-init, a port on the `target_node` will be forwarded to port 22 in the guest, and this attribute will be set to the forwarded port.|
 
 Deprecated arguments.
 
