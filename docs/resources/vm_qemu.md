@@ -94,15 +94,15 @@ The following arguments are supported in the top level resource block.
 |`balloon`|`integer`|`0`|Whether to add the ballooning device to the VM. Options are `1` and `0`. See the [docs about memory](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_memory) for more info.|
 |`sockets`|`integer`|`1`|The number of CPU sockets to allocate to the VM.|
 |`cores`|`integer`|`1`|The number of CPU cores per CPU socket to allocate to the VM.|
-|`vcpus`|`integer`|`0`|The number of vCPUs plugged into the VM when it starts. If 0, this is set automatically by Proxmox to `sockets * cores`.|
+|`vcpus`|`integer`|`0`|The number of vCPUs plugged into the VM when it starts. If `0`, this is set automatically by Proxmox to `sockets * cores`.|
 |`cpu`|`string`|`"host"`|The type of CPU to emulate in the Guest. See the [docs about CPU Types](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) for more info.|
 |`numa`|`bool`|`false`|Whether to enable [Non-Uniform Memory Access](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) in the guest.|
 |`hotplug`|`string`|`"network,disk,usb"`|Comma delimited list of hotplug features to enable. Options: `network`, `disk`, `cpu`, `memory`, `usb`. Set to `0` to disable hotplug.|
 |`scsihw`|`string`|`"lsi"`|The SCSI controller to emulate. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`.|
 |`pool`|`string`||The resource pool to which the VM will be added.|
 |`force_create`|`bool`|`false`|If `false`, and a vm of the same name, on the same node exists, terraform will attempt to reconfigure that VM with these settings. Set to true to always create a new VM (note, the name of the VM must still be unique, otherwise an error will be produced.)|
-|`clone_wait`|`integer`|`15`|The amount of time in seconds to wait between cloning a VM and performing post-clone actions such as updating the VM.|
-|`additional_wait`|`integer`|`15`|Provider will wait `additional_wait`/2 seconds after a clone operation and `additional_wait` seconds after an UpdateConfig operation.|
+|`clone_wait`|`integer`|`15`|Provider will wait `clone_wait`/2 seconds after a clone operation and `clone_wait` seconds after an UpdateConfig operation.|
+|`additional_wait`|`integer`|`15`|The amount of time in seconds to wait between creating the VM and powering it up.|
 |`preprovision`|`bool`|`true`|Whether to preprovision the VM. See [Preprovision](#Preprovision) above for more info.|
 |`os_type`|`string`||Which provisioning method to use, based on the OS type. Options: `ubuntu`, `centos`, `cloud-init`.|
 |`force_recreate_on_change_of`|`string`||If the value of this string changes, the VM will be recreated. Useful for allowing this resource to be recreated when arbitrary attributes change. An example where this is useful is a cloudinit configuration (as the `cicustom` attribute points to a file not the content).|
@@ -117,9 +117,9 @@ The following arguments are supported in the top level resource block.
 |`searchdomain`|`string`||Sets default DNS search domain suffix.|
 |`nameserver`|`string`||Sets default DNS server for guest.|
 |`sshkeys`|`string`||Newline delimited list of SSH public keys to add to authorized keys file for the cloud-init user.|
-|`ipconfig0`|`string`||The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`|
-|`ipconfig1`|`string`||The second IP address to assign to the guest. Same format as `ipconfig0`|
-|`ipconfig2`|`string`||The third IP address to assign to the guest. Same format as `ipconfig0`|
+|`ipconfig0`|`string`||The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`.|
+|`ipconfig1`|`string`||The second IP address to assign to the guest. Same format as `ipconfig0`.|
+|`ipconfig2`|`string`||The third IP address to assign to the guest. Same format as `ipconfig0`.|
 
 ### VGA Block
 
@@ -129,7 +129,7 @@ See the [docs about display](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm
 
 |Argument|Type|Default Value|Description|
 |--------|----|-------------|-----------|
-|`type`|`string`|`"std"`|The type of display to virtualize. Options: `cirrus`, `none`, `qxl`, `qxl2`, `qxl3`, `qxl4`, `serial0`, `serial1`, `serial2`, `serial3`, `std`, `virtio`, `vmware`|
+|`type`|`string`|`"std"`|The type of display to virtualize. Options: `cirrus`, `none`, `qxl`, `qxl2`, `qxl3`, `qxl4`, `serial0`, `serial1`, `serial2`, `serial3`, `std`, `virtio`, `vmware`.|
 |`type`|`integer`||Sets the VGA memory (in MiB). Has no effect with serial display type.|
 
 ### Network Block
@@ -140,7 +140,7 @@ See the [docs about network devices](https://pve.proxmox.com/pve-docs/chapter-qm
 
 |Argument|Type|Default Value|Description|
 |--------|----|-------------|-----------|
-|`model`|`string`||**Required** Network Card Model. The virtio model provides the best performance with very low CPU overhead. If your guest does not support this driver, it is usually best to use e1000. Options: `e1000`, `e1000-82540em`, `e1000-82544gc`, `e1000-82545em`, `i82551`, `i82557b`, `i82559er`, `ne2k_isa`, `ne2k_pci`, `pcnet`, `rtl8139`, `virtio`, `vmxnet3`|
+|`model`|`string`||**Required** Network Card Model. The virtio model provides the best performance with very low CPU overhead. If your guest does not support this driver, it is usually best to use e1000. Options: `e1000`, `e1000-82540em`, `e1000-82544gc`, `e1000-82545em`, `i82551`, `i82557b`, `i82559er`, `ne2k_isa`, `ne2k_pci`, `pcnet`, `rtl8139`, `virtio`, `vmxnet3`.|
 |`macaddr`|`string`||Override the randomly generated MAC Address for the VM.|
 |`bridge`|`string`|`"nat"`|Bridge to which the network device should be attached. The Proxmox VE standard bridge is called `vmbr0`.|
 |`tag`|`integer`|`-1`|The VLAN tag to apply to packets on this device. `-1` disables VLAN tagging.|
@@ -187,13 +187,13 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 
 |Argument|Type|Default Value|Description|
 |--------|----|-------------|-----------|
-|`type`|`string`||**Required** The type of disk device to add. Options: `ide`, `sata`, `scsi`, `virtio`|
+|`type`|`string`||**Required** The type of disk device to add. Options: `ide`, `sata`, `scsi`, `virtio`.|
 |`storage`|`string`||**Required** The name of the storage pool on which to store the disk.|
 |`size`|`string`||**Required** The size of the created disk, format must match the regex `\d+[GMK]`, where G, M, and K represent Gigabytes, Megabytes, and Kilobytes respectively.|
 |`format`|`string`|`"raw"`|The drive’s backing file’s data format.|
 |`cache`|`string`|`"none"`|The drive’s cache mode. Options: `directsync`, `none`, `unsafe`, `writeback`, `writethrough`|
 |`backup`|`boolean`|`false`|Whether the drive should be included when making backups.|
-|`iothread`|`boolean`|`false`|Whether to use iothreads for this drive. Only effective with a disk of type `virtio`, or `scsi` when the the emulated controller type is VirtIO SCSI single.|
+|`iothread`|`boolean`|`false`|Whether to use iothreads for this drive. Only effective with a disk of type `virtio`, or `scsi` when the the emulated controller type (`scsihw` top level block argument) is `virtio-scsi-single`.|
 |`replicate`|`boolean`|`false`|Whether the drive should considered for replication jobs.|
 |`ssd`|`boolean`|`false`|Whether to expose this drive as an SSD, rather than a rotational hard disk.|
 |`discard`|`boolean`||Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveots too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info.|
@@ -203,9 +203,9 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 |`mbps_wr`|`integer`|`0`|Maximum write speed in megabytes per second. `0` means unlimited.|
 |`mbps_wr_max`|`integer`|`0`|Maximum unthrottled write pool in megabytes per second. `0` means unlimited.|
 |`file`|`string`||The filename portion of the path to the drive’s backing volume. You shouldn't need to specify this, use the `storage` parameter instead.|
-|`media`|`string`|`"disk"`|The drive’s media type. Options: `cdrom`, `disk`|
+|`media`|`string`|`"disk"`|The drive’s media type. Options: `cdrom`, `disk`.|
 |`volume`|`string`||The full path to the drive’s backing volume including the storage pool name. You shouldn't need to specify this, use the `storage` parameter instead.|
-|`slot`|`integer`||*(not sure what this is for, seems to be deprecated, do not use)*|
+|`slot`|`integer`||*(not sure what this is for, seems to be deprecated, do not use)*.|
 |`storage_type`|`string`||The type of pool that `storage` is backed by. You shouldn't need to specify this, use the `storage` parameter instead.|
 
 ### Serial Block
@@ -218,19 +218,21 @@ See the [options for serial](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm
 
 |Argument|Type|Default Value|Description|
 |--------|----|-------------|-----------|
-|`id`|`integer`||**Required** The ID of the serial device. Must be between 0-3.|
+|`id`|`integer`||**Required** The ID of the serial device. Must be unique, and between `0-3`.|
 |`type`|`string`||**Required** The type of serial device to create. Options: `socket`, or the path to a serial device like `/dev/ttyS0`.|
 
 ## Attribute Reference
 
-In addition to all the arguments above, the following attributes can be referenced from this resource.
+In addition to  the arguments above, the following attributes can be referenced from this resource.
 
 |Attribute|Type|Description|
 |---------|----|-----------|
 |`ssh_host`|`string`|Read-only attribute. Only applies when `define_connection_info` is true. The hostname or IP to use to connect to the VM for preprovisioning. This can be overridden by defining `ssh_forward_ip`, but if you're using cloud-init and `ipconfig0=dhcp`, the IP reported by qemu-guest-agent is used, otherwise the IP defined in `ipconfig0` is used.|
 |`ssh_port`|`string`|Read-only attribute. Only applies when `define_connection_info` is true. The port to connect to the VM over SSH for preprovisioning. If using cloud-init and a port is not specified in `ssh_forward_ip`, then 22 is used. If not using cloud-init, a port on the `target_node` will be forwarded to port 22 in the guest, and this attribute will be set to the forwarded port.|
 
-Deprecated arguments.
+## Deprecated Arguments
+
+The following arguments are deprecated, and should no longer be used.
 
 * `disk_gb` - (Optional; use disk.size instead)
 * `storage` - (Optional; use disk.storage instead)
