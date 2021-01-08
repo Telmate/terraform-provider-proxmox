@@ -83,7 +83,7 @@ The following arguments are supported in the top level resource block.
 |`bios`|`string`|`"seabios"`|The BIOS to use, options are `seabios` or `ovmf` for UEFI.|
 |`onboot`|`bool`|`true`|Whether to have the VM startup after the PVE node starts.|
 |`boot`|`string`|`"cdn"`|The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).|
-|`bootdisk`|`string`|*Computed*|Enable booting from specified disk. This value is computed by terraform, so you shouldn't need to change it under most circumstances.|
+|`bootdisk`|`string`||Enable booting from specified disk. You shouldn't need to change it under most circumstances.|
 |`agent`|`integer`|`0`|Whether to enable the QEMU Guest Agent. Note, you must still install the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.|
 |`iso`|`string`||The name of the ISO image to mount to the VM. Only applies when `clone` is not set.|
 |`clone`|`string`||The base VM from which to clone to create the new VM.|
@@ -98,7 +98,7 @@ The following arguments are supported in the top level resource block.
 |`cpu`|`string`|`"host"`|The type of CPU to emulate in the Guest. See the [docs about CPU Types](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) for more info.|
 |`numa`|`bool`|`false`|Whether to enable [Non-Uniform Memory Access](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) in the guest.|
 |`hotplug`|`string`|`"network,disk,usb"`|Comma delimited list of hotplug features to enable. Options: `network`, `disk`, `cpu`, `memory`, `usb`. Set to `0` to disable hotplug.|
-|`scsihw`|`string`|*Computed*|The SCSI controller to emulate, if left empty, proxmox default to `lsi`. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`.|
+|`scsihw`|`string`|`"lsi"`|The SCSI controller to emulate. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`.|
 |`pool`|`string`||The resource pool to which the VM will be added.|
 |`force_create`|`bool`|`false`|If `false`, and a vm of the same name, on the same node exists, terraform will attempt to reconfigure that VM with these settings. Set to true to always create a new VM (note, the name of the VM must still be unique, otherwise an error will be produced.)|
 |`clone_wait`|`integer`|`15`|The amount of time in seconds to wait between cloning a VM and performing post-clone actions such as updating the VM.|
@@ -145,8 +145,8 @@ See the [docs about network devices](https://pve.proxmox.com/pve-docs/chapter-qm
 |`bridge`|`string`|`"nat"`|Bridge to which the network device should be attached. The Proxmox VE standard bridge is called `vmbr0`.|
 |`tag`|`integer`|`-1`|The VLAN tag to apply to packets on this device. `-1` disables VLAN tagging.|
 |`firewall`|`boolean`|`false`|Whether to enable the Proxmox firewall on this network device.|
-|`rate`|`integer`|*Computed*|Network device rate limit in mbps (megabytes per second) as floating point number. Leave empty to disable rate limiting.|
-|`queues`|`integer`|*Computed*|Number of packet queues to be used on the device.|
+|`rate`|`integer`|`0`|Network device rate limit in mbps (megabytes per second) as floating point number. Set to `0` to disable rate limiting.|
+|`queues`|`integer`|`1`|Number of packet queues to be used on the device. Requires `virtio` model to have an effect.|
 |`link_down`|`boolean`|`false`|Whether this interface should be disconnected (like pulling the plug).|
 
 ### Disk Block
@@ -202,10 +202,10 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 |`mbps_rd_max`|`integer`|`0`|Maximum read speed in megabytes per second. `0` means unlimited.|
 |`mbps_wr`|`integer`|`0`|Maximum write speed in megabytes per second. `0` means unlimited.|
 |`mbps_wr_max`|`integer`|`0`|Maximum unthrottled write pool in megabytes per second. `0` means unlimited.|
-|`file`|`string`|*Computed*|The filename portion of the path to the drive’s backing volume. You shouldn't need to specify this, use the `storage` parameter instead.|
+|`file`|`string`||The filename portion of the path to the drive’s backing volume. You shouldn't need to specify this, use the `storage` parameter instead.|
 |`media`|`string`|`"disk"`|The drive’s media type. Options: `cdrom`, `disk`|
-|`volume`|`string`|*Computed*|The full path to the drive’s backing volume including the storage pool name. You shouldn't need to specify this, use the `storage` parameter instead.|
-|`slot`|`integer`|*Computed*|(not sure what this is for, seems to be deprecated, do not use)|
+|`volume`|`string`||The full path to the drive’s backing volume including the storage pool name. You shouldn't need to specify this, use the `storage` parameter instead.|
+|`slot`|`integer`||*(not sure what this is for, seems to be deprecated, do not use)*|
 |`storage_type`|`string`||The type of pool that `storage` is backed by. You shouldn't need to specify this, use the `storage` parameter instead.|
 
 ### Serial Block
