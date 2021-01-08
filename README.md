@@ -17,6 +17,7 @@ This section is here to both serve as a reminder to contributers of areas for im
 * `proxmox_vm_qemu`.`disk`.`size` attribute does not match what is displayed in the Proxmox UI.
 * Updates to `proxmox_vm_qemu` resources almost always result as a failed task within the Proxmox UI. This appears to be harmless and the desired configuration changes do get applied.
 * `proxmox_vm_qemu` does not (yet) validate vm names, be sure to only use alphanumeric and dashes otherwise you may get an opaque 400 Parameter Verification failed (indicating a bad value was sent to proxmox).
+* When using the `proxmox_lxc` resource, the provider will crash unless `rootfs` is defined.
 
 ## Contributing
 
