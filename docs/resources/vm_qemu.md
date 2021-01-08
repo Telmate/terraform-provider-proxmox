@@ -82,11 +82,11 @@ The following arguments are supported in the resource block.
 
 |Argument|Type|Required?|Default Value|Description|
 |--------|----|---------|-------------|-----------|
-|`name`|`string`|**Yes**||The name of the VM.|
+|`name`|`string`|**Yes**||The name of the VM within Proxmox.|
 |`target_node`|`string`|**Yes**||The name of the Proxmox Node on which to place the VM.|
 |`vmid`|`integer`|No|`0`|The ID of the VM in Proxmox. The default value of `0` indicates it should use the next available ID in the sequence.|
 |`desc`|`string`|No|`""`|The description of the VM. Shows as the 'Notes' field in the Proxmox GUI.|
-|`define_connection_info`|`bool`|No|`true`|Define the (SSH) connection parameters for preprovisioners, see config block below.|
+|`define_connection_info`|`bool`|No|`true`|Whether to let terraform define the (SSH) connection parameters for preprovisioners, see config block below.|
 |`bios`|`string`|No|`"seabios"`|The BIOS to use, options are `seabios` or `ovmf` for UEFI.|
 |`onboot`|`bool`|No|`true`|Whether to have the VM startup after the PVE node starts.|
 |`boot`|`string`|No|`"cdn"`|The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).|
@@ -106,6 +106,27 @@ The following arguments are supported in the resource block.
 |`numa`|`bool`|No|`false`|Whether to enable [Non-Uniform Memory Access](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) in the guest.|
 |`hotplug`|`string`|No|`"network,disk,usb"`|Comma delimited list of hotplug features to enable. Options: `network`, `disk`, `cpu`, `memory`, `usb`. Set to `0` to disable hotplug.|
 |`scsihw`|`string`|No|*Computed*|The SCSI controller to emulate, if left empty, proxmox default to `lsi`. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`.|
+|`pool`|`string`|No|`""`|The resource pool to which the VM will be added.|
+|`force_create`|`bool`|No|`false`|If `false`, and a vm of the same name, on the same node exists, terraform will attempt to reconfigure that VM with these settings. Set to true to always create a new VM (note, the name of the VM must still be unique, otherwise an error will be produced.)|
+|`clone_wait`|`integer`|No|`15`|The amount of time in seconds to wait between cloning a VM and performing post-clone actions such as updating the VM.|
+|`additional_wait`|`integer`|No|`15`|Provider will wait `additional_wait`/2 seconds after a clone operation and `additional_wait` seconds after an UpdateConfig operation.|
+|`preprovision`|`bool`|No|`true`|Whether to preprovision the VM. See [Preprovision](#Preprovision) above for more info.|
+|`os_type`|`string`|No|`""`|Which provisioning method to use, based on the OS type. Options: `ubuntu`, `centos`, `cloud-init`.|
+|`force_recreate_on_change_of`|`string`|No|`""`|If the value of this string changes, the VM will be recreated. Useful for allowing this resource to be recreated when arbitrary attributes change. An example where this is useful is a cloudinit configuration (as the `cicustom` attribute points to a file not the content).|
+|`os_network_config`|`string`|No|`""`|Only applies when `define_connection_info` is true. Network configuration to be copied into the VM when preprovisioning `ubuntu` or `centos` guests. The specified configuration is added to `/etc/network/interfaces` for Ubuntu, or `/etc/sysconfig/network-scripts/ifcfg-eth0` for CentOS. Forces re-creation on change.|
+|`ssh_forward_ip`|`string`|No|`""`|Only applies when `define_connection_info` is true. The IP (and optional colon separated port), to use to connect to the host for preprovisioning. If using cloud-init, this can be left blank.|
+|`ssh_user`|`string`|No|`""`|Only applies when `define_connection_info` is true. The user with which to connect to the guest for preprovisioning. Forces re-creation on change.|
+|`ssh_private_key`|`string`|No|`""`|Only applies when `define_connection_info` is true. The private key to use when connecting to the guest for preprovisioning. Sensitive.|
+|`ci_wait`|`integer`|No|`30`|How to long in seconds to wait for before provisioning.|
+|`ciuser`|`string`|No|`""`|Override the default cloud-init user for provisioning.|
+|`cipassword`|`string`|No|`""`|Override the default cloud-init user's password. Sensitive.|
+|`cicustom`|``|No|`""`|Instead specifying ciuser, cipasword, etc... you can specify the path to a custom cloud-init config file here. Grants more flexibility in configuring cloud-init.|
+|`searchdomain`|`string`|No|`""`|Sets default DNS search domain suffix.|
+|`nameserver`|`string`|No|`""`|Sets default DNS server for guest.|
+|`sshkeys`|`string`|No|`""`|Newline delimited list of SSH public keys to add to authorized keys file for the cloud-init user.|
+|`ipconfig0`|`string`|No|`""`|The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`|
+|`ipconfig1`|`string`|No|`""`|The second IP address to assign to the guest. Same format as `ipconfig0`|
+|`ipconfig2`|`string`|No|`""`|The third IP address to assign to the guest. Same format as `ipconfig0`|
 
 * `vga` - (Optional)
     * `type` (Optional; defauls to std)
@@ -142,15 +163,6 @@ The following arguments are supported in the resource block.
 * `serial` - (Optional)
     * `id` (Required)
     * `type` (Required)
-* `pool` - (Optional)
-* `force_create` - (Optional; defaults to true)
-* `clone_wait` - (Optional; defaults to 15 seconds) Amount of time to wait after a clone operation and after an UpdateConfig operation.
-* `additional_wait` - (Optional; defaults to 15 seconds) Provider will wait n/2 seconds after a clone operation and n seconds after an UpdateConfig operation.
-* `preprovision` - (Optional; defaults to true)
-* `os_type` - (Optional) Which provisioning method to use, based on the OS type. Possible values: ubuntu, centos, cloud-init.
-* `force_recreate_on_change_of` (Optional) // Allows this to depend on another resource, that when changed, needs to re-create this vm. An example where this is useful is a cloudinit configuration (as the `cicustom` attribute points to a file not the content).
-
-The following arguments are specifically for Linux for preprovisioning (requires `define_connection_info` to be true).
 
 * `os_network_config` - (Optional) Linux provisioning specific, `/etc/network/interfaces` for Ubuntu and `/etc/sysconfig/network-scripts/ifcfg-eth0` for CentOS.
 * `ssh_forward_ip` - (Optional) Address used to connect to the VM
