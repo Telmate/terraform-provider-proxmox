@@ -69,7 +69,9 @@ For more information, see the [Cloud-init guide](docs/guides/cloud_init.md).
 
 ## Argument reference
 
-The following arguments are supported in the resource block.
+### Top Level Block
+
+The following arguments are supported in the top level resource block.
 
 |Argument|Type|Required?|Default Value|Description|
 |--------|----|---------|-------------|-----------|
@@ -123,46 +125,101 @@ The following arguments are supported in the resource block.
 
 The `vga` block is used to configure the display device. It may be specified multiple times, however only the first instance of the block will be used.
 
+See the [docs about display](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_display) for more details.
+
 |Argument|Type|Required?|Default Value|Description|
 |--------|----|---------|-------------|-----------|
-|`type`|`string`|No|`"std"`|The type of display to virtualize. See the [docs about display](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_display) for more details. Options: `cirrus`, `none`, `qxl`, `qxl2`, `qxl3`, `qxl4`, `serial0`, `serial1`, `serial2`, `serial3`, `std`, `virtio`, `vmware`|
+|`type`|`string`|No|`"std"`|The type of display to virtualize. Options: `cirrus`, `none`, `qxl`, `qxl2`, `qxl3`, `qxl4`, `serial0`, `serial1`, `serial2`, `serial3`, `std`, `virtio`, `vmware`|
 |`type`|`integer`|No||Sets the VGA memory (in MiB). Has no effect with serial display type.|
 
-* `vga` - (Optional)
-    * `type` (Optional; defauls to std)
-    * `memory` (Optional)
-* `network` - (Optional)
-    * `id` (Required)
-    * `model` (Required)
-    * `macaddr` (Optional)
-    * `bridge` (Optional; defaults to nat)
-    * `tag` (Optional; defaults to -1)
-    * `firewall` (Optional; defaults to false)
-    * `rate` (Optional; defaults to -1)
-    * `queues` (Optional; defaults to -1)
-    * `link_down` (Optional; defaults to false)
-* `disk` - (Optional)
-    * `id` (Required)
-    * `type` (Required)
-    * `storage` (Required)
-    * `size` (Required)
-    * `format` (Optional; defaults to raw)
-    * `cache` (Optional; defaults to none)
-    * `backup` (Optional; defaults to false)
-    * `iothread` (Optional; defaults to false)
-    * `replicate` (Optional; defaults to false)
-    * `ssd` (Optional; defaults to false) //Whether to expose this drive as an SSD, rather than a rotational hard disk.
-    * `file` (Optional)
-    * `media` (Optional)
-    * `discard` (Optional; defaults to ignore) //Controls whether to pass discard/trim requests to the underlying storage. discard=<ignore | on>
-    * `mbps` (Optional; defaults to unlimited being 0) Maximum r/w speed in megabytes per second
-    * `mbps_rd` (Optional; defaults to unlimited being 0) Maximum read speed in megabytes per second
-    * `mbps_rd_max` (Optional; defaults to unlimited being 0) Maximum unthrottled read pool in megabytes per second
-    * `mbps_wr` (Optional; defaults to unlimited being 0) //Maximum write speed in megabytes per second
-    * `mbps_wr_max` (Optional; defaults to unlimited being 0) //Maximum unthrottled write pool in megabytes per second
-* `serial` - (Optional)
-    * `id` (Required)
-    * `type` (Required)
+### Network Block
+
+The `network` block is used to configure the network devices. It may be specified multiple times. The order in which the blocks are specified determines the ID for each net device. i.e. The first `network` block will become `net0`, the second will be `net1` etc...
+
+See the [docs about network devices](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_network_device) for more details.
+
+|Argument|Type|Required?|Default Value|Description|
+|--------|----|---------|-------------|-----------|
+|`model`|`string`|**Yes**|`""`|Network Card Model. The virtio model provides the best performance with very low CPU overhead. If your guest does not support this driver, it is usually best to use e1000. Options: `e1000`, `e1000-82540em`, `e1000-82544gc`, `e1000-82545em`, `i82551`, `i82557b`, `i82559er`, `ne2k_isa`, `ne2k_pci`, `pcnet`, `rtl8139`, `virtio`, `vmxnet3`|
+|`macaddr`|`string`|No|`""`|Override the randomly generated MAC Address for the VM.|
+|`bridge`|`string`|No|`"nat"`|Bridge to which the network device should be attached. The Proxmox VE standard bridge is called `vmbr0`.|
+|`tag`|`integer`|No|`-1`|The VLAN tag to apply to packets on this device. `-1` disables VLAN tagging.|
+|`firewall`|`boolean`|No|`false`|Whether to enable the Proxmox firewall on this network device.|
+|`rate`|`integer`|No|*Computed*|Network device rate limit in mbps (megabytes per second) as floating point number. Leave empty to disable rate limiting.|
+|`queues`|`integer`|No|*Computed*|Number of packet queues to be used on the device.|
+|`link_down`|`boolean`|No|`false`|Whether this interface should be disconnected (like pulling the plug).|
+
+### Disk Block
+
+The `disk` block is used to configure the disk devices. It may be specified multiple times. The order in which the blocks are specified and the disk device type determines the ID for each disk device. Take the following for example:
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+    //<arguments ommitted for brevity...>
+
+    disk { // This disk will become scsi0
+        type = "scsi"
+
+        //<arguments ommitted for brevity...>
+    }
+
+    disk { // This disk will become ide0
+        type = "ide"
+
+        //<arguments ommitted for brevity...>
+    }
+
+    disk { // This disk will become scsi1
+        type = "scsi"
+
+        //<arguments ommitted for brevity...>
+    }
+
+    disk { // This disk will become sata0
+        type = "sata"
+
+        //<arguments ommitted for brevity...>
+    }
+}
+```
+
+See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more details.
+
+|Argument|Type|Required?|Default Value|Description|
+|--------|----|---------|-------------|-----------|
+|`type`|`string`|**Yes**|`""`|The type of disk device to add. Options: `ide`, `sata`, `scsi`, `virtio`|
+|`storage`|`string`|**Yes**|`""`|The name of the storage pool on which to store the disk.|
+|`size`|`string`|**Yes**|`""`|The size of the created disk, format must match the regex `\d+[GMK]`, where G, M, and K represent Gigabytes, Megabytes, and Kilobytes respectively.|
+|`format`|`string`|No|`"raw"`|The drive’s backing file’s data format.|
+|`cache`|`string`|No|`"none"`|The drive’s cache mode. Options: `directsync`, `none`, `unsafe`, `writeback`, `writethrough`|
+|`backup`|`boolean`|No|`false`|Whether the drive should be included when making backups.|
+|`iothread`|`boolean`|No|`false`|Whether to use iothreads for this drive. Only effective with a disk of type `virtio`, or `scsi` when the the emulated controller type is VirtIO SCSI single.|
+|`replicate`|`boolean`|No|`false`|Whether the drive should considered for replication jobs.|
+|`ssd`|`boolean`|No|`false`|Whether to expose this drive as an SSD, rather than a rotational hard disk.|
+|`discard`|`boolean`|No|``|Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveots too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info.|
+|`mbps`|`integer`|No|`0`|Maximum r/w speed in megabytes per second. `0` means unlimited.|
+|`mbps_rd`|`integer`|No|`0`|Maximum read speed in megabytes per second. `0` means unlimited.|
+|`mbps_rd_max`|`integer`|No|`0`|Maximum read speed in megabytes per second. `0` means unlimited.|
+|`mbps_wr`|`integer`|No|`0`|Maximum write speed in megabytes per second. `0` means unlimited.|
+|`mbps_wr_max`|`integer`|No|`0`|Maximum unthrottled write pool in megabytes per second. `0` means unlimited.|
+|`file`|`string`|No|*Computed*|The filename portion of the path to the drive’s backing volume. You shouldn't need to specify this, use the `storage` parameter instead.|
+|`media`|`string`|No|`"disk"`|The drive’s media type. Options: `cdrom`, `disk`|
+|`volume`|`string`|No|*Computed*|The full path to the drive’s backing volume including the storage pool name. You shouldn't need to specify this, use the `storage` parameter instead.|
+|`slot`|`integer`|No|*Computed*|(not sure what this is for, seems to be deprecated, do not use)|
+|`storage_type`|`string`|No|`""`|The type of pool that `storage` is backed by. You shouldn't need to specify this, use the `storage` parameter instead.|
+
+### Serial Block
+
+Create a serial device inside the VM (up to a maximum of 4 can be specified), and either pass through a host serial device (i.e. /dev/ttyS0), or create a unix socket on the host side. The order in which `serial` blocks are declared does not matter.
+
+**WARNING**: Use with caution, as the docs indicate this device is experimental and users have reported issues with it.
+
+See the [options for serial](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_options) in the PVE docs for more details.
+
+|Argument|Type|Required?|Default Value|Description|
+|--------|----|---------|-------------|-----------|
+|`id`|`integer`|**Yes**||The ID of the serial device. Must be between 0-3.|
+|`type`|`string`|**Yes**|`""`|The type of serial device to create. Options: `socket`, or the path to a serial device like `/dev/ttyS0`.|
 
 ## Attribute Reference
 
