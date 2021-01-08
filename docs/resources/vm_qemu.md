@@ -84,7 +84,7 @@ The following arguments are supported in the top level resource block.
 |`onboot`|`bool`|`true`|Whether to have the VM startup after the PVE node starts.|
 |`boot`|`string`|`"cdn"`|The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).|
 |`bootdisk`|`string`||Enable booting from specified disk. You shouldn't need to change it under most circumstances.|
-|`agent`|`integer`|`0`|Whether to enable the QEMU Guest Agent. Note, you must still install the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.|
+|`agent`|`integer`|`0`|Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.|
 |`iso`|`string`||The name of the ISO image to mount to the VM. Only applies when `clone` is not set.|
 |`clone`|`string`||The base VM from which to clone to create the new VM.|
 |`full_clone`|`bool`|`true`|Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.|
