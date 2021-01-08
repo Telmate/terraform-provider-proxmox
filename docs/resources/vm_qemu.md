@@ -1,17 +1,14 @@
 # VM Qemu Resource
 
-Resources are the most important element in the Terraform language. Each resource block describes one or more 
-infrastructure objects, such as virtual networks, compute instances, or higher-level components such as DNS records.
+Resources are the most important element in the Terraform language. Each resource block describes one or more infrastructure objects, such as virtual networks, compute instances, or higher-level components such as DNS records.
 
 This resource manages a Proxmox VM Qemu container.
 
 ## Create a Qemu VM resource
 
-You can start from either an ISO or clone an existing VM. Optimally, you could create a VM resource you will use a clone 
-base with an ISO, and make the rest of the VM resources depend on that base "template" and clone it.
+You can start from either an ISO or clone an existing VM. Optimally, you could create a VM resource you will use a clone base with an ISO, and make the rest of the VM resources depend on that base "template" and clone it.
 
-When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. The name and target node of the VM are
-the only required parameters.
+When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. The name and target node of the VM are the only required parameters.
 
 ```hcl
 resource "proxmox_vm_qemu" "resource-name" {
@@ -22,8 +19,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ## Preprovision
 
-With preprovision you can provision a VM directly from the resource block. This provisioning method is therefore ran
-**before** provision blocks. When using preprovision, there are three `os_type` options: `ubuntu`, `centos` or `cloud-init`.
+With preprovision you can provision a VM directly from the resource block. This provisioning method is therefore ran **before** provision blocks. When using preprovision, there are three `os_type` options: `ubuntu`, `centos` or `cloud-init`.
 
 ```hcl
 resource "proxmox_vm_qemu" "prepprovision-test" {
@@ -35,9 +31,7 @@ resource "proxmox_vm_qemu" "prepprovision-test" {
 
 ### Preprovision for Linux (Ubuntu / CentOS)
 
-There is a pre-provision phase which is used to set a hostname, intialize eth0, and resize the VM disk to available 
-space. This is done over SSH with the `ssh_forward_ip`, `ssh_user` and `ssh_private_key`. Disk resize is done if the file 
-[/etc/auto_resize_vda.sh](https://github.com/Telmate/terraform-ubuntu-proxmox-iso/blob/master/auto_resize_vda.sh) exists.
+There is a pre-provision phase which is used to set a hostname, intialize eth0, and resize the VM disk to available space. This is done over SSH with the `ssh_forward_ip`, `ssh_user` and `ssh_private_key`. Disk resize is done if the file [/etc/auto_resize_vda.sh](https://github.com/Telmate/terraform-ubuntu-proxmox-iso/blob/master/auto_resize_vda.sh) exists.
 
 ```hcl
 resource "proxmox_vm_qemu" "prepprovision-test" {
@@ -55,7 +49,7 @@ EOF
 auto eth0
 iface eth0 inet dhcp
 EOF
-    
+
     connection {
         type = "ssh"
         user = "${self.ssh_user}"
@@ -69,10 +63,7 @@ EOF
 
 ## Preprovision for Cloud-Init
 
-Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When
-creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig`
-parameter to create based on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html)
-or use the Proxmox variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `searchdomain`, `nameserver` and `sshkeys`.
+Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig` parameter to create based on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html) or use the Proxmox variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `searchdomain`, `nameserver` and `sshkeys`.
 
 For more information, see the [Cloud-init guide](docs/guides/cloud_init.md).
 
