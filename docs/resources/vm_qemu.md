@@ -192,11 +192,11 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 |`size`|`str`||**Required** The size of the created disk, format must match the regex `\d+[GMK]`, where G, M, and K represent Gigabytes, Megabytes, and Kilobytes respectively.|
 |`format`|`str`|`"raw"`|The drive’s backing file’s data format.|
 |`cache`|`str`|`"none"`|The drive’s cache mode. Options: `directsync`, `none`, `unsafe`, `writeback`, `writethrough`|
-|`backup`|`bool`|`false`|Whether the drive should be included when making backups.|
-|`iothread`|`bool`|`false`|Whether to use iothreads for this drive. Only effective with a disk of type `virtio`, or `scsi` when the the emulated controller type (`scsihw` top level block argument) is `virtio-scsi-single`.|
-|`replicate`|`bool`|`false`|Whether the drive should considered for replication jobs.|
-|`ssd`|`bool`|`false`|Whether to expose this drive as an SSD, rather than a rotational hard disk.|
-|`discard`|`bool`||Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveots too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info.|
+|`backup`|`int`|`0`|Whether the drive should be included when making backups.|
+|`iothread`|`int`|`0`|Whether to use iothreads for this drive. Only effective with a disk of type `virtio`, or `scsi` when the the emulated controller type (`scsihw` top level block argument) is `virtio-scsi-single`.|
+|`replicate`|`int`|`0`|Whether the drive should considered for replication jobs.|
+|`ssd`|`int`|`0`|Whether to expose this drive as an SSD, rather than a rotational hard disk.|
+|`discard`|`str`||Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveots too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info.|
 |`mbps`|`int`|`0`|Maximum r/w speed in megabytes per second. `0` means unlimited.|
 |`mbps_rd`|`int`|`0`|Maximum read speed in megabytes per second. `0` means unlimited.|
 |`mbps_rd_max`|`int`|`0`|Maximum read speed in megabytes per second. `0` means unlimited.|
