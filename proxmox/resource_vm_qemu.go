@@ -668,6 +668,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"reboot_required": {
+				Type: schema.TypeBool,
+				Computed: true,
+				Description: "Internal variable, true if any of the modified parameters require a reboot to take effect.",
+			},
 		},
 	}
 	return thisResource
@@ -995,36 +1000,137 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	// give sometime to proxmox to catchup
+	// Give some time to proxmox to catchup.
 	time.Sleep(5 * time.Second)
 
 	prepareDiskSize(client, vmr, qemuDisks)
 
-	// give sometime to proxmox to catchup
+	// Give some time to proxmox to catchup.
 	time.Sleep(15 * time.Second)
-
-	// Start VM only if it wasn't running.
-	vmState, err := client.GetVmState(vmr)
-	if err == nil && vmState["status"] == "stopped" {
-		log.Print("[DEBUG] starting VM")
-		_, err = client.StartVm(vmr)
-	} else if err != nil {
-		return err
-	}
 
 	err = initConnInfo(d, pconf, client, vmr, &config, lock)
 	if err != nil {
 		return err
 	}
 
-	// give sometime to bootup
-	time.Sleep(9 * time.Second)
-	if _, err = client.StopVm(vmr); err != nil {
+	// If any of the "critical" keys are changed then a reboot is required.
+	if d.HasChanges(
+		"bios",
+		"boot",
+		"bootdisk",
+		"agent",
+		"qemu_os",
+		"balloon",
+		"cpu",
+		"numa",
+		"hotplug",
+		"scsihw",
+		"preprovision",
+		"os_type",
+		"ciuser",
+		"cipassword",
+		"cicustom",
+		"searchdomain",
+		"nameserver",
+		"sshkeys",
+		"ipconfig0",
+		"ipconfig1",
+		"ipconfig2",
+		"kvm",
+		"vga",
+		"serial",
+	) {
+		d.Set("reboot_required", true)
+	}
+
+	// reboot is only required when memory hotplug is disabled
+	if d.HasChange("memory") && strings.Contains(d.Get("hotplug").(string), "memory") == false {
+		d.Set("reboot_required", true)
+	}
+
+	// reboot is only required when cpu hotplug is disabled
+	if d.HasChanges("sockets", "cores", "vcpus") && strings.Contains(d.Get("hotplug").(string), "cpu") == false {
+		d.Set("reboot_required", true)
+	}
+
+	// if network hot(un)plug is not enabled, then check if some of the "critical" parameters have changes
+	if d.HasChange("network") && strings.Contains(d.Get("hotplug").(string), "network") == false {
+		oldValuesRaw, newValuesRaw := d.GetChange("network")
+		oldValues := oldValuesRaw.([]interface{})
+		newValues := newValuesRaw.([]interface{})
+		if len(oldValues) != len(newValues) {
+			// network interface added or removed
+			d.Set("reboot_required", true)
+		} else {
+			// some of the existing interface parameters have changed
+			for i := range oldValues { // loop through the interfaces
+				if oldValues[i].(map[string]interface{})["model"] != newValues[i].(map[string]interface{})["model"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["macaddr"] != newValues[i].(map[string]interface{})["macaddr"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["queues"] != newValues[i].(map[string]interface{})["queues"] {
+					d.Set("reboot_required", true)
+				}
+			}
+		}
+	}
+
+	// some of the disk changes require reboot, even if hotplug is enabled
+	if d.HasChange("disk") {
+		oldValuesRaw, newValuesRaw := d.GetChange("disk")
+		oldValues := oldValuesRaw.([]interface{})
+		newValues := newValuesRaw.([]interface{})
+		if len(oldValues) != len(newValues) && strings.Contains(d.Get("hotplug").(string), "disk") == false {
+			// disk added or removed AND there is no disk hot(un)plug
+			d.Set("reboot_required", true)
+		} else {
+			// some of the existing disk parameters have changed
+			for i := range oldValues { // loop through the interfaces
+				if oldValues[i].(map[string]interface{})["ssd"] != newValues[i].(map[string]interface{})["ssd"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["iothread"] != newValues[i].(map[string]interface{})["iothread"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["discard"] != newValues[i].(map[string]interface{})["discard"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["cache"] != newValues[i].(map[string]interface{})["cache"] {
+					d.Set("reboot_required", true)
+				}
+				// these paramater changes only require reboot if disk hotplug is disabled
+				if strings.Contains(d.Get("hotplug").(string), "disk") == false {
+					if oldValues[i].(map[string]interface{})["type"] != newValues[i].(map[string]interface{})["type"] {
+						// note: changing type does not remove the old disk
+						d.Set("reboot_required", true)
+					}
+				}
+			}
+		}
+	}
+
+	// If a reboot is required: if the VM is running attempt graceful shutdown. If failed, try a forced poweroff.
+	vmState, err := client.GetVmState(vmr)
+	if err == nil && vmState["status"] != "stopped" && d.Get("reboot_required").(bool) {
+		log.Print("[DEBUG] shutting down VM")
+		_, err = client.ShutdownVm(vmr)
+		// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
+		if err != nil {
+			log.Print("[DEBUG] shutdown failed, stopping VM forcefully")
+			_, err = client.StopVm(vmr)
+		}
+	} else if err != nil {
 		return err
 	}
 
-	time.Sleep(9 * time.Second)
-	if _, err = client.StartVm(vmr); err != nil {
+	// Start VM only if it wasn't running.
+	vmState, err = client.GetVmState(vmr)
+	if err == nil && vmState["status"] == "stopped" {
+		log.Print("[DEBUG] starting VM")
+		_, err = client.StartVm(vmr)
+	} else if err != nil {
 		return err
 	}
 
@@ -1202,6 +1308,9 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	configSerialsSet := d.Get("serial").(*schema.Set)
 	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials, "id")
 	d.Set("serial", activeSerialSet)
+
+	// Reset reboot_required variable. It should change only during updates.
+	d.Set("reboot_required", false)
 
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
