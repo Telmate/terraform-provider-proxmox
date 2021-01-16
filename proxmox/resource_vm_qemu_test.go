@@ -121,6 +121,18 @@ resource "proxmox_vm_qemu" "%s" {
 `, name, name, targetNode)
 }
 
+// testAccExampleQemuOvmf generates a simple VM which uses EFI bios
+func testAccExampleQemuOvmf(name string, targetNode string) string {
+	return fmt.Sprintf(`
+resource "proxmox_vm_qemu" "%s" {
+  name = "%s"
+  target_node = "%s"
+  iso = "local:iso/SpinRite.iso"
+  bios = "ovmf"
+}
+`, name, name, targetNode)
+}
+
 // testAccExampleResourceClone generate two simply configured VMs where the second is a
 // clone of the first.
 func testAccExampleQemuClone(name string, name_clone string, targetNode string) string {
@@ -281,6 +293,63 @@ func TestAccProxmoxVmQemu_CreateCloneWithTwoDisks(t *testing.T) {
 					resource.TestCheckNoResourceAttr(clonePath, "unused_disk.0.file"),
 					resource.TestCheckResourceAttr(clonePath, "disk.0.size", "2G"),
 					resource.TestCheckResourceAttr(clonePath, "disk.1.size", "3G"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccProxmoxVmQemu_StandardUpdateNoReboot tests a simple update of a vm_qemu resource,
+// and the modified parameters can be applied without reboot. 
+func TestAccProxmoxVmQemu_UpdateNoReboot(t *testing.T) {
+	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProxmoxProviderFactory(),
+		
+		Steps: []resource.TestStep{
+			{
+				Config: testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
+				),
+			},
+			{
+				// since we're just renaming there should be no reboot
+				Config: strings.Replace(testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode), 
+				"name = \"" + resourceName + "\"", "name = \"" + resourceName + "-renamed\"", 1),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "name", resourceName + "-renamed"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccProxmoxVmQemu_UpdateRebootRequired tests a simple update of a vm_qemu resource,
+// and the modified parameters can be only applied with reboot. 
+func TestAccProxmoxVmQemu_UpdateRebootRequired(t *testing.T) {
+	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProxmoxProviderFactory(),
+		
+		Steps: []resource.TestStep{
+			{
+				Config: testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "bios", "seabios"),
+				),
+			},
+			{
+				// changing the BIOS platform always requires a reboot
+				Config: testAccExampleQemuOvmf(resourceName, testAccProxmoxTargetNode),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "bios", "ovmf"),
 				),
 			},
 		},
