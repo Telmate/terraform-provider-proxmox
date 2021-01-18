@@ -24,28 +24,26 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     agent = 1
 
     os_type = "cloud-init"
-    cores = "2"
-    sockets = "1"
-    vcpus = "0"
+    cores = 2
+    sockets = 1
+    vcpus = 0
     cpu = "host"
-    memory = "2048"
+    memory = 2048
     scsihw = "lsi"
 
-    # Setup the disk. The id has to be unique
+    # Setup the disk
     disk {
-        id = 0
         size = 32
         type = "virtio"
         storage = "ceph-storage-pool"
         storage_type = "rbd"
-        iothread = true
-        ssd = true
+        iothread = 1
+        ssd = 1
         discard = "on"
     }
 
     # Setup the network interface and assign a vlan tag: 256
     network {
-        id = 0
         model = "virtio"
         bridge = "vmbr0"
         tag = 256
