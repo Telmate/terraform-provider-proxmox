@@ -12,6 +12,9 @@ When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block.
 resource "proxmox_vm_qemu" "resource-name" {
     name = "VM name"
     target_node = "Node to create the VM on"
+    iso = "ISO file name"
+    # or 
+    # clone = "template to clone"
 }
 ```
 
@@ -85,12 +88,12 @@ The following arguments are supported in the top level resource block.
 |`boot`|`str`|`"cdn"`|The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).|
 |`bootdisk`|`str`||Enable booting from specified disk. You shouldn't need to change it under most circumstances.|
 |`agent`|`int`|`0`|Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.|
-|`iso`|`str`||The name of the ISO image to mount to the VM. Only applies when `clone` is not set.|
+|`iso`|`str`||The name of the ISO image to mount to the VM. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.|
 |`clone`|`str`||The base VM from which to clone to create the new VM.|
 |`full_clone`|`bool`|`true`|Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.|
 |`hastate`|`str`||Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.|
 |`qemu_os`|`str`|`"l26"`|The type of OS in the guest. Set properly to allow Proxmox to enable optimizations for the appropriate guest OS.|
-|`memory`|`int`|`512`|The amount of memory to allocate to the VM in bytes.|
+|`memory`|`int`|`512`|The amount of memory to allocate to the VM in Megabytes.|
 |`balloon`|`int`|`0`|Whether to add the ballooning device to the VM. Options are `1` and `0`. See the [docs about memory](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_memory) for more info.|
 |`sockets`|`int`|`1`|The number of CPU sockets to allocate to the VM.|
 |`cores`|`int`|`1`|The number of CPU cores per CPU socket to allocate to the VM.|
