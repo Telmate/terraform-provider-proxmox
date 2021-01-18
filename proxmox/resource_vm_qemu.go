@@ -1556,23 +1556,19 @@ func initConnInfo(
 		if sshHost == "" {
 			_, ipconfig0Set := d.GetOk("ipconfig0")
 			if ipconfig0Set {
-				if d.Get("ipconfig0").(string) == "ip=dhcp" {
-					guestAgentSupported := false
+				vmState, err := client.GetVmState(vmr)
+				if err != nil {
+					return err
+				}
+
+				if d.Get("ipconfig0").(string) == "ip=dhcp" && vmState["agent"] != nil && vmState["agent"].(float64) == 1 {
 					guestAgentRunning := false
-					// look if this vm has set the qemu guest agent flag
-					vmState, err := client.GetVmState(vmr)
-					if err != nil {
-						return err
-					}
-					if vmState["agent"] != nil && vmState["agent"].(float64) == 1 {
-						// the chances are good that the vm will run a guest agent
-						guestAgentSupported = true
-					}
 
 					// wait until the os has started the guest agent
 					guestAgentTimeout := d.Get("guest_agent_ready_timeout").(int)
 					guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout) * time.Second)
-					for guestAgentSupported && time.Now().Before(guestAgentWaitEnd) {
+
+					for time.Now().Before(guestAgentWaitEnd) {
 						_, err := client.GetVmAgentNetworkInterfaces(vmr)
 						if err == nil {
 							guestAgentRunning = true
@@ -1594,7 +1590,6 @@ func initConnInfo(
 					net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
 
 					getIP := func(ifs []pxapi.AgentNetworkInterface) string {
-						fmt.Printf("%+v\n", ifs)
 						for _, iface := range ifs {
 							if strings.ToUpper(iface.MACAddress) == strings.ToUpper(net0MacAddress) {
 								for _, addr := range iface.IPAddresses {
