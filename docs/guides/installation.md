@@ -37,7 +37,7 @@ In order to build the required executables, [install Go](https://golang.org/doc/
 repository and run the following commands inside the cloned repository.
 
 ```shell
-go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
+export GO111MODULE=on go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
 ```
 
 Then create the executables. They are placed in the `bin` folder inside the repository.
