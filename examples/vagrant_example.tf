@@ -15,7 +15,7 @@ provider "proxmox" {
     pm_password = "vagrant"
 }
 
-resource "proxmox_vm_qemu" "phil" {
+resource "proxmox_vm_qemu" "example" {
     name = "servy_mcserverface"
     desc = "A test for using terraform and vagrant"
     target_node = "pve"

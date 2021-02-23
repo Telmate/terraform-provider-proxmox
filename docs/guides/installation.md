@@ -1,7 +1,7 @@
 
 # Automatic Registry Installation
 
-To install this provider, copy and paste this code into your Terraform configuration (include a version tag). 
+To install this provider, copy and paste this code into your Terraform configuration (include a version tag).
 ```hcl
 terraform {
   required_providers {
@@ -19,11 +19,12 @@ provider "proxmox" {
 
 Then, run
 ```shell
-terraform init
+$ terraform init
 ```
 
 
 # Manual Build & Install
+When developing this provider, it's useful to bootstrap a development as quick as possible. You can use the [Proxmox VE vagrant VM](https://github.com/rgl/proxmox-ve) project for instance. Check out the [examples](../../examples/vagrant_example.tf) for a `main.tf` to use.
 
 ## How to get terraform to recognize third party provider
 
@@ -37,13 +38,15 @@ In order to build the required executables, [install Go](https://golang.org/doc/
 repository and run the following commands inside the cloned repository.
 
 ```shell
-export GO111MODULE=on go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
+$ export GO111MODULE=on
+$ go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
 ```
 
 Then create the executables. They are placed in the `bin` folder inside the repository.
 
 ```shell
-make
+$ cd terraform-provider-proxmox
+$ make
 ```
 
 ## Copy executables to plugin directory (Terraform <0.13)
@@ -52,8 +55,8 @@ You need to copy these executables to the ~/.terraform.d directory which will al
 created.
 
 ```shell
-mkdir ~/.terraform.d/plugins
-cp bin/terraform-provider-proxmox_v2.0.0 ~/.terraform.d/plugins
+$ mkdir -p ~/.terraform.d/plugins
+$ cp -f bin/terraform-provider-proxmox_v2.0.0 ~/.terraform.d/plugins
 ```
 
 ## Copy executables to plugin directory (Terraform >=0.13)
@@ -69,29 +72,36 @@ In our case, we will use `registry.example.com` as our virtual source registry i
 ```shell
 # Uncomment for macOS
 # PLUGIN_ARCH=darwin_amd64
-PLUGIN_ARCH=linux_amd64
+
+$ PLUGIN_ARCH=linux_amd64
 
 # Create the directory holding the newly built Terraform plugins
-mkdir -p ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/$PLUGIN_ARCH
+$ mkdir -p ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLUGIN_ARCH}
 ```
-Then, copy the executables to the directory you just created.
+
+Then, copy the executables to the directory you just created. You could also use the `make local-dev-install` target. it's important to note that you aren't required to use a semver, and if you don't, then the path must be altered accordingly.
 
 ```shell
-cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/$PLUGIN_ARCH/
+$ cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLUGIN_ARCH}/
+$ ls -al ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLUGIN_ARCH}/
+-rwxrwxr-x 1 user user 20352759 Feb 22 21:51 terraform-provider-proxmox_v1.0.0*
 ```
 
-Add the source to `main.tf` `required_providers` section like so:
+Add the source to your project's `main.tf` like so:
 
 ```
+$ cat main.tf
 terraform {
   required_providers {
     proxmox = {
-      source  = "registry.example.com/telmate/proxmox"
+      source  = "telmate/proxmox"
       version = ">=1.0.0"
     }
   }
-  required_version = ">= 0.13"
+  required_version = ">= 0.14"
 }
+
+[...]
 ```
 
 ## Initialize Terraform
@@ -99,7 +109,7 @@ terraform {
 Initialize Terraform so that it installs the new plugins:
 
 ```
-terraform init
+$ terraform init
 ```
 
 You should see the following marking the successful plugin installation:
@@ -108,9 +118,9 @@ You should see the following marking the successful plugin installation:
 [...]
 Initializing provider plugins...
 - Finding registry.example.com/telmate/proxmox versions matching ">= 1.0.0"...
-- Installing registry.example.com/telmate/proxmox v1.0.0...              
+- Installing registry.example.com/telmate/proxmox v1.0.0...
 - Installed registry.example.com/telmate/proxmox v1.0.0 (unauthenticated)
-                                                           
+
 Terraform has been successfully initialized!
 [...]
 ```
