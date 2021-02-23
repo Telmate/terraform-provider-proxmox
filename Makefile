@@ -1,7 +1,6 @@
-.PHONY:  build  fmt vet test clean install
+.PHONY: build fmt vet test clean install acctest local-dev-install
 
 all: build
-
 
 fmt:
 	@echo " -> checking code style"
@@ -18,15 +17,21 @@ test:
 build: clean
 	@echo " -> Building"
 	mkdir -p bin
-	CGO_ENABLED=0 go build  -o bin/terraform-provider-proxmox_v2.0.0 cmd/terraform-provider-proxmox/* 
+	CGO_ENABLED=0 go build  -o bin/terraform-provider-proxmox cmd/terraform-provider-proxmox/*
 	@echo "Built terraform-provider-proxmox"
 
 acctest: build
 	# to run only certain tests, run something of the form:  make acctest TESTARGS='-run=TestAccProxmoxVmQemu_DiskSlot'
 	TF_ACC=1 go test ./proxmox $(TESTARGS)
 
-install: build 
-	cp bin/terraform-provider-proxmox_v2.0.0 $$GOPATH/bin/terraform-provider-proxmox
+install: build
+	cp bin/terraform-provider-proxmox $$GOPATH/bin/terraform-provider-proxmox
+
+KERNEL=$(shell $(uname -s | tr '[:upper:]' '[:lower:]'))
+ARCH=$(shell if [ "$$(uname -m)" == "x86_64" ]; then echo amd64; fi)
+local-dev-install:
+	mkdir -p ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/$(KERNEL)_$(ARCH)/
+	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/$(KERNEL)_$(ARCH)/
 
 clean:
 	@git clean -f -d -X
