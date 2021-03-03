@@ -103,6 +103,7 @@ The following arguments are supported in the top level resource block.
 |`hotplug`|`str`|`"network,disk,usb"`|Comma delimited list of hotplug features to enable. Options: `network`, `disk`, `cpu`, `memory`, `usb`. Set to `0` to disable hotplug.|
 |`scsihw`|`str`|`"lsi"`|The SCSI controller to emulate. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`.|
 |`pool`|`str`||The resource pool to which the VM will be added.|
+|`tags`|`str`||Tags of the VM. This is only meta information.|
 |`force_create`|`bool`|`false`|If `false`, and a vm of the same name, on the same node exists, terraform will attempt to reconfigure that VM with these settings. Set to true to always create a new VM (note, the name of the VM must still be unique, otherwise an error will be produced.)|
 |`clone_wait`|`int`|`15`|Provider will wait `clone_wait`/2 seconds after a clone operation and `clone_wait` seconds after an UpdateConfig operation.|
 |`additional_wait`|`int`|`15`|The amount of time in seconds to wait between creating the VM and powering it up.|
