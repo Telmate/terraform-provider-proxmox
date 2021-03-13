@@ -686,6 +686,10 @@ func resourceVmQemu() *schema.Resource {
 				Computed: true,
 				Description: "Internal variable, true if any of the modified parameters require a reboot to take effect.",
 			},
+			"default_ipv4_address": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 	return thisResource
@@ -1571,10 +1575,68 @@ func initConnInfo(
 	sshPort := "22"
 	sshHost := ""
 	var err error
-	if config.HasCloudInit() {
-		if d.Get("ssh_forward_ip") != nil {
-			sshHost = d.Get("ssh_forward_ip").(string)
+
+	if d.Get("ssh_forward_ip") != nil {
+		sshHost = d.Get("ssh_forward_ip").(string)
+	}
+
+	guestAgentRunning := false
+
+	// wait until the os has started the guest agent
+	guestAgentTimeout := d.Get("guest_agent_ready_timeout").(int)
+	guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout) * time.Second)
+
+	for time.Now().Before(guestAgentWaitEnd) {
+		_, err := client.GetVmAgentNetworkInterfaces(vmr)
+		if err == nil {
+			guestAgentRunning = true
+			break
+		} else if !strings.Contains(err.Error(), "QEMU guest agent is not running") {
+			// "not running" means either not installed or not started yet.
+			// any other error should not happen here
+			return err
 		}
+		time.Sleep(10 * time.Second)
+	}
+
+	vmConfig, err := client.GetVmConfig(vmr)
+	if err != nil {
+		return err
+	}
+
+	macAddressRegex := regexp.MustCompile("([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}")
+	net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
+
+	getIP := func(ifs []pxapi.AgentNetworkInterface) string {
+		for _, iface := range ifs {
+			if strings.ToUpper(iface.MACAddress) == strings.ToUpper(net0MacAddress) {
+				for _, addr := range iface.IPAddresses {
+					if addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2 {
+						return addr.String()
+					}
+				}
+			}
+		}
+		return ""
+	}
+
+	// wait until we find a valid ipv4 address
+	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
+		ifs, err := client.GetVmAgentNetworkInterfaces(vmr)
+		if err != nil {
+			return err
+		}
+		sshHost = getIP(ifs)
+		if sshHost != "" {
+			break
+		}
+		time.Sleep(10 * time.Second)
+	}
+	// todo - log a warning if we couldn't get an IP
+
+	d.Set("default_ipv4_address", sshHost)
+
+	if config.HasCloudInit() {
 		if sshHost == "" {
 			_, ipconfig0Set := d.GetOk("ipconfig0")
 			if ipconfig0Set {
@@ -1583,61 +1645,7 @@ func initConnInfo(
 					return err
 				}
 
-				if d.Get("ipconfig0").(string) == "ip=dhcp" && vmState["agent"] != nil && vmState["agent"].(float64) == 1 {
-					guestAgentRunning := false
-
-					// wait until the os has started the guest agent
-					guestAgentTimeout := d.Get("guest_agent_ready_timeout").(int)
-					guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout) * time.Second)
-
-					for time.Now().Before(guestAgentWaitEnd) {
-						_, err := client.GetVmAgentNetworkInterfaces(vmr)
-						if err == nil {
-							guestAgentRunning = true
-							break
-						} else if !strings.Contains(err.Error(), "QEMU guest agent is not running") {
-							// "not running" means either not installed or not started yet.
-							// any other error should not happen here
-							return err
-						}
-						time.Sleep(10 * time.Second)
-					}
-
-					vmConfig, err := client.GetVmConfig(vmr)
-					if err != nil {
-						return err
-					}
-
-					macAddressRegex := regexp.MustCompile("([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}")
-					net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
-
-					getIP := func(ifs []pxapi.AgentNetworkInterface) string {
-						for _, iface := range ifs {
-							if strings.ToUpper(iface.MACAddress) == strings.ToUpper(net0MacAddress) {
-								for _, addr := range iface.IPAddresses {
-									if addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2 {
-										return addr.String()
-									}
-								}
-							}
-						}
-						return ""
-					}
-
-					// wait until we find a valid ipv4 address
-					for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
-						ifs, err := client.GetVmAgentNetworkInterfaces(vmr)
-						if err != nil {
-							return err
-						}
-						sshHost = getIP(ifs)
-						if sshHost != "" {
-							break
-						}
-						time.Sleep(10 * time.Second)
-					}
-					// todo - log a warning if we couldn't get an IP
-				} else {
+				if d.Get("ipconfig0").(string) != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
 					// parse IP address out of ipconfig0
 					ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
 					sshHost = ipMatch[1]
