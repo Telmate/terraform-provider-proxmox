@@ -637,16 +637,14 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("rootfs.0", adaptedRootFs)
 
 	// Read Networks
-	configNetworksSet := d.Get("network").([]interface{})
-	if len(configNetworksSet) > 0 {
-		if err = AssertNoNonSchemaValues(config.Networks, lxcResourceDef.Schema["network"]); err != nil {
-			return err
-		}
-		flatNetworks, _ := FlattenDevicesList(config.Networks)
-		flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
-		if err = d.Set("network", flatNetworks); err != nil {
-			return err
-		}
+	if err = AssertNoNonSchemaValues(config.Networks, lxcResourceDef.Schema["network"]); err != nil {
+		return err
+	}
+	flatNetworks, _ := FlattenDevicesList(config.Networks)
+	flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
+	flatNetworks = ConvertIntElementToBoolean([]string{"firewall"}, flatNetworks)
+	if err = d.Set("network", flatNetworks); err != nil {
+		return err
 	}
 
 	// Read Misc

@@ -273,6 +273,21 @@ func DevicesListToDevices(devicesList []interface{}, key string) pxapi.QemuDevic
 	return devicesMap
 }
 
+func ConvertIntElementToBoolean(key []string, deviceList []map[string]interface{}) []map[string]interface{} {
+	newMappingDevice := make([]map[string]interface{}, 0)
+	for _, k := range key {
+		for _, device := range deviceList {
+			switch device[k].(type) {
+			case int:
+				device[k] = device[k] != 0
+				break
+			}
+			newMappingDevice = append(newMappingDevice, device)
+		}
+	}
+	return newMappingDevice
+}
+
 func AssertNoNonSchemaValues(
 	devices pxapi.QemuDevices,
 	schemaDef *schema.Schema,
