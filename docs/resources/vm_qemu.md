@@ -94,7 +94,7 @@ The following arguments are supported in the top level resource block.
 |`hastate`|`str`||Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.|
 |`qemu_os`|`str`|`"l26"`|The type of OS in the guest. Set properly to allow Proxmox to enable optimizations for the appropriate guest OS.|
 |`memory`|`int`|`512`|The amount of memory to allocate to the VM in Megabytes.|
-|`balloon`|`int`|`0`|Whether to add the ballooning device to the VM. Options are `1` and `0`. See the [docs about memory](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_memory) for more info.|
+|`balloon`|`int`|`0`|The minimum amount of memory to allocate to the VM in Megabytes, when Automatic Memory Allocation is desired.  Proxmox will enable a balloon device on the guest to manage dynamic allocation.  See the [docs about memory](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_memory) for more info.|
 |`sockets`|`int`|`1`|The number of CPU sockets to allocate to the VM.|
 |`cores`|`int`|`1`|The number of CPU cores per CPU socket to allocate to the VM.|
 |`vcpus`|`int`|`0`|The number of vCPUs plugged into the VM when it starts. If `0`, this is set automatically by Proxmox to `sockets * cores`.|
