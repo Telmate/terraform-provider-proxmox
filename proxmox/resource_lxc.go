@@ -180,6 +180,11 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
+						"file": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
 					},
 				},
 			},
