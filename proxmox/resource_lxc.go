@@ -316,6 +316,7 @@ func resourceLxc() *schema.Resource {
 			"ssh_public_keys": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"start": {
 				Type:     schema.TypeBool,
