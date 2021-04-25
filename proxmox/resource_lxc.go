@@ -522,7 +522,6 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)
-	config.SSHPublicKeys = d.Get("ssh_public_keys").(string)
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
