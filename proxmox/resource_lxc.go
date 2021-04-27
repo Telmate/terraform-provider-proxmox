@@ -112,6 +112,10 @@ func resourceLxc() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"tags": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -421,6 +425,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
+	config.Tags = d.Get("tags").(string)
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -530,6 +535,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
+	config.Tags = d.Get("tags").(string)
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -686,6 +692,7 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("searchdomain", config.SearchDomain)
 	d.Set("startup", config.Startup)
 	d.Set("swap", config.Swap)
+	d.Set("tags", config.Tags)
 	d.Set("template", config.Template)
 	d.Set("tty", config.Tty)
 	d.Set("unique", config.Unique)
