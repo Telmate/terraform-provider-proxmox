@@ -180,6 +180,11 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
+						"file": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -625,7 +630,7 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 
-		flatMountpoints, _ := FlattenDevicesList(config.Networks)
+		flatMountpoints, _ := FlattenDevicesList(config.Mountpoints)
 		if err = d.Set("mountpoint", flatMountpoints); err != nil {
 			return err
 		}
