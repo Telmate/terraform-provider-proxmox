@@ -168,12 +168,12 @@ func getClient(pm_api_url string, pm_user string, pm_password string, pm_otp str
 
 func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
 	pconf.Mutex.Lock()
+	defer pconf.Mutex.Unlock()
 	pconf.MaxVMID, err = pconf.Client.GetNextID(pconf.MaxVMID + 1)
 	if err != nil {
 		return 0, err
 	}
 	nextId = pconf.MaxVMID
-	pconf.Mutex.Unlock()
 	return nextId, nil
 }
 
