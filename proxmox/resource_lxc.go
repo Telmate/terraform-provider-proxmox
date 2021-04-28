@@ -180,6 +180,11 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
+						"file": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -316,6 +321,7 @@ func resourceLxc() *schema.Resource {
 			"ssh_public_keys": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"start": {
 				Type:     schema.TypeBool,
@@ -521,7 +527,6 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)
-	config.SSHPublicKeys = d.Get("ssh_public_keys").(string)
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
@@ -625,16 +630,24 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 
-		flatMountpoints, _ := FlattenDevicesList(config.Networks)
+		flatMountpoints, _ := FlattenDevicesList(config.Mountpoints)
 		if err = d.Set("mountpoint", flatMountpoints); err != nil {
 			return err
 		}
 	}
 
 	// Read RootFs
-	confRootFs := d.Get("rootfs").([]interface{})[0]
-	adaptedRootFs := adaptDeviceToConf(confRootFs.(map[string]interface{}), config.RootFs)
-	d.Set("rootfs.0", adaptedRootFs)
+	rootFs := d.Get("rootfs").([]interface{})
+	if len(rootFs) > 0 {
+		confRootFs := rootFs[0]
+		adaptedRootFs := adaptDeviceToConf(confRootFs.(map[string]interface{}), config.RootFs)
+		d.Set("rootfs.0", adaptedRootFs)
+	} else {
+		confRootFs := make(map[string]interface{})
+		confRootFs = adaptDeviceToConf(confRootFs, config.RootFs)
+		adaptedRootFs := []map[string]interface{}{confRootFs}
+		d.Set("rootfs", adaptedRootFs)
+	}
 
 	// Read Networks
 	configNetworksSet := d.Get("network").([]interface{})
