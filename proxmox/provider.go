@@ -45,15 +45,15 @@ func Provider() *schema.Provider {
 		Schema: map[string]*schema.Schema{
 			"pm_user": {
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_USER", nil),
-				Description: "username, maywith with @pam",
+				Description: "Username e.g. myuser or myuser@pam",
 			},
 			"pm_password": {
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_PASS", nil),
-				Description: "secret",
+				Description: "Password to authenticate into proxmox",
 				Sensitive:   true,
 			},
 			"pm_api_url": {
@@ -61,6 +61,13 @@ func Provider() *schema.Provider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_API_URL", nil),
 				Description: "https://host.fqdn:8006/api2/json",
+			},
+			"pm_api_token": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_API_TOKEN", nil),
+				Description: "API token to authenticate into proxmox, you will need to manually create this before using terraform",
+				Sensitive:   true,
 			},
 			"pm_parallel": {
 				Type:     schema.TypeInt,
@@ -71,20 +78,24 @@ func Provider() *schema.Provider {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", false),
+				Description: "By default, every TLS connection is verified to be secure. This option allows terraform to proceed and operate on servers considered insecure. For example if you're connecting to a remote host and you do not have the CA cert that issued the proxmox api url's certificate.",
 			},
 			"pm_log_enable": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Enable provider logging to get proxmox API logs",
 			},
 			"pm_log_levels": {
-				Type:     schema.TypeMap,
-				Optional: true,
+				Type:        schema.TypeMap,
+				Optional:    true,
+				Description: "Configure the logging level to display; trace, debug, info, warn, etc",
 			},
 			"pm_log_file": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "terraform-plugin-proxmox.log",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "terraform-plugin-proxmox.log",
+				Description: "Write logs to this specific file",
 			},
 			"pm_timeout": {
 				Type:     schema.TypeInt,
