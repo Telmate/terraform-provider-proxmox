@@ -115,9 +115,9 @@ func Provider() *schema.Provider {
 			"proxmox_vm_qemu":  resourceVmQemu(),
 			"proxmox_lxc":      resourceLxc(),
 			"proxmox_lxc_disk": resourceLxcDisk(),
-			// TODO - storage_iso
-			// TODO - bridge
-			// TODO - vm_qemu_template
+			// TODO - proxmox_storage_iso
+			// TODO - proxmox_bridge
+			// TODO - proxmox_vm_qemu_template
 		},
 
 		ConfigureFunc: providerConfigure,
