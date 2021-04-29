@@ -155,7 +155,7 @@ resource "proxmox_vm_qemu" "%s" {
 
 // testAccExampleResourceClone generate two simply configured VMs where the second is a
 // clone of the first.
-func testAccExampleQemuCloneWithTwoScsiDisks(name string, name_clone string, targetNode string) string {
+func testAccExampleQemuCloneWithTwoDisks(name string, name_clone string, targetNode string) string {
 	source_resource := testAccExampleQemuStandard(name, targetNode)
 	clone_resource := fmt.Sprintf(`
 resource "proxmox_vm_qemu" "%s" {
