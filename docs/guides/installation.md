@@ -6,7 +6,7 @@ To install this provider, copy and paste this code into your Terraform configura
 terraform {
   required_providers {
     proxmox = {
-      source = "Telmate/proxmox"
+      source = "telmate/proxmox"
       version = "<version tag>"
     }
   }
