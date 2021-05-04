@@ -118,6 +118,7 @@ The following arguments are supported in the top level resource block.
 |`ciuser`|`str`||Override the default cloud-init user for provisioning.|
 |`cipassword`|`str`||Override the default cloud-init user's password. Sensitive.|
 |`cicustom`|`str`||Instead specifying ciuser, cipasword, etc... you can specify the path to a custom cloud-init config file here. Grants more flexibility in configuring cloud-init.|
+|`cloudinit_cdrom_storage`|`str`||Set the storage location for the cloud-init drive. Required when specifying `cicustom`.|
 |`searchdomain`|`str`||Sets default DNS search domain suffix.|
 |`nameserver`|`str`||Sets default DNS server for guest.|
 |`sshkeys`|`str`||Newline delimited list of SSH public keys to add to authorized keys file for the cloud-init user.|
