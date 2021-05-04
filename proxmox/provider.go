@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"sync"
+	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -62,11 +63,17 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("PM_API_URL", nil),
 				Description: "https://host.fqdn:8006/api2/json",
 			},
-			"pm_api_token": {
+			"pm_api_token_id": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_API_TOKEN", nil),
-				Description: "API token to authenticate into proxmox, you will need to manually create this before using terraform",
+				DefaultFunc: schema.EnvDefaultFunc("PM_API_TOKEN_ID", nil),
+				Description: "API TokenID e.g. root@pam!mytesttoken",
+			},
+			"pm_api_token_secret": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_API_TOKEN_SECRET", nil),
+				Description: "The secret uuid corresponding to a TokenID",
 				Sensitive:   true,
 			},
 			"pm_parallel": {
@@ -125,7 +132,16 @@ func Provider() *schema.Provider {
 }
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	client, err := getClient(d.Get("pm_api_url").(string), d.Get("pm_user").(string), d.Get("pm_password").(string), d.Get("pm_otp").(string), d.Get("pm_tls_insecure").(bool), d.Get("pm_timeout").(int))
+	client, err := getClient(
+		d.Get("pm_api_url").(string),
+		d.Get("pm_user").(string),
+		d.Get("pm_password").(string),
+		d.Get("pm_api_token_id").(string),
+		d.Get("pm_api_token_secret").(string),
+		d.Get("pm_otp").(string),
+		d.Get("pm_tls_insecure").(bool),
+		d.Get("pm_timeout").(int),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -163,13 +179,43 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	}, nil
 }
 
-func getClient(pm_api_url string, pm_user string, pm_password string, pm_otp string, pm_tls_insecure bool, pm_timeout int) (*pxapi.Client, error) {
+func getClient(pm_api_url string, pm_user string, pm_password string, pm_api_token_id string, pm_api_token_secret string, pm_otp string, pm_tls_insecure bool, pm_timeout int) (*pxapi.Client, error) {
 	tlsconf := &tls.Config{InsecureSkipVerify: true}
 	if !pm_tls_insecure {
 		tlsconf = nil
 	}
+
+	var err error
+
+	if pm_password != "" && pm_api_token_secret != "" {
+		err = fmt.Errorf("Password and API token secret both exist, choose one or the other.")
+	}
+
+	if pm_password == "" && pm_api_token_secret == "" {
+		err = fmt.Errorf("Password and API token do not exist, one of these must exist.")
+	}
+
+	if strings.Contains(pm_user, "!") && pm_password != "" {
+		err = fmt.Errorf("You appear to be using an API TokenID username with your password.")
+	}
+
+	if !strings.Contains(pm_api_token_id, "!") {
+		err = fmt.Errorf("Your API TokenID username should contain a !, check your API credentials.")
+	}
+
 	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_timeout)
-	err := client.Login(pm_user, pm_password, pm_otp)
+
+	// User+Pass authentication
+	if pm_user != "" && pm_password != "" {
+		err = client.Login(pm_user, pm_password, pm_otp)
+	}
+
+	// API authentication
+	if pm_api_token_id != "" && pm_api_token_secret != "" {
+		// Unsure how to get an err for this
+		client.SetAPIToken( pm_api_token_id, pm_api_token_secret)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -205,6 +251,7 @@ func (lock *pmApiLockHolder) lock() {
 	pconf.CurrentParallel++
 	pconf.Mutex.Unlock()
 }
+
 func (lock *pmApiLockHolder) unlock() {
 	if !lock.locked {
 		return
