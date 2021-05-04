@@ -23,8 +23,8 @@ provider "proxmox" {
 ## Creating the connection via username and API token
 
 ```bash
-export PM_USER="terraform-user@pve"
-export PM_API_TOKEN=""
+export PM_API_TOKEN_ID="terraform-user@pve!mytoken"
+export PM_API_TOKEN_SECRET="afcd8f45-acc1-4d0f-bb12-a70b0777ec11"
 ```
 
 ```hcl
@@ -38,9 +38,10 @@ provider "proxmox" {
 The following arguments are supported in the provider block:
 
 * `pm_api_url` - (Required; or use environment variable `PM_API_URL`) This is the target Proxmox API endpoint.
-* `pm_user` - (Required; or use environment variable `PM_USER`) The user, remember to include the authentication realm such as myuser@pam or myuser@pve.
-* `pm_api_token` - (Optional; or use environment variable `PM_API_TOKEN`) This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user.
+* `pm_user` - (Optional; or use environment variable `PM_USER`) The user, remember to include the authentication realm such as myuser@pam or myuser@pve.
 * `pm_password` - (Optional; sensitive; or use environment variable `PM_PASS`) The password.
+* `pm_api_token_id` - (Optional; or use environment variable `PM_API_TOKEN_ID`) This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user.
+* `pm_api_token_secret` - (Optional; or use environment variable `PM_API_TOKEN_SECRET`) This is a uuid that is only available when initially creating the token.
 * `pm_otp` - (Optional; or use environment variable `PM_OTP`) The 2FA OTP code.
 * `pm_tls_insecure` - (Optional) Disable TLS verification while connecting to the proxmox server.
 * `pm_parallel` - (Optional; defaults to 4) Allowed simultaneous Proxmox processes (e.g. creating resources).
