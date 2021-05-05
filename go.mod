@@ -1,12 +1,9 @@
 module github.com/Telmate/terraform-provider-proxmox
 
-go 1.13
+go 1.16
 
 require (
-	github.com/Telmate/proxmox-api-go v0.0.0-20210422140841-c8d917116b7f
-	github.com/aws/aws-sdk-go v1.31.9
-	github.com/hashicorp/terraform v0.13.4 // indirect
-	github.com/hashicorp/terraform-plugin-sdk v1.13.0 // indirect
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.1.0
-	github.com/rs/zerolog v1.19.0
+	github.com/Telmate/proxmox-api-go v0.0.0-20210429201316-cb769f4e78c9
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.6.1
+	github.com/rs/zerolog v1.21.0
 )
