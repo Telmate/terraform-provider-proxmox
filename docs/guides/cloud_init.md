@@ -172,6 +172,8 @@ EOF
     the snippets folder in the local storage in the Proxmox VE server.
   */
   cicustom = "user=local:snippets/user_data_vm-${count.index}.yml"
+  /* Create the cloud-init drive on the "local-lvm" storage */
+  cloudinit_cdrom_storage = "local-lvm"
 
   provisioner "remote-exec" {
     inline = [
