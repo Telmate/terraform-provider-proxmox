@@ -216,7 +216,6 @@ func resourceVmQemu() *schema.Resource {
                                 Type:     schema.TypeString,
                                 Optional: true,
                         },
-
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
