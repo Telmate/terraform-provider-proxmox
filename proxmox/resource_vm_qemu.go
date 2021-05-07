@@ -334,10 +334,10 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"unused_disk": &schema.Schema{
-				Type:          schema.TypeList,
-				Computed:      true,
+				Type:     schema.TypeList,
+				Computed: true,
 				//Optional:      true,
-				Description:   "Record unused disks in proxmox. This is intended to be read-only for now.",
+				Description: "Record unused disks in proxmox. This is intended to be read-only for now.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"storage": &schema.Schema{
@@ -409,7 +409,7 @@ func resourceVmQemu() *schema.Resource {
 						"ssd": &schema.Schema{
 							Type:     schema.TypeInt,
 							Optional: true,
-							Default: 0,
+							Default:  0,
 						},
 						"discard": &schema.Schema{
 							Type:     schema.TypeString,
@@ -682,8 +682,8 @@ func resourceVmQemu() *schema.Resource {
 				ForceNew: true,
 			},
 			"reboot_required": {
-				Type: schema.TypeBool,
-				Computed: true,
+				Type:        schema.TypeBool,
+				Computed:    true,
 				Description: "Internal variable, true if any of the modified parameters require a reboot to take effect.",
 			},
 			"default_ipv4_address": {
@@ -834,7 +834,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			// proxmox needs so we can correctly update the existing disks (post-clone)
 			// instead of accidentially causing the existing disk to be detached.
 			// see https://github.com/Telmate/terraform-provider-proxmox/issues/239
-			for slot, disk := range(config_post_clone.QemuDisks) {
+			for slot, disk := range config_post_clone.QemuDisks {
 				// only update the desired configuration if it was not set by the user
 				// we do not want to overwrite the desired config with the results from
 				// proxmox if the user indicates they wish a particular file or volume config
@@ -1243,12 +1243,15 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig2", config.Ipconfig2)
 
 	// Some dirty hacks to populate undefined keys with default values.
-	checkedKeys := []string{"clone_wait", "additional_wait", "force_create", "full_clone", "define_connection_info", "preprovision"}
+	checkedKeys := []string{"clone_wait", "additional_wait", "force_create", "define_connection_info", "preprovision"}
 	for _, key := range checkedKeys {
 		if _, ok := d.GetOk(key); !ok {
 			d.Set(key, thisResource.Schema[key].Default)
 		}
 	}
+	// Check "full_clone" separately, as it causes issues in loop above due to how GetOk returns values on false bools.
+	// Since "full_clone" has a default of true, it will always be in the configuration, so no need to verify.
+	d.Set("full_clone", d.Get("full_clone"))
 
 	// Disks.
 	// add an explicit check that the keys in the config.QemuDisks map are a strict subset of
