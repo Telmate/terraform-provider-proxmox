@@ -10,7 +10,7 @@ When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block.
 
 ```hcl
 resource "proxmox_vm_qemu" "resource-name" {
-    name = "VM name"
+    name = "VM-name"
     target_node = "Node to create the VM on"
     iso = "ISO file name"
     # or 

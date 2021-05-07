@@ -16,7 +16,7 @@ provider "proxmox" {
 }
 
 resource "proxmox_vm_qemu" "example" {
-    name = "servy_mcserverface"
+    name = "servy-mcserverface"
     desc = "A test for using terraform and vagrant"
     target_node = "pve"
 }
