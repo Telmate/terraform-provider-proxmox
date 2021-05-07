@@ -212,6 +212,10 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+                        "args": {
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -743,6 +747,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		HaState:      d.Get("hastate").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		Tags:         d.Get("tags").(string),
+		Args:         d.Get("args").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
 		QemuSerials:  qemuSerials,
@@ -997,6 +1002,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		HaState:      d.Get("hastate").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		Tags:         d.Get("tags").(string),
+		Args:         d.Get("args").(string),
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
 		QemuSerials:  qemuSerials,
@@ -1229,6 +1235,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("hastate", vmr.HaState())
 	d.Set("qemu_os", config.QemuOs)
 	d.Set("tags", config.Tags)
+	d.Set("args", config.Args)
 	// Cloud-init.
 	d.Set("ciuser", config.CIuser)
 	// we purposely use the password from the terraform config here
