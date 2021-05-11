@@ -300,7 +300,7 @@ func TestAccProxmoxVmQemu_CreateCloneWithTwoDisks(t *testing.T) {
 }
 
 // TestAccProxmoxVmQemu_StandardUpdateNoReboot tests a simple update of a vm_qemu resource,
-// and the modified parameters can be applied without reboot. 
+// and the modified parameters can be applied without reboot.
 func TestAccProxmoxVmQemu_UpdateNoReboot(t *testing.T) {
 	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
@@ -308,7 +308,7 @@ func TestAccProxmoxVmQemu_UpdateNoReboot(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProxmoxProviderFactory(),
-		
+
 		Steps: []resource.TestStep{
 			{
 				Config: testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode),
@@ -318,10 +318,10 @@ func TestAccProxmoxVmQemu_UpdateNoReboot(t *testing.T) {
 			},
 			{
 				// since we're just renaming there should be no reboot
-				Config: strings.Replace(testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode), 
-				"name = \"" + resourceName + "\"", "name = \"" + resourceName + "-renamed\"", 1),
+				Config: strings.Replace(testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode),
+					"name = \""+resourceName+"\"", "name = \""+resourceName+"-renamed\"", 1),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourcePath, "name", resourceName + "-renamed"),
+					resource.TestCheckResourceAttr(resourcePath, "name", resourceName+"-renamed"),
 				),
 			},
 		},
@@ -329,7 +329,7 @@ func TestAccProxmoxVmQemu_UpdateNoReboot(t *testing.T) {
 }
 
 // TestAccProxmoxVmQemu_UpdateRebootRequired tests a simple update of a vm_qemu resource,
-// and the modified parameters can be only applied with reboot. 
+// and the modified parameters can be only applied with reboot.
 func TestAccProxmoxVmQemu_UpdateRebootRequired(t *testing.T) {
 	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
@@ -337,7 +337,7 @@ func TestAccProxmoxVmQemu_UpdateRebootRequired(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProxmoxProviderFactory(),
-		
+
 		Steps: []resource.TestStep{
 			{
 				Config: testAccExampleQemuBasic(resourceName, testAccProxmoxTargetNode),
