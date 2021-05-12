@@ -27,6 +27,18 @@ This section is here to both serve as a reminder to contributers of areas for im
 
 When contributing, please also add documentation to help other users.
 
+### Debugging the provider
+
+Debugging is available for this provider through the Terraform Plugin SDK versions 2.0.0. Therefore the plugin can be 
+started with the debugging flag `--debug`.
+
+For example (using [delve](https://github.com/go-delve/delve) as Debugger):
+```bash
+dlv exec --headless ./terraform-provider-my-provider -- --debug
+```
+
+For more information about debugging a provider please see: [Debugger-Based Debugging](https://www.terraform.io/docs/extend/debugging.html#debugger-based-debugging)
+
 ## Useful links
 
 * [Proxmox](https://www.proxmox.com/en/)

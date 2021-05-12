@@ -6,8 +6,8 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"sync"
 	"strings"
+	"sync"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -213,7 +213,7 @@ func getClient(pm_api_url string, pm_user string, pm_password string, pm_api_tok
 	// API authentication
 	if pm_api_token_id != "" && pm_api_token_secret != "" {
 		// Unsure how to get an err for this
-		client.SetAPIToken( pm_api_token_id, pm_api_token_secret)
+		client.SetAPIToken(pm_api_token_id, pm_api_token_secret)
 	}
 
 	if err != nil {
