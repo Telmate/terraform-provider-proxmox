@@ -1375,8 +1375,20 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	// give sometime to proxmox to catchup
-	time.Sleep(2 * time.Second)
+
+	// Wait until vm is stopped. Otherwise, deletion will fail.
+	waited := 0
+	for waited < 300 {
+		vmState, err := client.GetVmState(vmr)
+		if err == nil && vmState["status"] == "stopped" {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
 	_, err = client.DeleteVm(vmr)
 	return err
 }
