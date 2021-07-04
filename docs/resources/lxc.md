@@ -160,6 +160,7 @@ The following arguments may be optionally defined when using this resource:
     * `mount` - Defines the filesystem types (separated by semi-colons) that are allowed to be mounted.
     * `nesting` - A boolean to allow nested virtualization.
 * `force` - A boolean that allows the overwriting of pre-existing containers.
+* `hastate` - Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.
 * `hookscript` - A string containing [a volume identifier to a script](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_hookscripts_2) that will be executed during various steps throughout the container's lifetime. The script must be an executable file.
 * `hostname` - Specifies the host name of the container.
 * `ignore_unpack_errors` - A boolean that determines if template extraction errors are ignored during container creation.
