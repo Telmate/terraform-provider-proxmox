@@ -96,6 +96,10 @@ func resourceLxc() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"hastate": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"hookscript": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -408,6 +412,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		config.Features = featureSetList[0].(map[string]interface{})
 	}
 	config.Force = d.Get("force").(bool)
+	config.HaState = d.Get("hastate").(string)
 	config.Hookscript = d.Get("hookscript").(string)
 	config.Hostname = d.Get("hostname").(string)
 	config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
@@ -519,6 +524,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		config.Features = featureSetList[0].(map[string]interface{})
 	}
 	config.Force = d.Get("force").(bool)
+	config.HaState = d.Get("hastate").(string)
 	config.Hookscript = d.Get("hookscript").(string)
 	config.Hostname = d.Get("hostname").(string)
 	config.IgnoreUnpackErrors = d.Get("ignore_unpack_errors").(bool)
@@ -678,6 +684,7 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("cpuunits", config.CPUUnits)
 	d.Set("description", config.Description)
 	d.Set("force", config.Force)
+	d.Set("hastate", vmr.HaState)
 	d.Set("hookscript", config.Hookscript)
 	d.Set("hostname", config.Hostname)
 	d.Set("ignore_unpack_errors", config.IgnoreUnpackErrors)

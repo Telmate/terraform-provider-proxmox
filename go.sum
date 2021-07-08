@@ -42,6 +42,8 @@ github.com/Microsoft/go-winio v0.4.16 h1:FtSW/jqD+l4ba5iPBj9CODVtgfYAD8w2wS923g/
 github.com/Microsoft/go-winio v0.4.16/go.mod h1:XB6nPKklQyQ7GC9LdcBEcBl8PF76WugXOPRXwdLnMv0=
 github.com/Telmate/proxmox-api-go v0.0.0-20210507143528-c60bbda13c0c h1:s8BXeCeP5hLudxqEVwSScJMS/V25eyatTKpIg7JMSNQ=
 github.com/Telmate/proxmox-api-go v0.0.0-20210507143528-c60bbda13c0c/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
+github.com/Telmate/proxmox-api-go v0.0.0-20210708200918-d27e0fa5a4a4 h1:nPcdJDO4MVAAUPsJtVV7rgjQGFvjxUEBkP53XrUve88=
+github.com/Telmate/proxmox-api-go v0.0.0-20210708200918-d27e0fa5a4a4/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
 github.com/agext/levenshtein v1.2.2/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
