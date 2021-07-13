@@ -813,9 +813,17 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			}
 			config.FullClone = &fullClone
 
-			sourceVmr, err := client.GetVmRefByName(d.Get("clone").(string))
+			sourceVmrs, err := client.GetVmRefsByName(d.Get("clone").(string))
 			if err != nil {
 				return err
+			}
+
+			// prefer source Vm located on same node
+			sourceVmr := sourceVmrs[0]
+			for _, candVmr := range sourceVmrs {
+				if candVmr.Node() == vmr.Node() {
+					sourceVmr = candVmr
+				}
 			}
 
 			log.Print("[DEBUG] cloning VM")

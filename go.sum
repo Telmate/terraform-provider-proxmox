@@ -44,6 +44,8 @@ github.com/Telmate/proxmox-api-go v0.0.0-20210507143528-c60bbda13c0c h1:s8BXeCeP
 github.com/Telmate/proxmox-api-go v0.0.0-20210507143528-c60bbda13c0c/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
 github.com/Telmate/proxmox-api-go v0.0.0-20210708200918-d27e0fa5a4a4 h1:nPcdJDO4MVAAUPsJtVV7rgjQGFvjxUEBkP53XrUve88=
 github.com/Telmate/proxmox-api-go v0.0.0-20210708200918-d27e0fa5a4a4/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
+github.com/Telmate/proxmox-api-go v0.0.0-20210713150936-9bfd169c655f h1:Lb9VXSg+7bJSVAf5pzUqc5X6GTN502NQsP+64tF+T4w=
+github.com/Telmate/proxmox-api-go v0.0.0-20210713150936-9bfd169c655f/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
 github.com/agext/levenshtein v1.2.2/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
