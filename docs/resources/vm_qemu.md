@@ -64,7 +64,7 @@ EOF
 
 ## Preprovision for Cloud-Init
 
-Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig` parameter to create based on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html) or use the Proxmox variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `searchdomain`, `nameserver` and `sshkeys`.
+Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig` parameter to create based on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html) or use the Proxmox variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfig3`, `ipconfig4`, `ipconfig5`, `searchdomain`, `nameserver` and `sshkeys`.
 
 For more information, see the [Cloud-init guide](docs/guides/cloud_init.md).
 
@@ -125,6 +125,11 @@ The following arguments are supported in the top level resource block.
 |`ipconfig0`|`str`||The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`.|
 |`ipconfig1`|`str`||The second IP address to assign to the guest. Same format as `ipconfig0`.|
 |`ipconfig2`|`str`||The third IP address to assign to the guest. Same format as `ipconfig0`.|
+|`ipconfig3`|`str`||The fourth IP address to assign to the guest. Same format as `ipconfig0`.|
+|`ipconfig4`|`str`||The fifth IP address to assign to the guest. Same format as `ipconfig0`.|
+|`ipconfig5`|`str`||The sixth IP address to assign to the guest. Same format as `ipconfig0`.|
+
+Note: Proxmox supports ipconfigN arbritrary numbers of interfaces, but at the moment this Terraform provider has support for 0-5 addresses only. If there is interest, this could be refactored to support any number of interfaces.
 
 ### VGA Block
 
