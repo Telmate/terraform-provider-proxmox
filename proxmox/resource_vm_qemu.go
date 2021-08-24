@@ -661,6 +661,21 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"ipconfig3": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"ipconfig4": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"ipconfig5": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"preprovision": {
 				Type:          schema.TypeBool,
 				Optional:      true,
@@ -760,6 +775,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Ipconfig0:    d.Get("ipconfig0").(string),
 		Ipconfig1:    d.Get("ipconfig1").(string),
 		Ipconfig2:    d.Get("ipconfig2").(string),
+		Ipconfig3:    d.Get("ipconfig3").(string),
+		Ipconfig4:    d.Get("ipconfig4").(string),
+		Ipconfig5:    d.Get("ipconfig5").(string),
 		// Deprecated single disk config.
 		Storage:  d.Get("storage").(string),
 		DiskSize: d.Get("disk_gb").(float64),
@@ -1023,6 +1041,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Ipconfig0:    d.Get("ipconfig0").(string),
 		Ipconfig1:    d.Get("ipconfig1").(string),
 		Ipconfig2:    d.Get("ipconfig2").(string),
+		Ipconfig3:    d.Get("ipconfig3").(string),
+		Ipconfig4:    d.Get("ipconfig4").(string),
+		Ipconfig5:    d.Get("ipconfig5").(string),
 		// Deprecated single disk config.
 		Storage:  d.Get("storage").(string),
 		DiskSize: d.Get("disk_gb").(float64),
@@ -1079,6 +1100,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		"ipconfig0",
 		"ipconfig1",
 		"ipconfig2",
+		"ipconfig3",
+		"ipconfig4",
+		"ipconfig5",
 		"kvm",
 		"vga",
 		"serial",
@@ -1255,6 +1279,9 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig0", config.Ipconfig0)
 	d.Set("ipconfig1", config.Ipconfig1)
 	d.Set("ipconfig2", config.Ipconfig2)
+	d.Set("ipconfig3", config.Ipconfig3)
+	d.Set("ipconfig4", config.Ipconfig4)
+	d.Set("ipconfig5", config.Ipconfig5)
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"clone_wait", "additional_wait", "force_create", "define_connection_info", "preprovision"}
