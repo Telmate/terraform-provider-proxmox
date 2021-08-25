@@ -289,3 +289,17 @@ func parseResourceId(resId string) (targetNode string, resType string, vmId int,
 	vmId, err = strconv.Atoi(idMatch[3])
 	return
 }
+
+func clusterResourceId(resType string, resId string) string {
+	return fmt.Sprintf("%s/%s", resType, resId)
+}
+
+var rxClusterRsId = regexp.MustCompile("([^/]+)/([^/]+)")
+
+func parseClusterResourceId(resId string) (resType string, id string, err error) {
+	if !rxClusterRsId.MatchString(resId) {
+		return "", "", fmt.Errorf("Invalid resource format: %s. Must be type/resId", resId)
+	}
+	idMatch := rxClusterRsId.FindStringSubmatch(resId)
+	return idMatch[1], idMatch[2], nil
+}
