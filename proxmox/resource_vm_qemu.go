@@ -1378,14 +1378,12 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	pools, err := client.GetPoolList()
 	if err == nil {
 		for _, poolInfo := range pools["data"].([]interface{}) {
-			// logToFile(fmt.Sprintf("%+v\n", poolInfo))
 			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
 			poolMembers := poolContent["data"].(map[string]interface{})["members"]
 			for _, member := range poolMembers.([]interface{}) {
 				if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
 					d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
 				}
-
 			}
 		}
 	}
