@@ -851,13 +851,25 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				return err
 			}
 
-			// give sometime to proxmox to catchup
-			// TODO use a real try-retry loop here instead of a simple wait
-			time.Sleep(time.Duration(d.Get("clone_wait").(int)/2) * time.Second)
-
+			// Waiting for the clone to become ready and
 			// read back all the current disk configurations from proxmox
 			// this allows us to receive updates on the post-clone state of the vm we're building
-			config_post_clone, err := pxapi.NewConfigQemuFromApi(vmr, client)
+			log.Print("[DEBUG] Waiting for clone becoming ready")
+			var config_post_clone *pxapi.ConfigQemu
+			for {
+				// Wait until we can actually retrieve the config from the cloned machine
+				config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
+				if config_post_clone != nil {
+					break
+					// to prevent an infinite loop we check for any other error
+					// this error is actually fine because the clone is not ready yet
+				} else if err.Error() != "vm locked, could not obtain config" {
+					return err
+				}
+				time.Sleep(5 * time.Second)
+				log.Print("[DEBUG] Clone still not ready, checking again")
+			}
+
 			logger.Debug().Str("vmid", d.Id()).Msgf("Original disks: '%+v', Clone Disks '%+v'", config.QemuDisks, config_post_clone.QemuDisks)
 
 			// update the current working state to use the appropriate file specification
