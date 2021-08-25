@@ -13,7 +13,7 @@ resource "proxmox_vm_qemu" "resource-name" {
     name = "VM-name"
     target_node = "Node to create the VM on"
     iso = "ISO file name"
-    # or 
+    # or
     # clone = "template to clone"
 }
 ```
@@ -105,7 +105,7 @@ The following arguments are supported in the top level resource block.
 |`pool`|`str`||The resource pool to which the VM will be added.|
 |`tags`|`str`||Tags of the VM. This is only meta information.|
 |`force_create`|`bool`|`false`|If `false`, and a vm of the same name, on the same node exists, terraform will attempt to reconfigure that VM with these settings. Set to true to always create a new VM (note, the name of the VM must still be unique, otherwise an error will be produced.)|
-|`clone_wait`|`int`|`15`|Provider will wait `clone_wait`/2 seconds after a clone operation and `clone_wait` seconds after an UpdateConfig operation.|
+|`clone_wait`|`int`|`15`|Provider will wait `clone_wait` seconds after an UpdateConfig operation.|
 |`additional_wait`|`int`|`15`|The amount of time in seconds to wait between creating the VM and powering it up.|
 |`preprovision`|`bool`|`true`|Whether to preprovision the VM. See [Preprovision](#Preprovision) above for more info.|
 |`os_type`|`str`||Which provisioning method to use, based on the OS type. Options: `ubuntu`, `centos`, `cloud-init`.|
@@ -239,6 +239,7 @@ In addition to  the arguments above, the following attributes can be referenced 
 |---------|----|-----------|
 |`ssh_host`|`str`|Read-only attribute. Only applies when `define_connection_info` is true. The hostname or IP to use to connect to the VM for preprovisioning. This can be overridden by defining `ssh_forward_ip`, but if you're using cloud-init and `ipconfig0=dhcp`, the IP reported by qemu-guest-agent is used, otherwise the IP defined in `ipconfig0` is used.|
 |`ssh_port`|`str`|Read-only attribute. Only applies when `define_connection_info` is true. The port to connect to the VM over SSH for preprovisioning. If using cloud-init and a port is not specified in `ssh_forward_ip`, then 22 is used. If not using cloud-init, a port on the `target_node` will be forwarded to port 22 in the guest, and this attribute will be set to the forwarded port.|
+|`default_ipv4_address`|`str`|Read-only attribute. Only applies when `agent` is `1` and Proxmox can actually read the ip the vm has.|
 
 ## Deprecated Arguments
 
