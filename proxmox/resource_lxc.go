@@ -591,6 +591,21 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	if d.HasChange("pool") {
+		oldPool, newPool := func() (string, string) {
+			a, b := d.GetChange("pool")
+			return a.(string), b.(string)
+		}()
+
+		vmr := pxapi.NewVmRef(vmID)
+		vmr.SetPool(oldPool)
+
+		_, err := client.UpdateVMPool(vmr, newPool)
+		if err != nil {
+			return err
+		}
+	}
+
 	return _resourceLxcRead(d, meta)
 }
 

@@ -1051,6 +1051,21 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	// Give some time to proxmox to catchup.
 	time.Sleep(15 * time.Second)
 
+	if d.HasChange("pool") {
+		oldPool, newPool := func() (string, string) {
+			a, b := d.GetChange("pool")
+			return a.(string), b.(string)
+		}()
+
+		vmr := pxapi.NewVmRef(vmID)
+		vmr.SetPool(oldPool)
+
+		_, err := client.UpdateVMPool(vmr, newPool)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = initConnInfo(d, pconf, client, vmr, &config, lock)
 	if err != nil {
 		return err
