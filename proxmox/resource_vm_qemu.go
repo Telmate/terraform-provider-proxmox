@@ -1412,8 +1412,7 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Wait until vm is stopped. Otherwise, deletion will fail.
-	waited := 0
-	for waited < 300 {
+	for {
 		vmState, err := client.GetVmState(vmr)
 		if err == nil && vmState["status"] == "stopped" {
 			break
