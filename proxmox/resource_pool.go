@@ -81,7 +81,7 @@ func _resourcePoolRead(d *schema.ResourceData, meta interface{}) error {
 		d.SetId("")
 		return nil
 	}
-	a
+
 	d.SetId(clusterResourceId("pools", poolID))
 	d.Set("comment", "")
 	if poolInfo["data"].(map[string]interface{})["comment"] != nil {
@@ -120,7 +120,6 @@ func resourcePoolUpdate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourcePoolDelete(d *schema.ResourceData, meta interface{}) error {
-	pconf
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
