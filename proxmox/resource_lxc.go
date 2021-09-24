@@ -591,6 +591,21 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
+	if d.HasChange("pool") {
+		oldPool, newPool := func() (string, string) {
+			a, b := d.GetChange("pool")
+			return a.(string), b.(string)
+		}()
+
+		vmr := pxapi.NewVmRef(vmID)
+		vmr.SetPool(oldPool)
+
+		_, err := client.UpdateVMPool(vmr, newPool)
+		if err != nil {
+			return err
+		}
+	}
+
 	return _resourceLxcRead(d, meta)
 }
 
@@ -674,6 +689,20 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	// Pool
+	pools, err := client.GetPoolList()
+	if err == nil {
+		for _, poolInfo := range pools["data"].([]interface{}) {
+			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
+			poolMembers := poolContent["data"].(map[string]interface{})["members"]
+			for _, member := range poolMembers.([]interface{}) {
+				if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
+					d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+				}
+			}
+		}
+	}
+
 	// Read Misc
 	d.Set("arch", config.Arch)
 	d.Set("bwlimit", config.BWLimit)
@@ -693,7 +722,6 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("nameserver", config.Nameserver)
 	d.Set("onboot", config.OnBoot)
 	d.Set("ostype", config.OsType)
-	d.Set("pool", config.Pool)
 	d.Set("protection", config.Protection)
 	d.Set("restore", config.Restore)
 	d.Set("searchdomain", config.SearchDomain)

@@ -40,12 +40,8 @@ github.com/Masterminds/sprig v2.22.0+incompatible/go.mod h1:y6hNFY5UBTIWBxnzTeuN
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=
 github.com/Microsoft/go-winio v0.4.16 h1:FtSW/jqD+l4ba5iPBj9CODVtgfYAD8w2wS923g/cFDk=
 github.com/Microsoft/go-winio v0.4.16/go.mod h1:XB6nPKklQyQ7GC9LdcBEcBl8PF76WugXOPRXwdLnMv0=
-github.com/Telmate/proxmox-api-go v0.0.0-20210507143528-c60bbda13c0c h1:s8BXeCeP5hLudxqEVwSScJMS/V25eyatTKpIg7JMSNQ=
-github.com/Telmate/proxmox-api-go v0.0.0-20210507143528-c60bbda13c0c/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
-github.com/Telmate/proxmox-api-go v0.0.0-20210708200918-d27e0fa5a4a4 h1:nPcdJDO4MVAAUPsJtVV7rgjQGFvjxUEBkP53XrUve88=
-github.com/Telmate/proxmox-api-go v0.0.0-20210708200918-d27e0fa5a4a4/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
-github.com/Telmate/proxmox-api-go v0.0.0-20210713150936-9bfd169c655f h1:Lb9VXSg+7bJSVAf5pzUqc5X6GTN502NQsP+64tF+T4w=
-github.com/Telmate/proxmox-api-go v0.0.0-20210713150936-9bfd169c655f/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
+github.com/Telmate/proxmox-api-go v0.0.0-20210824171734-5a7bec182583 h1:sL9zKd94Wst59MYibXCa7J5ipLMfrp1uUR6Z4rmrMrQ=
+github.com/Telmate/proxmox-api-go v0.0.0-20210824171734-5a7bec182583/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
 github.com/agext/levenshtein v1.2.2/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=

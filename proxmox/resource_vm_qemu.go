@@ -1084,6 +1084,21 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	// Give some time to proxmox to catchup.
 	time.Sleep(15 * time.Second)
 
+	if d.HasChange("pool") {
+		oldPool, newPool := func() (string, string) {
+			a, b := d.GetChange("pool")
+			return a.(string), b.(string)
+		}()
+
+		vmr := pxapi.NewVmRef(vmID)
+		vmr.SetPool(oldPool)
+
+		_, err := client.UpdateVMPool(vmr, newPool)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = initConnInfo(d, pconf, client, vmr, &config, lock)
 	if err != nil {
 		return err
@@ -1259,7 +1274,6 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
-	d.Set("pool", config.Pool)
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
 	d.Set("boot", config.Boot)
@@ -1398,6 +1412,20 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
+
+	// Pool
+	pools, err := client.GetPoolList()
+	if err == nil {
+		for _, poolInfo := range pools["data"].([]interface{}) {
+			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
+			poolMembers := poolContent["data"].(map[string]interface{})["members"]
+			for _, member := range poolMembers.([]interface{}) {
+				if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
+					d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+				}
+			}
+		}
+	}
 
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
