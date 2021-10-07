@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -38,6 +39,16 @@ func resourceLxc() *schema.Resource {
 			"bwlimit": {
 				Type:     schema.TypeInt,
 				Optional: true,
+			},
+			"clone": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"clone_storage": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
 			},
 			"cmode": {
 				Type:     schema.TypeString,
@@ -91,6 +102,10 @@ func resourceLxc() *schema.Resource {
 						},
 					},
 				},
+			},
+			"full": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"force": {
 				Type:     schema.TypeBool,
@@ -398,6 +413,8 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.Ostemplate = d.Get("ostemplate").(string)
 	config.Arch = d.Get("arch").(string)
 	config.BWLimit = d.Get("bwlimit").(int)
+	config.Clone = d.Get("clone").(string)
+	config.CloneStorage = d.Get("clone_storage").(string)
 	config.CMode = d.Get("cmode").(string)
 	config.Console = d.Get("console").(bool)
 	config.Cores = d.Get("cores").(int)
@@ -412,6 +429,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		config.Features = featureSetList[0].(map[string]interface{})
 	}
 	config.Force = d.Get("force").(bool)
+	config.Full = d.Get("full").(bool)
 	config.HaState = d.Get("hastate").(string)
 	config.Hookscript = d.Get("hookscript").(string)
 	config.Hostname = d.Get("hostname").(string)
@@ -454,8 +472,11 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		config.Networks = lxcNetworks
 	}
 
-	rootfs := d.Get("rootfs").([]interface{})[0].(map[string]interface{})
-	config.RootFs = rootfs
+	rootfs, exists := d.GetOk("rootfs")
+
+	if exists {
+		config.RootFs = rootfs.([]interface{})[0].(map[string]interface{})
+	}
 
 	// proxmox api allows multiple mountpoint sets,
 	// having a unique 'id' parameter foreach set
@@ -478,15 +499,48 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 
 	vmr := pxapi.NewVmRef(nextid)
 	vmr.SetNode(targetNode)
-	err = config.CreateLxc(vmr, client)
-	if err != nil {
-		return err
+
+	if d.Get("clone").(string) != "" {
+
+		log.Print("[DEBUG] cloning LXC")
+
+		err = config.CloneLxc(vmr, client)
+
+		if err != nil {
+			return err
+		}
+
+		// Waiting for the clone to become ready and
+		// read back all the current disk configurations from proxmox
+		// this allows us to receive updates on the post-clone state of the container we're building
+		log.Print("[DEBUG] Waiting for clone becoming ready")
+		var config_post_clone *pxapi.ConfigLxc
+		for {
+			// Wait until we can actually retrieve the config from the cloned machine
+			config_post_clone, err = pxapi.NewConfigLxcFromApi(vmr, client)
+			if config_post_clone != nil {
+				break
+				// to prevent an infinite loop we check for any other error
+				// this error is actually fine because the clone is not ready yet
+			} else if err.Error() != "vm locked, could not obtain config" {
+				return err
+			}
+			time.Sleep(5 * time.Second)
+			log.Print("[DEBUG] Clone still not ready, checking again")
+		}
+
+	} else {
+		err = config.CreateLxc(vmr, client)
+		if err != nil {
+			return err
+		}
 	}
 
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
 	return _resourceLxcRead(d, meta)
+
 }
 
 func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
@@ -564,7 +618,9 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	if d.HasChange("rootfs") {
+	_, exists := d.GetOk("rootfs")
+
+	if exists && d.HasChange("rootfs") {
 		oldSet, newSet := d.GetChange("rootfs")
 
 		oldRootFs := oldSet.([]interface{})[0].(map[string]interface{})
