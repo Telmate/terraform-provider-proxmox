@@ -133,6 +133,16 @@ resource "proxmox_lxc" "advanced_features" {
 }
 ```
 
+### Clone basic example
+```hcl
+resource "proxmox_lxc" "basic" {
+  target_node = "pve"
+  hostname    = "lxc-clone"
+  #id of lxc container to clone
+  clone       = "8001"
+}
+```
+
 ## Argument Reference
 ### Required
 The following arguments must be defined when using this resource:
@@ -148,6 +158,8 @@ The following arguments may be optionally defined when using this resource:
 * `ostemplate` - The [volume identifier](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_volumes) that points to the OS template or backup file.
 * `arch` - Sets the container OS architecture type. Default is `"amd64"`.
 * `bwlimit` - A number for setting the override I/O bandwidth limit (in KiB/s).
+* `clone` - The lxc vmid to clone
+* `clone_storage` - Target storage for full clone.
 * `cmode` - Configures console mode. `"tty"` tries to open a connection to one of the available tty devices. `"console"` tries to attach to `/dev/console` instead. `"shell"` simply invokes a shell inside the container (no login). Default is `"tty"`.
 * `console` - A boolean to attach a console device to the container. Default is `true`.
 * `cores` - The number of cores assigned to the container. A container can use all available cores by default.
@@ -160,6 +172,7 @@ The following arguments may be optionally defined when using this resource:
     * `mount` - Defines the filesystem types (separated by semi-colons) that are allowed to be mounted.
     * `nesting` - A boolean to allow nested virtualization.
 * `force` - A boolean that allows the overwriting of pre-existing containers.
+* `full` - When cloning, create a full copy of all disks. This is always done when you clone a normal CT. For CT template it creates a linked clone by default.
 * `hastate` - Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.
 * `hookscript` - A string containing [a volume identifier to a script](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_hookscripts_2) that will be executed during various steps throughout the container's lifetime. The script must be an executable file.
 * `hostname` - Specifies the host name of the container.
