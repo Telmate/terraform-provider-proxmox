@@ -1180,8 +1180,16 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 			// disk added or removed AND there is no disk hot(un)plug
 			d.Set("reboot_required", true)
 		} else {
+			r := len(oldValues)
+
+			// we have have to check if the new configuration has fewer disks
+			// otherwise an index out of range panic occurs if we don't reduce the range
+			if rangeNV := len(newValues); rangeNV < r {
+				r = rangeNV
+			}
+
 			// some of the existing disk parameters have changed
-			for i := range oldValues { // loop through the interfaces
+			for i := 0; i < r; i++ { // loop through the interfaces
 				if oldValues[i].(map[string]interface{})["ssd"] != newValues[i].(map[string]interface{})["ssd"] {
 					d.Set("reboot_required", true)
 				}
