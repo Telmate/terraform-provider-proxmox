@@ -152,6 +152,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  true,
 			},
+			"tablet": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
 			"boot": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -745,6 +750,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Pool:         d.Get("pool").(string),
 		Bios:         d.Get("bios").(string),
 		Onboot:       d.Get("onboot").(bool),
+		Tablet:       d.Get("tablet").(bool),
 		Boot:         d.Get("boot").(string),
 		BootDisk:     d.Get("bootdisk").(string),
 		Agent:        d.Get("agent").(int),
@@ -1023,6 +1029,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Pool:         d.Get("pool").(string),
 		Bios:         d.Get("bios").(string),
 		Onboot:       d.Get("onboot").(bool),
+		Tablet:       d.Get("tablet").(bool),
 		Boot:         d.Get("boot").(string),
 		BootDisk:     d.Get("bootdisk").(string),
 		Agent:        d.Get("agent").(int),
@@ -1284,6 +1291,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("desc", config.Description)
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
+	d.Set("tablet", config.Tablet)
 	d.Set("boot", config.Boot)
 	d.Set("bootdisk", config.BootDisk)
 	d.Set("agent", config.Agent)
