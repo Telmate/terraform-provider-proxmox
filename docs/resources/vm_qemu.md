@@ -85,6 +85,7 @@ The following arguments are supported in the top level resource block.
 |`define_connection_info`|`bool`|`true`|Whether to let terraform define the (SSH) connection parameters for preprovisioners, see config block below.|
 |`bios`|`str`|`"seabios"`|The BIOS to use, options are `seabios` or `ovmf` for UEFI.|
 |`onboot`|`bool`|`true`|Whether to have the VM startup after the PVE node starts.|
+|`tablet`|`bool`|`true`|Enable/disable the USB tablet device. This device is usually needed to allow absolute mouse positioning with VNC.|
 |`boot`|`str`|`"cdn"`|The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).|
 |`bootdisk`|`str`||Enable booting from specified disk. You shouldn't need to change it under most circumstances.|
 |`agent`|`int`|`0`|Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.|
