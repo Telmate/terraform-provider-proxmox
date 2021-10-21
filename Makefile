@@ -71,6 +71,7 @@ install: build
 	cp bin/terraform-provider-proxmox $$GOPATH/bin/terraform-provider-proxmox
 
 local-dev-install:
+	@echo $(CURRENT_VERSION_MICRO)
 	@echo "$(KERNEL)"
 	@echo "$(ARCH)"
 	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(CURRENT_VERSION_MICRO)/$(KERNEL)_$(ARCH)/
