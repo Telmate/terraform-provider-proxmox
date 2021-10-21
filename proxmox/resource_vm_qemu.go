@@ -19,93 +19,7 @@ import (
 // so that we can print (debug) our ResourceData constructs
 var thisResource *schema.Resource
 
-func resourceDataToFlatValues(d *schema.ResourceData, resource *schema.Resource) (map[string]interface{}, error) {
-
-	flatValues := make(map[string]interface{})
-
-	for key, value := range resource.Schema {
-		switch value.Type {
-		case schema.TypeString:
-			flatValues[key] = d.Get(key).(string)
-		case schema.TypeBool:
-			flatValues[key] = d.Get(key).(bool)
-		case schema.TypeInt:
-			flatValues[key] = d.Get(key).(int)
-		case schema.TypeFloat:
-			flatValues[key] = d.Get(key).(float64)
-		case schema.TypeSet:
-			values, _ := schemaSetToFlatValues(d.Get(key).(*schema.Set), value.Elem.(*schema.Resource))
-			flatValues[key] = values
-		case schema.TypeList:
-			values, _ := schemaListToFlatValues(d.Get(key).([]interface{}), value.Elem.(*schema.Resource))
-			flatValues[key] = values
-		default:
-			flatValues[key] = "? Print Not Implemented ?"
-		}
-	}
-
-	return flatValues, nil
-}
-
-func schemaSetToFlatValues(set *schema.Set, resource *schema.Resource) ([]map[string]interface{}, error) {
-
-	flatValues := make([]map[string]interface{}, 0, 1)
-
-	for _, set := range set.List() {
-		innerFlatValues := make(map[string]interface{})
-
-		setAsMap := set.(map[string]interface{})
-		for key, value := range resource.Schema {
-			switch value.Type {
-			case schema.TypeString:
-				innerFlatValues[key] = setAsMap[key].(string)
-			case schema.TypeBool:
-				innerFlatValues[key] = setAsMap[key].(bool)
-			case schema.TypeInt:
-				innerFlatValues[key] = setAsMap[key].(int)
-			case schema.TypeFloat:
-				innerFlatValues[key] = setAsMap[key].(float64)
-			default:
-				innerFlatValues[key] = "? Print Not Implemented ?"
-			}
-		}
-
-		flatValues = append(flatValues, innerFlatValues)
-	}
-	return flatValues, nil
-}
-
-func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource) ([]map[string]interface{}, error) {
-
-	flatValues := make([]map[string]interface{}, 0, 1)
-
-	for _, item := range schemaList {
-		innerFlatValues := make(map[string]interface{})
-
-		itemAsMap := item.(map[string]interface{})
-		for key, value := range resource.Schema {
-			switch value.Type {
-			case schema.TypeString:
-				innerFlatValues[key] = itemAsMap[key].(string)
-			case schema.TypeBool:
-				innerFlatValues[key] = itemAsMap[key].(bool)
-			case schema.TypeInt:
-				innerFlatValues[key] = itemAsMap[key].(int)
-			case schema.TypeFloat:
-				innerFlatValues[key] = itemAsMap[key].(float64)
-			default:
-				innerFlatValues[key] = "? Print Not Implemented ?"
-			}
-		}
-
-		flatValues = append(flatValues, innerFlatValues)
-	}
-	return flatValues, nil
-}
-
 func resourceVmQemu() *schema.Resource {
-
-	*pxapi.Debug = true
 	thisResource = &schema.Resource{
 		Create: resourceVmQemuCreate,
 		Read:   resourceVmQemuRead,
@@ -173,9 +87,10 @@ func resourceVmQemu() *schema.Resource {
 				Default:  0,
 			},
 			"guest_agent_ready_timeout": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  600,
+				Type:       schema.TypeInt,
+				Deprecated: "Use custom per-resource timeout instead. See https://www.terraform.io/docs/language/resources/syntax.html#operation-timeouts",
+				Optional:   true,
+				Default:    100,
 			},
 			"iso": {
 				Type:     schema.TypeString,
@@ -594,14 +509,16 @@ func resourceVmQemu() *schema.Resource {
 				Default:  false,
 			},
 			"clone_wait": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  15,
+				Type:       schema.TypeInt,
+				Deprecated: "do not use anymore",
+				Optional:   true,
+				Default:    0,
 			},
 			"additional_wait": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  15,
+				Type:       schema.TypeInt,
+				Deprecated: "do not use anymore",
+				Optional:   true,
+				Default:    0,
 			},
 			"ci_wait": { // how long to wait before provision
 				Type:     schema.TypeInt,
@@ -682,10 +599,11 @@ func resourceVmQemu() *schema.Resource {
 				ForceNew: true,
 			},
 			"preprovision": {
-				Type:          schema.TypeBool,
-				Optional:      true,
-				Default:       true,
-				ConflictsWith: []string{"ssh_forward_ip", "ssh_user", "ssh_private_key", "os_type", "os_network_config"},
+				Type:       schema.TypeBool,
+				Deprecated: "do not use anymore",
+				Optional:   true,
+				Default:    true,
+				//ConflictsWith: []string{"ssh_forward_ip", "ssh_user", "ssh_private_key", "os_type", "os_network_config"},
 			},
 			"pool": {
 				Type:     schema.TypeString,
@@ -714,11 +632,10 @@ func resourceVmQemu() *schema.Resource {
 				Computed: true,
 			},
 		},
+		Timeouts: resourceTimeouts(),
 	}
 	return thisResource
 }
-
-var rxIPconfig = regexp.MustCompile("ip6?=([0-9a-fA-F:\\.]+)")
 
 func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
@@ -902,7 +819,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			}
 
 			// give sometime to proxmox to catchup
-			time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
+			//time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
 
 			err = prepareDiskSize(client, vmr, qemuDisks)
 			if err != nil {
@@ -953,7 +870,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// give sometime to proxmox to catchup
-	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+	//time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 	log.Print("[DEBUG] starting VM")
 	_, err := client.StartVm(vmr)
@@ -1123,7 +1040,6 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		"numa",
 		"hotplug",
 		"scsihw",
-		"preprovision",
 		"os_type",
 		"ciuser",
 		"cipassword",
@@ -1326,7 +1242,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig5", config.Ipconfig5)
 
 	// Some dirty hacks to populate undefined keys with default values.
-	checkedKeys := []string{"clone_wait", "additional_wait", "force_create", "define_connection_info", "preprovision"}
+	checkedKeys := []string{"force_create", "define_connection_info"}
 	for _, key := range checkedKeys {
 		if _, ok := d.GetOk(key); !ok {
 			d.Set(key, thisResource.Schema[key].Default)
@@ -1436,8 +1352,10 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
 			poolMembers := poolContent["data"].(map[string]interface{})["members"]
 			for _, member := range poolMembers.([]interface{}) {
-				if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
-					d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+				if member.(map[string]interface{})["type"] != "storage" {
+					if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
+						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+					}
 				}
 			}
 		}
@@ -1695,8 +1613,10 @@ func initConnInfo(
 	guestAgentRunning := false
 
 	// wait until the os has started the guest agent
-	guestAgentTimeout := d.Get("guest_agent_ready_timeout").(int)
-	guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout) * time.Second)
+	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
+	guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout))
+	log.Printf("[DEBUG] guestAgentTimeout = %v\n", guestAgentTimeout)
+	log.Printf("[DEBUG] guestAgentWaitEnd = %s\n", guestAgentWaitEnd)
 
 	for time.Now().Before(guestAgentWaitEnd) {
 		_, err := client.GetVmAgentNetworkInterfaces(vmr)

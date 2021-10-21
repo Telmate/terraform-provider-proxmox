@@ -14,8 +14,6 @@ import (
 var lxcResourceDef *schema.Resource
 
 func resourceLxc() *schema.Resource {
-	*pxapi.Debug = true
-
 	lxcResourceDef = &schema.Resource{
 		Create: resourceLxcCreate,
 		Read:   resourceLxcRead,
@@ -396,6 +394,7 @@ func resourceLxc() *schema.Resource {
 				Default:  0,
 			},
 		},
+		Timeouts: resourceTimeouts(),
 	}
 
 	return lxcResourceDef
