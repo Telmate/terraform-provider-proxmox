@@ -76,7 +76,7 @@ acctest: build
 install: build
 	cp bin/terraform-provider-proxmox $$GOPATH/bin/terraform-provider-proxmox
 
-local-dev-install:
+local-dev-install: build
 	@echo "$(CURRENT_VERSION_MICRO)"
 	@echo "$(KERNEL)"
 	@echo "$(ARCH)"

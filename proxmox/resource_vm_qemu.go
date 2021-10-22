@@ -795,6 +795,11 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			// 	log.Print("[DEBUG] Clone still not ready, checking again")
 			// }
 
+			config_post_clone, err := pxapi.NewConfigQemuFromApi(vmr, client)
+			if err != nil {
+				return err
+			}
+
 			logger.Debug().Str("vmid", d.Id()).Msgf("Original disks: '%+v', Clone Disks '%+v'", config.QemuDisks, config_post_clone.QemuDisks)
 
 			// update the current working state to use the appropriate file specification
@@ -1696,7 +1701,7 @@ func initConnInfo(
 				}
 			}
 		}
-		log.Print("[DEBUG][initConnInfo]  found an ip configuration")
+		log.Print("[DEBUG]  found an ip configuration")
 		// Check if we got a speficied port
 		if strings.Contains(sshHost, ":") {
 			sshParts := strings.Split(sshHost, ":")
