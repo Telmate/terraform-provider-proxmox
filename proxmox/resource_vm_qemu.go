@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 // using a global variable here so that we have an internally accessible
@@ -487,8 +487,10 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"ssh_forward_ip": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:         schema.TypeString,
+				Optional:     true,
+				Description:  "Use to pass instance ip address, redundant",
+				ValidateFunc: validation.IsIPv4Address,
 			},
 			"ssh_user": {
 				Type:     schema.TypeString,
@@ -603,7 +605,6 @@ func resourceVmQemu() *schema.Resource {
 				Deprecated: "do not use anymore",
 				Optional:   true,
 				Default:    true,
-				//ConflictsWith: []string{"ssh_forward_ip", "ssh_user", "ssh_private_key", "os_type", "os_network_config"},
 			},
 			"pool": {
 				Type:     schema.TypeString,
@@ -628,8 +629,9 @@ func resourceVmQemu() *schema.Resource {
 				Description: "Internal variable, true if any of the modified parameters require a reboot to take effect.",
 			},
 			"default_ipv4_address": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Use to track vm ipv4 address",
 			},
 		},
 		Timeouts: resourceTimeouts(),
@@ -713,7 +715,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
-	log.Print("[DEBUG] checking for duplicate name")
+	log.Print("[DEBUG][QemuVmCreate] checking for duplicate name")
 	dupVmr, _ := client.GetVmRefByName(vmName)
 
 	forceCreate := d.Get("force_create").(bool)
@@ -767,31 +769,31 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				}
 			}
 
-			log.Print("[DEBUG] cloning VM")
+			log.Print("[DEBUG][QemuVmCreate] cloning VM")
 			err = config.CloneVm(sourceVmr, vmr, client)
 
 			if err != nil {
 				return err
 			}
-
+			//CLONE VM SHOULD RETURN ONLY IF THE TASK ENDED!
 			// Waiting for the clone to become ready and
 			// read back all the current disk configurations from proxmox
 			// this allows us to receive updates on the post-clone state of the vm we're building
-			log.Print("[DEBUG] Waiting for clone becoming ready")
-			var config_post_clone *pxapi.ConfigQemu
-			for {
-				// Wait until we can actually retrieve the config from the cloned machine
-				config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
-				if config_post_clone != nil {
-					break
-					// to prevent an infinite loop we check for any other error
-					// this error is actually fine because the clone is not ready yet
-				} else if err.Error() != "vm locked, could not obtain config" {
-					return err
-				}
-				time.Sleep(5 * time.Second)
-				log.Print("[DEBUG] Clone still not ready, checking again")
-			}
+			// log.Print("[DEBUG][QemuVmCreate] Waiting for clone becoming ready")
+			// var config_post_clone *pxapi.ConfigQemu
+			// for {
+			// 	// Wait until we can actually retrieve the config from the cloned machine
+			// 	config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
+			// 	if config_post_clone != nil {
+			// 		break
+			// 		// to prevent an infinite loop we check for any other error
+			// 		// this error is actually fine because the clone is not ready yet
+			// 	} else if err.Error() != "vm locked, could not obtain config" {
+			// 		return err
+			// 	}
+			// 	time.Sleep(5 * time.Second)
+			// 	log.Print("[DEBUG] Clone still not ready, checking again")
+			// }
 
 			logger.Debug().Str("vmid", d.Id()).Msgf("Original disks: '%+v', Clone Disks '%+v'", config.QemuDisks, config_post_clone.QemuDisks)
 
@@ -836,7 +838,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			return fmt.Errorf("Either clone or iso must be set")
 		}
 	} else {
-		log.Printf("[DEBUG] recycling VM vmId: %d", vmr.VmId())
+		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
 
 		client.StopVm(vmr)
 
@@ -848,7 +850,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		}
 
 		// give sometime to proxmox to catchup
-		time.Sleep(5 * time.Second)
+		//time.Sleep(5 * time.Second)
 
 		err = prepareDiskSize(client, vmr, qemuDisks)
 		if err != nil {
@@ -872,7 +874,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// give sometime to proxmox to catchup
 	//time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	log.Print("[DEBUG] starting VM")
+	log.Print("[DEBUG][QemuVmCreate] starting VM")
 	_, err := client.StartVm(vmr)
 	if err != nil {
 		return err
@@ -1139,11 +1141,11 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	// If a reboot is required: if the VM is running attempt graceful shutdown. If failed, try a forced poweroff.
 	vmState, err := client.GetVmState(vmr)
 	if err == nil && vmState["status"] != "stopped" && d.Get("reboot_required").(bool) {
-		log.Print("[DEBUG] shutting down VM")
+		log.Print("[DEBUG][QemuVmUpdate] shutting down VM")
 		_, err = client.ShutdownVm(vmr)
 		// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
 		if err != nil {
-			log.Print("[DEBUG] shutdown failed, stopping VM forcefully")
+			log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
 			_, err = client.StopVm(vmr)
 		}
 	} else if err != nil {
@@ -1153,7 +1155,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	// Start VM only if it wasn't running.
 	vmState, err = client.GetVmState(vmr)
 	if err == nil && vmState["status"] == "stopped" {
-		log.Print("[DEBUG] starting VM")
+		log.Print("[DEBUG][QemuVmUpdate] starting VM")
 		_, err = client.StartVm(vmr)
 	} else if err != nil {
 		return err
@@ -1597,70 +1599,78 @@ func initConnInfo(
 	lock *pmApiLockHolder,
 ) error {
 
+	var err error
+	var lasterr error
 	// allow user to opt-out of setting the connection info for the resource
 	if !d.Get("define_connection_info").(bool) {
+		log.Printf("[DEBUG][initConnInfo] define_connection_info is %t, no further action\n", d.Get("define_connection_info").(bool))
+		return nil
+	}
+	// allow user to opt-out of setting the connection info for the resource
+	if d.Get("agent") != 1 {
+		log.Printf("[DEBUG][initConnInfo] qemu agent is disabled from proxmox config, cant comunicate with vm.")
 		return nil
 	}
 
+	log.Print("[DEBUG][initConnInfo] trying to get vm ip address for provisioner")
 	sshPort := "22"
 	sshHost := ""
-	var err error
-
-	if d.Get("ssh_forward_ip") != nil {
-		sshHost = d.Get("ssh_forward_ip").(string)
-	}
-
+	// assume guest agent not running yet or not enabled
 	guestAgentRunning := false
 
 	// wait until the os has started the guest agent
 	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
 	guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout))
-	log.Printf("[DEBUG] guestAgentTimeout = %v\n", guestAgentTimeout)
-	log.Printf("[DEBUG] guestAgentWaitEnd = %s\n", guestAgentWaitEnd)
+	log.Printf("[DEBUG][initConnInfo] retrying for at most  %v minutes before giving up\n", guestAgentTimeout)
+	log.Printf("[DEBUG][initConnInfo] retries will end at %s\n", guestAgentWaitEnd)
 
 	for time.Now().Before(guestAgentWaitEnd) {
 		_, err := client.GetVmAgentNetworkInterfaces(vmr)
-		if err == nil {
+		lasterr = err
+		if err != nil {
+			log.Printf("[DEBUG][initConnInfo] check ip result error %s\n", err.Error())
+		} else if err == nil {
+			lasterr = nil
+			log.Print("[DEBUG][initConnInfo] found working QEMU Agent")
 			guestAgentRunning = true
 			break
-		} else if !strings.Contains(err.Error(), "QEMU guest agent is not running") {
+		} else if !strings.Contains(err.Error(), "500 QEMU guest agent is not running") {
 			// "not running" means either not installed or not started yet.
 			// any other error should not happen here
 			return err
 		}
 		time.Sleep(10 * time.Second)
 	}
-
+	if lasterr != nil {
+		return fmt.Errorf("Error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr)
+	}
 	vmConfig, err := client.GetVmConfig(vmr)
 	if err != nil {
 		return err
 	}
-
-	macAddressRegex := regexp.MustCompile("([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}")
-	net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
-
-	getIP := func(ifs []pxapi.AgentNetworkInterface) string {
-		for _, iface := range ifs {
-			if strings.ToUpper(iface.MACAddress) == strings.ToUpper(net0MacAddress) {
-				for _, addr := range iface.IPAddresses {
-					if addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2 {
-						return addr.String()
-					}
-				}
-			}
-		}
-		return ""
-	}
+	log.Print("[DEBUG][initConnInfo] trying to find IP address of first network card")
 
 	// wait until we find a valid ipv4 address
 	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
-		ifs, err := client.GetVmAgentNetworkInterfaces(vmr)
+		log.Printf("[DEBUG][initConnInfo] checking network card...")
+		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
+		interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
 		if err != nil {
 			return err
-		}
-		sshHost = getIP(ifs)
-		if sshHost != "" {
-			break
+		} else {
+			for _, iface := range interfaces {
+				if strings.EqualFold(strings.ToUpper(iface.MACAddress), strings.ToUpper(net0MacAddress)) {
+					for _, addr := range iface.IPAddresses {
+						if addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2 {
+							log.Printf("[DEBUG][initConnInfo] Found IP address: %s", addr.String())
+							sshHost = addr.String()
+						}
+					}
+				}
+			}
+			if sshHost != "" {
+				break
+			}
 		}
 		time.Sleep(10 * time.Second)
 	}
@@ -1669,7 +1679,9 @@ func initConnInfo(
 	d.Set("default_ipv4_address", sshHost)
 
 	if config.HasCloudInit() {
+		log.Print("[DEBUG][initConnInfo] vm has a cloud-init configuration")
 		if sshHost == "" {
+			log.Print("[DEBUG][initConnInfo] not found an ip configuration yet")
 			_, ipconfig0Set := d.GetOk("ipconfig0")
 			if ipconfig0Set {
 				vmState, err := client.GetVmState(vmr)
@@ -1684,23 +1696,32 @@ func initConnInfo(
 				}
 			}
 		}
+		log.Print("[DEBUG][initConnInfo]  found an ip configuration")
 		// Check if we got a speficied port
 		if strings.Contains(sshHost, ":") {
 			sshParts := strings.Split(sshHost, ":")
 			sshHost = sshParts[0]
 			sshPort = sshParts[1]
 		}
-	} else {
-		log.Print("[DEBUG] setting up SSH forward")
-		sshPort, err = pxapi.SshForwardUsernet(vmr, client)
-		if err != nil {
-			return err
-		}
-		sshHost = d.Get("ssh_forward_ip").(string)
 	}
+	// This code is legacy
+	// else {
+	// 	log.Print("[DEBUG] setting up SSH forward")
+	// 	if d.Get("ssh_forward_ip") != nil {
+	// 		sshHost = d.Get("ssh_forward_ip").(string)
+	// 		sshPort, err = pxapi.SshForwardUsernet(vmr, client)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+
+	// }
 
 	// Done with proxmox API, end parallel and do the SSH things
 	lock.unlock()
+	if sshHost == "" {
+		return fmt.Errorf("Cannot find any IP address")
+	}
 
 	// Optional convience attributes for provisioners
 	d.Set("ssh_host", sshHost)
@@ -1708,16 +1729,17 @@ func initConnInfo(
 
 	// This connection INFO is longer shared up to the providers :-(
 	d.SetConnInfo(map[string]string{
-		"type":            "ssh",
-		"host":            sshHost,
-		"port":            sshPort,
-		"user":            d.Get("ssh_user").(string),
-		"private_key":     d.Get("ssh_private_key").(string),
-		"pm_api_url":      client.ApiUrl,
-		"pm_user":         client.Username,
-		"pm_password":     client.Password,
-		"pm_otp":          client.Otp,
-		"pm_tls_insecure": "true", // TODO - pass pm_tls_insecure state around, but if we made it this far, default insecure
+		"type": "ssh",
+		"host": sshHost,
+		"port": sshPort,
+		//"user":            d.Get("ssh_user").(string),
+		//"private_key":     d.Get("ssh_private_key").(string),
+		// not sure what the following stuff was for?!
+		// "pm_api_url":      client.ApiUrl,
+		// "pm_user":         client.Username,
+		// "pm_password":     client.Password,
+		// "pm_otp":          client.Otp,
+		// "pm_tls_insecure": "true", // TODO - pass pm_tls_insecure state around, but if we made it this far, default insecure
 	})
 	return nil
 }

@@ -16,6 +16,8 @@ import (
 
 var rxIPconfig = regexp.MustCompile("ip6?=([0-9a-fA-F:\\.]+)")
 
+var macAddressRegex = regexp.MustCompile("([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}")
+
 // given a string, return the appropriate zerolog level
 func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
 	conversionMap := map[string]zerolog.Level{
@@ -413,3 +415,12 @@ func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource)
 	}
 	return flatValues, nil
 }
+
+// func getIP(ifs pxapi.AgentNetworkInterface, macaddr string) string {
+// 	for _, iface := range ifs {
+// 		if strings.ToUpper(iface.MACAddress) == strings.ToUpper(macaddr) {
+
+// 		}
+// 	}
+// 	return ""
+// }

@@ -501,7 +501,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 
 	if d.Get("clone").(string) != "" {
 
-		log.Print("[DEBUG] cloning LXC")
+		log.Print("[DEBUG][LxcCreate] cloning LXC")
 
 		err = config.CloneLxc(vmr, client)
 
@@ -512,7 +512,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		// Waiting for the clone to become ready and
 		// read back all the current disk configurations from proxmox
 		// this allows us to receive updates on the post-clone state of the container we're building
-		log.Print("[DEBUG] Waiting for clone becoming ready")
+		log.Print("[DEBUG][LxcCreate] Waiting for clone becoming ready")
 		var config_post_clone *pxapi.ConfigLxc
 		for {
 			// Wait until we can actually retrieve the config from the cloned machine
@@ -525,7 +525,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 				return err
 			}
 			time.Sleep(5 * time.Second)
-			log.Print("[DEBUG] Clone still not ready, checking again")
+			log.Print("[DEBUG][LxcCreate] Clone still not ready, checking again")
 		}
 
 	} else {
@@ -925,7 +925,7 @@ func processDiskResize(
 ) error {
 	newSize, ok := newDisk["size"]
 	if ok && newSize != prevDisk["size"] {
-		log.Print("[DEBUG] resizing disk " + diskName)
+		log.Print("[DEBUG][diskResize] resizing disk " + diskName)
 		_, err := pconf.Client.ResizeQemuDiskRaw(vmr, diskName, newDisk["size"].(string))
 		if err != nil {
 			return err
