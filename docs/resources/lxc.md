@@ -174,6 +174,7 @@ The following arguments may be optionally defined when using this resource:
 * `force` - A boolean that allows the overwriting of pre-existing containers.
 * `full` - When cloning, create a full copy of all disks. This is always done when you clone a normal CT. For CT template it creates a linked clone by default.
 * `hastate` - Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.
+* `hagroup` - The HA group identifier the resource belongs to (requires `hastate` to be set!). See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.
 * `hookscript` - A string containing [a volume identifier to a script](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_hookscripts_2) that will be executed during various steps throughout the container's lifetime. The script must be an executable file.
 * `hostname` - Specifies the host name of the container.
 * `ignore_unpack_errors` - A boolean that determines if template extraction errors are ignored during container creation.
