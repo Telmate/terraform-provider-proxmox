@@ -116,6 +116,10 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"hagroup": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"qemu_os": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -684,6 +688,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
 		HaState:      d.Get("hastate").(string),
+		HaGroup:      d.Get("hagroup").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		Tags:         d.Get("tags").(string),
 		Args:         d.Get("args").(string),
@@ -968,6 +973,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		Hotplug:      d.Get("hotplug").(string),
 		Scsihw:       d.Get("scsihw").(string),
 		HaState:      d.Get("hastate").(string),
+		HaGroup:      d.Get("hagroup").(string),
 		QemuOs:       d.Get("qemu_os").(string),
 		Tags:         d.Get("tags").(string),
 		Args:         d.Get("args").(string),
@@ -1229,6 +1235,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
 	d.Set("hastate", vmr.HaState())
+	d.Set("hagroup", vmr.HaGroup())
 	d.Set("qemu_os", config.QemuOs)
 	d.Set("tags", config.Tags)
 	d.Set("args", config.Args)
