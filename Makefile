@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 DESCRIBE           := $(shell git describe --match "v*" --always --tags)
 DESCRIBE_PARTS     := $(subst -, ,$(DESCRIBE))
 
@@ -13,7 +15,7 @@ MICRO              := $(word 3,$(VERSION_PARTS))
 
 NEXT_MAJOR         := $(shell echo $$(($(MAJOR)+1)))
 NEXT_MINOR         := $(shell echo $$(($(MINOR)+1)))
-NEXT_MICRO          = $(shell echo $$(($(MICRO)+$(COMMITS_SINCE_TAG))))
+NEXT_MICRO          = $(shell echo $$(($(MICRO)+1)))
 
 ifeq ($(strip $(COMMITS_SINCE_TAG)),)
 CURRENT_VERSION_MICRO := $(MAJOR).$(MINOR).$(MICRO)
@@ -40,6 +42,10 @@ CURRENT_TAG_MAJOR  := "v$(CURRENT_VERSION_MAJOR)"
 
 KERNEL=$(shell if [ "$$(uname -s)" == "Linux" ]; then echo linux; fi)
 ARCH=$(shell if [ "$$(uname -m)" == "x86_64" ]; then echo amd64; fi)
+
+# $(info $$KERNEL = $(KERNEL))
+
+# $(error $$ARCH = $(ARCH))
 
 .PHONY: build fmt vet test clean install acctest local-dev-install
 
@@ -71,7 +77,7 @@ install: build
 	cp bin/terraform-provider-proxmox $$GOPATH/bin/terraform-provider-proxmox
 
 local-dev-install:
-	@echo $(CURRENT_VERSION_MICRO)
+	@echo "$(CURRENT_VERSION_MICRO)"
 	@echo "$(KERNEL)"
 	@echo "$(ARCH)"
 	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(CURRENT_VERSION_MICRO)/$(KERNEL)_$(ARCH)/
