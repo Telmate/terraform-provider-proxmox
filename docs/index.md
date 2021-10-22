@@ -62,6 +62,8 @@ provider "proxmox" {
 
 ## Enable Debug Mode in proxmox-api-go
 
+You can enable global debug mode for the provider underliing api client, using the new provider parameter. The default setting is _false_
+
 ```hcl
 provider "proxmox" {
     pm_debug = true
@@ -90,7 +92,8 @@ Additionally, one can set the `PM_OTP_PROMPT` environment variable to prompt for
 
 ## Logging
 
-The provider is able to output detailed logs upon request. Note that this feature is intended for development purposes, but could also be used to help investigate bugs. For example: the following code when placed into the provider "proxmox" block will enable loging to the file "terraform-plugin-proxmox.log". All log sources will default to the "debug" level, and any stdout/stderr from sublibraries (proxmox-api-go) will be silenced (set to non-empty string to enable).
+The provider is able to output detailed logs upon request. Note that this feature is intended for development purposes, but could also be used to help investigate bugs. For example: the following code when placed into the provider "proxmox" block will enable loging to the file "terraform-plugin-proxmox.log". All log sources will default to the "debug" level.
+To silence and any stdout/stderr from sublibraries (proxmox-api-go), remove or comment out \_capturelog.
 
 ```hcl
 provider "proxmox" {
