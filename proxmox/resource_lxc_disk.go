@@ -9,7 +9,6 @@ import (
 )
 
 func resourceLxcDisk() *schema.Resource {
-	*pxapi.Debug = true
 	return &schema.Resource{
 		Create: resourceLxcDiskCreate,
 		Read:   resourceLxcDiskRead,
@@ -105,6 +104,7 @@ func resourceLxcDisk() *schema.Resource {
 				Computed: true,
 			},
 		},
+		Timeouts: resourceTimeouts(),
 	}
 }
 

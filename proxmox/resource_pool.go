@@ -3,15 +3,12 @@ package proxmox
 import (
 	"fmt"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 var poolResourceDef *schema.Resource
 
 func resourcePool() *schema.Resource {
-	*pxapi.Debug = true
-
 	poolResourceDef = &schema.Resource{
 		Create: resourcePoolCreate,
 		Read:   resourcePoolRead,
@@ -32,6 +29,7 @@ func resourcePool() *schema.Resource {
 				Optional: true,
 			},
 		},
+		Timeouts: resourceTimeouts(),
 	}
 
 	return poolResourceDef

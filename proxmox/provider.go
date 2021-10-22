@@ -84,7 +84,7 @@ func Provider() *schema.Provider {
 			"pm_tls_insecure": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", false),
+				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", true), //we assume it's a lab!
 				Description: "By default, every TLS connection is verified to be secure. This option allows terraform to proceed and operate on servers considered insecure. For example if you're connecting to a remote host and you do not have the CA cert that issued the proxmox api url's certificate.",
 			},
 			"pm_log_enable": {
@@ -107,13 +107,19 @@ func Provider() *schema.Provider {
 			"pm_timeout": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  300,
+				Default:  120,
 			},
 			"pm_dangerously_ignore_unknown_attributes": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_DANGEROUSLY_IGNORE_UNKNOWN_ATTRIBUTES", false),
 				Description: "By default this provider will exit if an unknown attribute is found. This is to prevent the accidential destruction of VMs or Data when something in the proxmox API has changed/updated and is not confirmed to work with this provider. Set this to true at your own risk. It may allow you to proceed in cases when the provider refuses to work, but be aware of the danger in doing so.",
+			},
+			"pm_debug": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_DEBUG", false),
+				Description: "Enable or disable the verbose debug output from proxmox api",
 			},
 			"pm_otp": &pmOTPprompt,
 		},
@@ -142,6 +148,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		d.Get("pm_otp").(string),
 		d.Get("pm_tls_insecure").(bool),
 		d.Get("pm_timeout").(int),
+		d.Get("pm_debug").(bool),
 	)
 	if err != nil {
 		return nil, err
@@ -180,7 +187,15 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	}, nil
 }
 
-func getClient(pm_api_url string, pm_user string, pm_password string, pm_api_token_id string, pm_api_token_secret string, pm_otp string, pm_tls_insecure bool, pm_timeout int) (*pxapi.Client, error) {
+func getClient(pm_api_url string,
+	pm_user string,
+	pm_password string,
+	pm_api_token_id string,
+	pm_api_token_secret string,
+	pm_otp string,
+	pm_tls_insecure bool,
+	pm_timeout int,
+	pm_debug bool) (*pxapi.Client, error) {
 	tlsconf := &tls.Config{InsecureSkipVerify: true}
 	if !pm_tls_insecure {
 		tlsconf = nil
@@ -205,6 +220,7 @@ func getClient(pm_api_url string, pm_user string, pm_password string, pm_api_tok
 	}
 
 	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_timeout)
+	*pxapi.Debug = pm_debug
 
 	// User+Pass authentication
 	if pm_user != "" && pm_password != "" {
