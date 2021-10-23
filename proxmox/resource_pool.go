@@ -15,7 +15,7 @@ func resourcePool() *schema.Resource {
 		Update: resourcePoolUpdate,
 		Delete: resourcePoolDelete,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -68,7 +68,7 @@ func _resourcePoolRead(d *schema.ResourceData, meta interface{}) error {
 	_, poolID, err := parseClusterResourceId(d.Id())
 	if err != nil {
 		d.SetId("")
-		return fmt.Errorf("Unexpected error when trying to read and parse resource id: %v", err)
+		return fmt.Errorf("unexpected error when trying to read and parse resource id: %v", err)
 	}
 
 	logger, _ := CreateSubLogger("resource_pool_read")
@@ -125,6 +125,9 @@ func resourcePoolDelete(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	_, poolID, err := parseClusterResourceId(d.Id())
 
+	if err != nil {
+		return err
+	}
 	err = client.DeletePool(poolID)
 	if err != nil {
 		return err

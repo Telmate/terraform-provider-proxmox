@@ -161,7 +161,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		if ok {
 			logLevels[logger] = levelAsString
 		} else {
-			return nil, fmt.Errorf("Invalid logging level %v for %v. Be sure to use a string.", level, logger)
+			return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
 		}
 	}
 
@@ -204,19 +204,19 @@ func getClient(pm_api_url string,
 	var err error
 
 	if pm_password != "" && pm_api_token_secret != "" {
-		err = fmt.Errorf("Password and API token secret both exist, choose one or the other.")
+		err = fmt.Errorf("password and API token secret both exist, choose one or the other")
 	}
 
 	if pm_password == "" && pm_api_token_secret == "" {
-		err = fmt.Errorf("Password and API token do not exist, one of these must exist.")
+		err = fmt.Errorf("password and API token do not exist, one of these must exist")
 	}
 
 	if strings.Contains(pm_user, "!") && pm_password != "" {
-		err = fmt.Errorf("You appear to be using an API TokenID username with your password.")
+		err = fmt.Errorf("you appear to be using an API TokenID username with your password")
 	}
 
 	if !strings.Contains(pm_api_token_id, "!") {
-		err = fmt.Errorf("Your API TokenID username should contain a !, check your API credentials.")
+		err = fmt.Errorf("your API TokenID username should contain a !, check your API credentials")
 	}
 
 	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_timeout)
@@ -294,11 +294,11 @@ func resourceId(targetNode string, resType string, vmId int) string {
 	return fmt.Sprintf("%s/%s/%d", targetNode, resType, vmId)
 }
 
-var rxRsId = regexp.MustCompile("([^/]+)/([^/]+)/(\\d+)")
+var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\\d+)`)
 
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
 	if !rxRsId.MatchString(resId) {
-		return "", "", -1, fmt.Errorf("Invalid resource format: %s. Must be node/type/vmId", resId)
+		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be node/type/vmId", resId)
 	}
 	idMatch := rxRsId.FindStringSubmatch(resId)
 	targetNode = idMatch[1]
@@ -315,7 +315,7 @@ var rxClusterRsId = regexp.MustCompile("([^/]+)/([^/]+)")
 
 func parseClusterResourceId(resId string) (resType string, id string, err error) {
 	if !rxClusterRsId.MatchString(resId) {
-		return "", "", fmt.Errorf("Invalid resource format: %s. Must be type/resId", resId)
+		return "", "", fmt.Errorf("invalid resource format: %s. Must be type/resId", resId)
 	}
 	idMatch := rxClusterRsId.FindStringSubmatch(resId)
 	return idMatch[1], idMatch[2], nil

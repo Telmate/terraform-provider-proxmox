@@ -20,7 +20,7 @@ func resourceLxc() *schema.Resource {
 		Update: resourceLxcUpdate,
 		Delete: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -195,7 +195,7 @@ func resourceLxc() *schema.Resource {
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
 								}
 								return
 							},
@@ -316,23 +316,23 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"storage": &schema.Schema{
+						"storage": {
 							Type:     schema.TypeString,
 							ForceNew: true,
 							Required: true,
 						},
-						"size": &schema.Schema{
+						"size": {
 							Type:     schema.TypeString,
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
 								}
 								return
 							},
 						},
-						"volume": &schema.Schema{
+						"volume": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},

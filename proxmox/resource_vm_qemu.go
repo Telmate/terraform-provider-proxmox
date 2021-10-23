@@ -26,7 +26,7 @@ func resourceVmQemu() *schema.Resource {
 		Update: resourceVmQemuUpdate,
 		Delete: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -189,7 +189,7 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
-			"vga": &schema.Schema{
+			"vga": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
@@ -206,53 +206,48 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
-			"network": &schema.Schema{
+			"network": {
 				Type:          schema.TypeList,
 				Optional:      true,
 				ConflictsWith: []string{"nic", "bridge", "vlan", "mac"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						//"id": &schema.Schema{
-						//	Type:     schema.TypeInt,
-						//	Deprecated:  "Id is no longer required. The order of the network blocks is used for the Id.",
-						//	Optional: true,
-						//},
-						"model": &schema.Schema{
+						"model": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"macaddr": &schema.Schema{
+						"macaddr": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Computed: true,
 						},
-						"bridge": &schema.Schema{
+						"bridge": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Default:  "nat",
 						},
-						"tag": &schema.Schema{
+						"tag": {
 							Type:        schema.TypeInt,
 							Optional:    true,
 							Description: "VLAN tag.",
 							Default:     -1,
 						},
-						"firewall": &schema.Schema{
+						"firewall": {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
 						},
-						"rate": &schema.Schema{
+						"rate": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Computed: true,
 						},
-						"queues": &schema.Schema{
+						"queues": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Computed: true,
 						},
-						"link_down": &schema.Schema{
+						"link_down": {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
@@ -260,85 +255,85 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
-			"unused_disk": &schema.Schema{
+			"unused_disk": {
 				Type:     schema.TypeList,
 				Computed: true,
 				//Optional:      true,
 				Description: "Record unused disks in proxmox. This is intended to be read-only for now.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"storage": &schema.Schema{
+						"storage": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"slot": &schema.Schema{
+						"slot": {
 							Type:     schema.TypeInt,
 							Computed: true,
 						},
-						"file": &schema.Schema{
+						"file": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
 					},
 				},
 			},
-			"disk": &schema.Schema{
+			"disk": {
 				Type:          schema.TypeList,
 				Optional:      true,
 				ConflictsWith: []string{"disk_gb", "storage", "storage_type"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"type": &schema.Schema{
+						"type": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"storage": &schema.Schema{
+						"storage": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"size": &schema.Schema{
+						"size": {
 							Type:     schema.TypeString,
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
-									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
 								}
 								return
 							},
 						},
-						"format": &schema.Schema{
+						"format": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Computed: true,
 						},
-						"cache": &schema.Schema{
+						"cache": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Default:  "none",
 						},
-						"backup": &schema.Schema{
+						"backup": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						"iothread": &schema.Schema{
+						"iothread": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						"replicate": &schema.Schema{
+						"replicate": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
 						//SSD emulation
-						"ssd": &schema.Schema{
+						"ssd": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						"discard": &schema.Schema{
+						"discard": {
 							Type:     schema.TypeString,
 							Optional: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
@@ -350,38 +345,38 @@ func resourceVmQemu() *schema.Resource {
 							},
 						},
 						//Maximum r/w speed in megabytes per second
-						"mbps": &schema.Schema{
+						"mbps": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						"mbps_rd": &schema.Schema{
+						"mbps_rd": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						"mbps_rd_max": &schema.Schema{
+						"mbps_rd_max": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						"mbps_wr": &schema.Schema{
+						"mbps_wr": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
-						"mbps_wr_max": &schema.Schema{
+						"mbps_wr_max": {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
 						},
 						// Misc
-						"file": &schema.Schema{
+						"file": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Computed: true,
 						},
-						"media": &schema.Schema{
+						"media": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Computed: true,
@@ -396,7 +391,7 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
-						"storage_type": &schema.Schema{
+						"storage_type": {
 							Type:     schema.TypeString,
 							Required: false,
 							Computed: true,
@@ -462,16 +457,16 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			// Other
-			"serial": &schema.Schema{
+			"serial": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"id": &schema.Schema{
+						"id": {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"type": &schema.Schema{
+						"type": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
@@ -546,10 +541,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional:  true,
 				Sensitive: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if new == "**********" {
-						return true // api returns astericks instead of password so can't diff
-					}
-					return false
+					return new == "**********"
+					// if new == "**********" {
+					// 	return true // api returns astericks instead of password so can't diff
+					// }
+					// return false
 				},
 			},
 			"cicustom": {
@@ -728,9 +724,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	pool := d.Get("pool").(string)
 
 	if dupVmr != nil && forceCreate {
-		return fmt.Errorf("Duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId())
+		return fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId())
 	} else if dupVmr != nil && dupVmr.Node() != targetNode {
-		return fmt.Errorf("Duplicate VM name (%s) with vmId: %d on different target_node=%s", vmName, dupVmr.VmId(), dupVmr.Node())
+		return fmt.Errorf("duplicate VM name (%s) with vmId: %d on different target_node=%s", vmName, dupVmr.VmId(), dupVmr.Node())
 	}
 
 	vmr := dupVmr
@@ -845,7 +841,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				return err
 			}
 		} else {
-			return fmt.Errorf("Either clone or iso must be set")
+			return fmt.Errorf("either clone or iso must be set")
 		}
 	} else {
 		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
@@ -935,7 +931,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	qemuNetworks, err := ExpandDevicesList(d.Get("network").([]interface{}))
 	if err != nil {
-		return fmt.Errorf("Error while processing Network configuration: %v", err)
+		return fmt.Errorf("error while processing Network configuration: %v", err)
 	}
 	logger.Debug().Int("vmid", vmID).Msgf("Processed NetworkSet into qemuNetworks as %+v", qemuNetworks)
 
@@ -1074,17 +1070,17 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// reboot is only required when memory hotplug is disabled
-	if d.HasChange("memory") && strings.Contains(d.Get("hotplug").(string), "memory") == false {
+	if d.HasChange("memory") && !strings.Contains(d.Get("hotplug").(string), "memory") {
 		d.Set("reboot_required", true)
 	}
 
 	// reboot is only required when cpu hotplug is disabled
-	if d.HasChanges("sockets", "cores", "vcpus") && strings.Contains(d.Get("hotplug").(string), "cpu") == false {
+	if d.HasChanges("sockets", "cores", "vcpus") && !strings.Contains(d.Get("hotplug").(string), "cpu") {
 		d.Set("reboot_required", true)
 	}
 
 	// if network hot(un)plug is not enabled, then check if some of the "critical" parameters have changes
-	if d.HasChange("network") && strings.Contains(d.Get("hotplug").(string), "network") == false {
+	if d.HasChange("network") && !strings.Contains(d.Get("hotplug").(string), "network") {
 		oldValuesRaw, newValuesRaw := d.GetChange("network")
 		oldValues := oldValuesRaw.([]interface{})
 		newValues := newValuesRaw.([]interface{})
@@ -1112,7 +1108,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		oldValuesRaw, newValuesRaw := d.GetChange("disk")
 		oldValues := oldValuesRaw.([]interface{})
 		newValues := newValuesRaw.([]interface{})
-		if len(oldValues) != len(newValues) && strings.Contains(d.Get("hotplug").(string), "disk") == false {
+		if len(oldValues) != len(newValues) && !strings.Contains(d.Get("hotplug").(string), "disk") {
 			// disk added or removed AND there is no disk hot(un)plug
 			d.Set("reboot_required", true)
 		} else {
@@ -1139,7 +1135,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 					d.Set("reboot_required", true)
 				}
 				// these paramater changes only require reboot if disk hotplug is disabled
-				if strings.Contains(d.Get("hotplug").(string), "disk") == false {
+				if !strings.Contains(d.Get("hotplug").(string), "disk") {
 					if oldValues[i].(map[string]interface{})["type"] != newValues[i].(map[string]interface{})["type"] {
 						// note: changing type does not remove the old disk
 						d.Set("reboot_required", true)
@@ -1158,6 +1154,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
 			_, err = client.StopVm(vmr)
+			if err != nil {
+				return err
+			}
 		}
 	} else if err != nil {
 		return err
@@ -1168,6 +1167,9 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	if err == nil && vmState["status"] == "stopped" {
 		log.Print("[DEBUG][QemuVmUpdate] starting VM")
 		_, err = client.StartVm(vmr)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -1189,7 +1191,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
 		d.SetId("")
-		return fmt.Errorf("Unexpected error when trying to read and parse the resource: %v", err)
+		return fmt.Errorf("unexpected error when trying to read and parse the resource: %v", err)
 	}
 
 	// create a logger for this function
@@ -1270,13 +1272,13 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	// add an explicit check that the keys in the config.QemuDisks map are a strict subset of
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
 	for _, diskEntry := range config.QemuDisks {
-		for key, _ := range diskEntry {
+		for key := range diskEntry {
 			if _, ok := thisResource.Schema["disk"].Elem.(*schema.Resource).Schema[key]; !ok {
 				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
 					continue
 				}
 				if !pconf.DangerouslyIgnoreUnknownAttributes {
-					return fmt.Errorf("Proxmox Provider Error: proxmox API returned new disk parameter '%v' we cannot process", key)
+					return fmt.Errorf("proxmox Provider Error: proxmox API returned new disk parameter '%v' we cannot process", key)
 				}
 			}
 		}
@@ -1324,12 +1326,12 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 		if networkEntry["tag"] == "" || networkEntry["tag"] == nil {
 			networkEntry["tag"] = thisResource.Schema["network"].Elem.(*schema.Resource).Schema["tag"].Default
 		}
-		for key, _ := range networkEntry {
+		for key := range networkEntry {
 			if _, ok := thisResource.Schema["network"].Elem.(*schema.Resource).Schema[key]; !ok {
 				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
 					continue
 				}
-				return fmt.Errorf("Proxmox Provider Error: proxmox API returned new network parameter '%v' we cannot process", key)
+				return fmt.Errorf("proxmox Provider Error: proxmox API returned new network parameter '%v' we cannot process", key)
 			}
 		}
 	}
@@ -1453,7 +1455,7 @@ func prepareDiskSize(
 		} else if diskSize == clonedDiskSize {
 			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
 		} else {
-			return fmt.Errorf("Proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%vG' to '%vG'", diskName, clonedDiskSize, diskSize)
+			return fmt.Errorf("proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%vG' to '%vG'", diskName, clonedDiskSize, diskSize)
 		}
 
 	}
@@ -1474,7 +1476,7 @@ func DevicesSetToMap(devicesSet *schema.Set) (pxapi.QemuDevices, error) {
 			if _, ok := devicesMap[setID]; !ok {
 				devicesMap[setID] = setMap
 			} else {
-				return nil, fmt.Errorf("Unable to process set, received a duplicate ID '%v' check your configuration file", setID)
+				return nil, fmt.Errorf("unable to process set, received a duplicate ID '%v' check your configuration file", setID)
 			}
 		}
 	}
@@ -1654,7 +1656,7 @@ func initConnInfo(
 		time.Sleep(10 * time.Second)
 	}
 	if lasterr != nil {
-		return fmt.Errorf("Error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr)
+		return fmt.Errorf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr)
 	}
 	vmConfig, err := client.GetVmConfig(vmr)
 	if err != nil {
@@ -1732,7 +1734,7 @@ func initConnInfo(
 	// Done with proxmox API, end parallel and do the SSH things
 	lock.unlock()
 	if sshHost == "" {
-		return fmt.Errorf("Cannot find any IP address")
+		return fmt.Errorf("cannot find any IP address")
 	}
 
 	// Optional convience attributes for provisioners
