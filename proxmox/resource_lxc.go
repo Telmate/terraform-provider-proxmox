@@ -543,7 +543,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
-	return _resourceLxcRead(d, meta)
+	return resourceLxcRead(d, meta)
 
 }
 
@@ -667,7 +667,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	return _resourceLxcRead(d, meta)
+	return resourceLxcRead(d, meta)
 }
 
 func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
@@ -729,7 +729,7 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	if len(rootFs) > 0 {
 		confRootFs := rootFs[0]
 		adaptedRootFs := adaptDeviceToConf(confRootFs.(map[string]interface{}), config.RootFs)
-		d.Set("rootfs.0", adaptedRootFs)
+		d.Set("rootfs", []interface{}{adaptedRootFs})
 	} else {
 		confRootFs := make(map[string]interface{})
 		confRootFs = adaptDeviceToConf(confRootFs, config.RootFs)
@@ -757,8 +757,10 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
 			poolMembers := poolContent["data"].(map[string]interface{})["members"]
 			for _, member := range poolMembers.([]interface{}) {
-				if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
-					d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+				if member.(map[string]interface{})["type"] != "storage" {
+					if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
+						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+					}
 				}
 			}
 		}
@@ -774,8 +776,8 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("cpuunits", config.CPUUnits)
 	d.Set("description", config.Description)
 	d.Set("force", config.Force)
-	d.Set("hastate", vmr.HaState)
-	d.Set("hagroup", vmr.HaGroup)
+	d.Set("hastate", config.HaState)
+	d.Set("hagroup", config.HaGroup)
 	d.Set("hookscript", config.Hookscript)
 	d.Set("hostname", config.Hostname)
 	d.Set("ignore_unpack_errors", config.IgnoreUnpackErrors)

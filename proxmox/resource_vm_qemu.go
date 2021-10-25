@@ -31,10 +31,12 @@ func resourceVmQemu() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"vmid": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Computed: true,
-				ForceNew: true,
+				Type:             schema.TypeInt,
+				Optional:         true,
+				Computed:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: VMIDValidator(),
+				Description:      "The VM identifier in proxmox (100-999999999)",
 			},
 			"name": {
 				Type:     schema.TypeString,

@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -294,8 +293,6 @@ func resourceId(targetNode string, resType string, vmId int) string {
 	return fmt.Sprintf("%s/%s/%d", targetNode, resType, vmId)
 }
 
-var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\\d+)`)
-
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
 	if !rxRsId.MatchString(resId) {
 		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be node/type/vmId", resId)
@@ -310,8 +307,6 @@ func parseResourceId(resId string) (targetNode string, resType string, vmId int,
 func clusterResourceId(resType string, resId string) string {
 	return fmt.Sprintf("%s/%s", resType, resId)
 }
-
-var rxClusterRsId = regexp.MustCompile("([^/]+)/([^/]+)")
 
 func parseClusterResourceId(resId string) (resType string, id string, err error) {
 	if !rxClusterRsId.MatchString(resId) {

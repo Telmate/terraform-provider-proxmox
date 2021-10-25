@@ -14,6 +14,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\d+)`)
+
+var rxClusterRsId = regexp.MustCompile(`([^/]+)/([^/]+)`)
+
 var rxIPconfig = regexp.MustCompile(`ip6?=([0-9a-fA-F:\\.]+)`)
 
 var macAddressRegex = regexp.MustCompile(`([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}`)
