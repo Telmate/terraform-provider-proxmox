@@ -137,7 +137,7 @@ See the [docs about display](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm
 | Argument | Type  | Default Value | Description                                                                                                                                                         |
 | -------- | ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `type`   | `str` | `"std"`       | The type of display to virtualize. Options: `cirrus`, `none`, `qxl`, `qxl2`, `qxl3`, `qxl4`, `serial0`, `serial1`, `serial2`, `serial3`, `std`, `virtio`, `vmware`. |
-| `type`   | `int` |               | Sets the VGA memory (in MiB). Has no effect with serial display type.                                                                                               |
+| `memory`   | `int` |               | Sets the VGA memory (in MiB). Has no effect with serial display type.                                                                                               |
 
 ### Network Block
 
