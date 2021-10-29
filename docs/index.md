@@ -1,6 +1,6 @@
 # Proxmox Provider
 
-A Terraform provider is responsible for understanding API interactions and exposing resources. The Proxmox provider uses the Proxmox API. This provider exposes two resources: [proxmox_vm_qemu](docs/resources/vm_qemu.md) and [proxmox_lxc](docs/resources/lxc.md).
+A Terraform provider is responsible for understanding API interactions and exposing resources. The Proxmox provider uses the Proxmox API. This provider exposes two resources: [proxmox_vm_qemu](resources/vm_qemu.md) and [proxmox_lxc](resources/lxc.md).
 
 ## Creating the Proxmox user and role for terraform
 
