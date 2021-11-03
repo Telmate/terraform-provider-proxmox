@@ -20,7 +20,7 @@ func resourceLxc() *schema.Resource {
 		Update: resourceLxcUpdate,
 		Delete: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -195,7 +195,7 @@ func resourceLxc() *schema.Resource {
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
 								}
 								return
 							},
@@ -316,23 +316,23 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"storage": &schema.Schema{
+						"storage": {
 							Type:     schema.TypeString,
 							ForceNew: true,
 							Required: true,
 						},
-						"size": &schema.Schema{
+						"size": {
 							Type:     schema.TypeString,
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-									errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
 								}
 								return
 							},
 						},
-						"volume": &schema.Schema{
+						"volume": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -382,7 +382,7 @@ func resourceLxc() *schema.Resource {
 			},
 			"unused": {
 				Type:     schema.TypeList,
-				Optional: true,
+				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
@@ -457,14 +457,6 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
-	// proxmox api allows to specify unused volumes
-	// even if it is recommended not to change them manually
-	unusedVolumes := d.Get("unused").([]interface{})
-	var volumes []string
-	for _, v := range unusedVolumes {
-		volumes = append(volumes, v.(string))
-	}
-	config.Unused = volumes
 
 	targetNode := d.Get("target_node").(string)
 
@@ -543,7 +535,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
-	return _resourceLxcRead(d, meta)
+	return resourceLxcRead(d, meta)
 
 }
 
@@ -605,14 +597,6 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
-	// proxmox api allows to specify unused volumes
-	// even if it is recommended not to change them manually
-	unusedVolumes := d.Get("unused").([]interface{})
-	var volumes []string
-	for _, v := range unusedVolumes {
-		volumes = append(volumes, v.(string))
-	}
-	config.Unused = volumes
 
 	if d.HasChange("network") {
 		// TODO Delete extra networks
@@ -667,7 +651,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	return _resourceLxcRead(d, meta)
+	return resourceLxcRead(d, meta)
 }
 
 func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
@@ -766,6 +750,13 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	//_, err = client.ReadVMHA(vmr)
+	if err != nil {
+		return err
+	}
+	d.Set("hastate", vmr.HaState())
+	d.Set("hagroup", vmr.HaGroup())
+
 	// Read Misc
 	d.Set("arch", config.Arch)
 	d.Set("bwlimit", config.BWLimit)
@@ -776,8 +767,7 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("cpuunits", config.CPUUnits)
 	d.Set("description", config.Description)
 	d.Set("force", config.Force)
-	d.Set("hastate", config.HaState)
-	d.Set("hagroup", config.HaGroup)
+
 	d.Set("hookscript", config.Hookscript)
 	d.Set("hostname", config.Hostname)
 	d.Set("ignore_unpack_errors", config.IgnoreUnpackErrors)

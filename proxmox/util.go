@@ -14,9 +14,15 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var rxIPconfig = regexp.MustCompile("ip6?=([0-9a-fA-F:\\.]+)")
+const defaultTimeout = 300
 
-var macAddressRegex = regexp.MustCompile("([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}")
+var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\d+)`)
+
+var rxClusterRsId = regexp.MustCompile(`([^/]+)/([^/]+)`)
+
+var rxIPconfig = regexp.MustCompile(`ip6?=([0-9a-fA-F:\\.]+)`)
+
+var macAddressRegex = regexp.MustCompile(`([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}`)
 
 // given a string, return the appropriate zerolog level
 func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
@@ -32,7 +38,7 @@ func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
 
 	foundResult, ok := conversionMap[logLevel]
 	if !ok {
-		return zerolog.Disabled, fmt.Errorf("Unable to find level %v", logLevel)
+		return zerolog.Disabled, fmt.Errorf("unable to find level %v", logLevel)
 	}
 	return foundResult, nil
 }
@@ -89,6 +95,9 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 	// Create the log file if doesn't exist. And append to it if it already exists.
 	// TODO log to stderr so at least terraform's TF_LOG can capture an issue if this file isn't created
 	f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+	if err != nil {
+		return
+	}
 
 	// using a multi-writer here so we can easily add additional log destination (like a json file)
 	// for now though using just the console writer because it makes pretty logs
@@ -215,12 +224,12 @@ func UpdateDeviceConfDefaults(
 	defaultDeviceConf *schema.Set,
 ) *schema.Set {
 	defaultDeviceConfMap := defaultDeviceConf.List()[0].(map[string]interface{})
-	for key, _ := range defaultDeviceConfMap {
+	for key := range defaultDeviceConfMap {
 		if deviceConfigValue, ok := activeDeviceConf[key]; ok {
 			defaultDeviceConfMap[key] = deviceConfigValue
-			switch deviceConfigValue.(type) {
+			switch deviceConfigValue := deviceConfigValue.(type) {
 			case int:
-				sValue := strconv.Itoa(deviceConfigValue.(int))
+				sValue := strconv.Itoa(deviceConfigValue)
 				bValue, err := strconv.ParseBool(sValue)
 				if err == nil {
 					defaultDeviceConfMap[key] = bValue
@@ -285,12 +294,12 @@ func AssertNoNonSchemaValues(
 	// add an explicit check that the keys in the config.QemuNetworks map are a strict subset of
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
 	for _, deviceEntry := range devices {
-		for key, _ := range deviceEntry {
+		for key := range deviceEntry {
 			if _, ok := schemaDef.Elem.(*schema.Resource).Schema[key]; !ok {
 				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
 					continue
 				}
-				return fmt.Errorf("Proxmox Provider Error: proxmox API returned new parameter '%v' we cannot process", key)
+				return fmt.Errorf("proxmox provider error: proxmox API returned new parameter '%v' we cannot process", key)
 			}
 		}
 	}
@@ -310,11 +319,11 @@ func adaptDeviceToConf(
 		// a boolean could be used in ".tf" files.
 		switch conf[key].(type) {
 		case bool:
-			switch value.(type) {
+			switch value := value.(type) {
 			// If the key is bool and value is int (which comes from Proxmox API),
 			// should be converted to bool (as in ".tf" conf).
 			case int:
-				sValue := strconv.Itoa(value.(int))
+				sValue := strconv.Itoa(value)
 				bValue, err := strconv.ParseBool(sValue)
 				if err == nil {
 					conf[key] = bValue

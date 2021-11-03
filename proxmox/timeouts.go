@@ -9,10 +9,10 @@ import (
 )
 
 func resourceTimeouts() *schema.ResourceTimeout {
-	resourceCreateTimeout := 120
-	resourceReadTimeout := 30
-	resourceUpdateTimeout := 90
-	resourceDeleteTimeout := 90
+	resourceCreateTimeout := defaultTimeout
+	resourceReadTimeout := 180
+	resourceUpdateTimeout := 180
+	resourceDeleteTimeout := 180
 
 	if v, ok := os.LookupEnv("PM_TIMEOUT"); ok {
 		resourceCreateTimeout, _ = strconv.Atoi(v)
@@ -23,6 +23,6 @@ func resourceTimeouts() *schema.ResourceTimeout {
 		Read:    schema.DefaultTimeout(time.Duration(resourceReadTimeout) * time.Second),
 		Update:  schema.DefaultTimeout(time.Duration(resourceUpdateTimeout) * time.Second),
 		Delete:  schema.DefaultTimeout(time.Duration(resourceDeleteTimeout) * time.Second),
-		Default: schema.DefaultTimeout(120 * time.Second),
+		Default: schema.DefaultTimeout(defaultTimeout * time.Second),
 	}
 }

@@ -16,7 +16,7 @@ func resourceLxcDisk() *schema.Resource {
 		Delete: resourceLxcDiskDelete,
 
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: map[string]*schema.Schema{
@@ -68,7 +68,7 @@ func resourceLxcDisk() *schema.Resource {
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(string)
 					if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-						errs = append(errs, fmt.Errorf("Disk size must end in G, M, or K, got %s", v))
+						errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
 					}
 					return
 				},
@@ -142,7 +142,7 @@ func resourceLxcDiskCreate(d *schema.ResourceData, meta interface{}) error {
 	params[mpName] = pxapi.FormatDiskParam(disk)
 	exitStatus, err := pconf.Client.SetLxcConfig(vmr, params)
 	if err != nil {
-		return fmt.Errorf("Error updating LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
+		return fmt.Errorf("error updating LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
 	}
 
 	if err = _resourceLxcDiskRead(d, meta); err != nil {
@@ -177,7 +177,7 @@ func resourceLxcDiskUpdate(d *schema.ResourceData, meta interface{}) error {
 	// Apply Changes
 	err = processLxcDiskChanges(DeviceToMap(oldDisk, 0), DeviceToMap(newDisk, 0), pconf, vmr)
 	if err != nil {
-		return fmt.Errorf("Error updating LXC Mountpoint: %v", err)
+		return fmt.Errorf("error updating LXC Mountpoint: %v", err)
 	}
 
 	return _resourceLxcDiskRead(d, meta)
@@ -251,7 +251,7 @@ func resourceLxcDiskDelete(d *schema.ResourceData, meta interface{}) error {
 	params := map[string]interface{}{}
 	params["delete"] = fmt.Sprintf("mp%v", d.Get("slot").(int))
 	if exitStatus, err := pconf.Client.SetLxcConfig(vmr, params); err != nil {
-		return fmt.Errorf("Error deleting LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
+		return fmt.Errorf("error deleting LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
 	}
 
 	return nil
