@@ -120,6 +120,12 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("PM_DEBUG", false),
 				Description: "Enable or disable the verbose debug output from proxmox api",
 			},
+			"pm_proxy_server": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_PROXY", nil),
+				Description: "Proxy Server passed to Api client(useful for debugging). Syntax: http://proxy:port",
+			},
 			"pm_otp": &pmOTPprompt,
 		},
 
@@ -148,6 +154,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		d.Get("pm_tls_insecure").(bool),
 		d.Get("pm_timeout").(int),
 		d.Get("pm_debug").(bool),
+		d.Get("pm_proxy_server").(string),
 	)
 	if err != nil {
 		return nil, err
@@ -194,7 +201,9 @@ func getClient(pm_api_url string,
 	pm_otp string,
 	pm_tls_insecure bool,
 	pm_timeout int,
-	pm_debug bool) (*pxapi.Client, error) {
+	pm_debug bool,
+	pm_proxy_server string) (*pxapi.Client, error) {
+
 	tlsconf := &tls.Config{InsecureSkipVerify: true}
 	if !pm_tls_insecure {
 		tlsconf = nil
@@ -218,7 +227,7 @@ func getClient(pm_api_url string,
 		err = fmt.Errorf("your API TokenID username should contain a !, check your API credentials")
 	}
 
-	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_timeout)
+	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_proxy_server, pm_timeout)
 	*pxapi.Debug = pm_debug
 
 	// User+Pass authentication
