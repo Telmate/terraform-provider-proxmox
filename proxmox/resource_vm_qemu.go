@@ -792,23 +792,28 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			// Waiting for the clone to become ready and
 			// read back all the current disk configurations from proxmox
 			// this allows us to receive updates on the post-clone state of the vm we're building
-			// log.Print("[DEBUG][QemuVmCreate] Waiting for clone becoming ready")
-			// var config_post_clone *pxapi.ConfigQemu
-			// for {
-			// 	// Wait until we can actually retrieve the config from the cloned machine
-			// 	config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
-			// 	if config_post_clone != nil {
-			// 		break
-			// 		// to prevent an infinite loop we check for any other error
-			// 		// this error is actually fine because the clone is not ready yet
-			// 	} else if err.Error() != "vm locked, could not obtain config" {
-			// 		return err
-			// 	}
-			// 	time.Sleep(5 * time.Second)
-			// 	log.Print("[DEBUG] Clone still not ready, checking again")
-			// }
+			log.Print("[DEBUG][QemuVmCreate] Waiting for clone becoming ready")
+			var config_post_clone *pxapi.ConfigQemu
+			cloneTimeout := d.Timeout(schema.TimeoutCreate)
+			cloneWaitEnd := time.Now().Add(time.Duration(cloneTimeout))
+			log.Printf("[DEBUG][clone] retrying for at most  %v minutes before giving up\n", cloneTimeout)
+			log.Printf("[DEBUG][clone] retries will end at %s\n", cloneWaitEnd)
 
-			config_post_clone, err := pxapi.NewConfigQemuFromApi(vmr, client)
+			for time.Now().Before(cloneWaitEnd) {
+				// 	// Wait until we can actually retrieve the config from the cloned machine
+				config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
+				if config_post_clone != nil {
+					break
+					// to prevent an infinite loop we check for any other error
+					// this error is actually fine because the clone is not ready yet
+				} else if err.Error() != "[DEBUG][clone] vm locked, could not obtain config" {
+					return err
+				}
+				time.Sleep(5 * time.Second)
+				log.Print("[DEBUG][clone] Clone still not ready, checking again")
+			}
+
+			config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
 			if err != nil {
 				return err
 			}

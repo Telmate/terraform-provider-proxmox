@@ -104,9 +104,10 @@ func Provider() *schema.Provider {
 				Description: "Write logs to this specific file",
 			},
 			"pm_timeout": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  120,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_TIMEOUT", defaultTimeout),
+				Description: "How much second to wait for operations for both provider and api-client, default is 300s",
 			},
 			"pm_dangerously_ignore_unknown_attributes": {
 				Type:        schema.TypeBool,

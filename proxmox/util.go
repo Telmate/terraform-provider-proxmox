@@ -14,6 +14,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const defaultTimeout = 300
+
 var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\d+)`)
 
 var rxClusterRsId = regexp.MustCompile(`([^/]+)/([^/]+)`)
