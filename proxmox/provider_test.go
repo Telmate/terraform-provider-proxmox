@@ -34,7 +34,7 @@ func TestParseClusteResources(t *testing.T) {
 		name:  "invalid resource",
 		input: "storage",
 		output: ParseClusterResourceTestResult{
-			Error: errors.New("Invalid resource format: storage. Must be type/resId"),
+			Error: errors.New("invalid resource format: storage. Must be type/resId"),
 		},
 	}}
 
