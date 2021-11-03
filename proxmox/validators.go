@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func VMIDValidator() schema.SchemaValidateDiagFunc {
@@ -26,4 +27,11 @@ func VMIDValidator() schema.SchemaValidateDiagFunc {
 
 		return nil
 	}
+}
+
+func BIOSValidator() schema.SchemaValidateFunc {
+	return validation.StringInSlice([]string{
+		"ovmf",
+		"seabios",
+	}, false)
 }
