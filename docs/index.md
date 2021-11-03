@@ -70,6 +70,16 @@ provider "proxmox" {
 }
 ```
 
+## Enable proxy server support
+
+You can send all api calls from the provider api client to a proxy server and then to proxmox itself to see whats appening and debug more easily. One nice proxy server is mitmproxy
+
+```hcl
+provider "proxmox" {
+    pm_proxy_server = "http://proxyurl:proxyport
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported in the provider block:
@@ -87,6 +97,7 @@ The following arguments are supported in the provider block:
 - `pm_log_file` - (Optional; defaults to "terraform-plugin-proxmox.log") If logging is enabled, the log file the provider will write logs to.
 - `pm_timeout` - (Optional; defaults to 300) Timeout value (seconds) for proxmox API calls.
 - `pm_debug` - (Optional; defaults to false) Enable verbose output in proxmox-api-go
+- `pm_proxy_server` - (Optional; defaults to nil) Send provider api call to a proxy server for easy debugging
 
 Additionally, one can set the `PM_OTP_PROMPT` environment variable to prompt for OTP 2FA code (if required).
 
