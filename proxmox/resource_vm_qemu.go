@@ -71,6 +71,12 @@ func resourceVmQemu() *schema.Resource {
 				Default:     false,
 				Description: "VM autostart on boot",
 			},
+			"oncreate": {
+				Type:			schema.TypeBool,
+				Optional:		true,
+				Default:		true,
+				Description:	"VM autostart on create",
+			},
 			"tablet": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -897,10 +903,19 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// give sometime to proxmox to catchup
 	//time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	log.Print("[DEBUG][QemuVmCreate] starting VM")
-	_, err := client.StartVm(vmr)
-	if err != nil {
-		return err
+	if d.Get("oncreate").(bool) {
+		log.Print("[DEBUG][QemuVmCreate] starting VM")
+		_, err := client.StartVm(vmr)
+		if err != nil {
+			return err
+		}
+
+		err = initConnInfo(d, pconf, client, vmr, &config, lock)
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Print("[DEBUG][QemuVmCreate] oncreate = false, not starting VM")
 	}
 
 	err = initConnInfo(d, pconf, client, vmr, &config, lock)
