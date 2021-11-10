@@ -728,7 +728,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
-	log.Print("[DEBUG][QemuVmCreate] checking for duplicate name: %s", vmName)
+	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", vmName)
 	dupVmr, _ := client.GetVmRefByName(vmName)
 
 	forceCreate := d.Get("force_create").(bool)
@@ -897,7 +897,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// give sometime to proxmox to catchup
 	//time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	log.Print("[DEBUG][QemuVmCreate] starting VM: %d", vmr.VmId())
+	log.Printf("[DEBUG][QemuVmCreate] starting VM: %d", vmr.VmId())
 	_, err := client.StartVm(vmr)
 	if err != nil {
 		return err
