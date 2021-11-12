@@ -66,7 +66,7 @@ test:
 build: clean
 	@echo " -> Building"
 	mkdir -p bin
-	CGO_ENABLED=0 go build -o bin/terraform-provider-proxmox
+	CGO_ENABLED=0 go build -trimpath -o bin/terraform-provider-proxmox
 	@echo "Built terraform-provider-proxmox"
 
 acctest: build
