@@ -734,7 +734,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
-	log.Print("[DEBUG][QemuVmCreate] checking for duplicate name")
+	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", vmName)
 	dupVmr, _ := client.GetVmRefByName(vmName)
 
 	forceCreate := d.Get("force_create").(bool)
@@ -1484,7 +1484,7 @@ func prepareDiskSize(
 			if err != nil {
 				return err
 			}
-		} else if diskSize == clonedDiskSize {
+		} else if diskSize == clonedDiskSize || diskSize <= 0 {
 			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
 		} else {
 			return fmt.Errorf("proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%vG' to '%vG'", diskName, clonedDiskSize, diskSize)
