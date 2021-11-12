@@ -918,7 +918,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("[DEBUG][QemuVmCreate] oncreate = false, not starting VM")
 	}
 
-	err = initConnInfo(d, pconf, client, vmr, &config, lock)
+	err := initConnInfo(d, pconf, client, vmr, &config, lock)
 	if err != nil {
 		return err
 	}
