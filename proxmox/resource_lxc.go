@@ -655,14 +655,13 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
-	pconf := meta.(*providerConfiguration)
-	lock := pmParallelBegin(pconf)
-	defer lock.unlock()
 	return _resourceLxcRead(d, meta)
 }
 
 func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
 	client := pconf.Client
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
