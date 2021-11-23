@@ -1195,6 +1195,8 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 	client := pconf.Client
+	// create a logger for this function
+	logger, _ := CreateSubLogger("resource_vm_read")
 
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
@@ -1202,10 +1204,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("unexpected error when trying to read and parse the resource: %v", err)
 	}
 
-	// create a logger for this function
-	logger, _ := CreateSubLogger("resource_vm_read")
 	logger.Info().Int("vmid", vmID).Msg("Reading configuration for vmid")
-
 	vmr := pxapi.NewVmRef(vmID)
 
 	// Try to get information on the vm. If this call err's out
@@ -1216,8 +1215,20 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 		d.SetId("")
 		return nil
 	}
-
 	config, err := pxapi.NewConfigQemuFromApi(vmr, client)
+	if err != nil {
+		return err
+	}
+
+	vmState, err := client.GetVmState(vmr)
+	log.Printf("[DEBUG] VM status: %s", vmState["status"])
+	if err == nil && vmState["status"] == "started" {
+		log.Printf("[DEBUG] VM is running, cheking the IP")
+		err = initConnInfo(d, pconf, client, vmr, config, lock)
+		if err != nil {
+			return err
+		}
+	}
 	if err != nil {
 		return err
 	}
