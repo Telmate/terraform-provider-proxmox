@@ -72,10 +72,10 @@ func resourceVmQemu() *schema.Resource {
 				Description: "VM autostart on boot",
 			},
 			"oncreate": {
-				Type:			schema.TypeBool,
-				Optional:		true,
-				Default:		true,
-				Description:	"VM autostart on create",
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "VM autostart on create",
 			},
 			"tablet": {
 				Type:        schema.TypeBool,
@@ -669,7 +669,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
-	defer lock.unlock()
+	//defer lock.unlock()
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
@@ -790,36 +790,12 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
 			err = config.CloneVm(sourceVmr, vmr, client)
-
 			if err != nil {
 				return err
 			}
-			//CLONE VM SHOULD RETURN ONLY IF THE TASK ENDED!
-			// Waiting for the clone to become ready and
-			// read back all the current disk configurations from proxmox
-			// this allows us to receive updates on the post-clone state of the vm we're building
-			log.Print("[DEBUG][QemuVmCreate] Waiting for clone becoming ready")
-			var config_post_clone *pxapi.ConfigQemu
-			cloneTimeout := d.Timeout(schema.TimeoutCreate)
-			cloneWaitEnd := time.Now().Add(time.Duration(cloneTimeout))
-			log.Printf("[DEBUG][clone] retrying for at most  %v minutes before giving up\n", cloneTimeout)
-			log.Printf("[DEBUG][clone] retries will end at %s\n", cloneWaitEnd)
+			time.Sleep(30 * time.Second)
 
-			for time.Now().Before(cloneWaitEnd) {
-				// 	// Wait until we can actually retrieve the config from the cloned machine
-				config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
-				if config_post_clone != nil {
-					break
-					// to prevent an infinite loop we check for any other error
-					// this error is actually fine because the clone is not ready yet
-				} else if err.Error() != "[DEBUG][clone] vm locked, could not obtain config" {
-					return err
-				}
-				time.Sleep(5 * time.Second)
-				log.Print("[DEBUG][clone] Clone still not ready, checking again")
-			}
-
-			config_post_clone, err = pxapi.NewConfigQemuFromApi(vmr, client)
+			config_post_clone, err := pxapi.NewConfigQemuFromApi(vmr, client)
 			if err != nil {
 				return err
 			}
@@ -854,6 +830,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 			err = prepareDiskSize(client, vmr, qemuDisks)
 			if err != nil {
+				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 				return err
 			}
 
@@ -918,22 +895,22 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("[DEBUG][QemuVmCreate] oncreate = false, not starting VM")
 	}
 
-	err := initConnInfo(d, pconf, client, vmr, &config, lock)
-	if err != nil {
-		return err
-	}
-
-	return _resourceVmQemuRead(d, meta)
+	// err := initConnInfo(d, pconf, client, vmr, &config, lock)
+	// if err != nil {
+	// 	return err
+	// }
+	log.Print("[DEBUG][QemuVmCreate] vm creation done!")
+	lock.unlock()
+	return resourceVmQemuRead(d, meta)
 }
 
 func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
+	lock := pmParallelBegin(pconf)
+	//defer lock.unlock()
 
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_update")
-
-	lock := pmParallelBegin(pconf)
-	defer lock.unlock()
 
 	client := pconf.Client
 	_, _, vmID, err := parseResourceId(d.Id())
@@ -1205,19 +1182,18 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	} else if err != nil {
 		return err
 	}
-
-	return _resourceVmQemuRead(d, meta)
+	lock.unlock()
+	return resourceVmQemuRead(d, meta)
 }
 
 func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
-	pconf := meta.(*providerConfiguration)
-	lock := pmParallelBegin(pconf)
-	defer lock.unlock()
 	return _resourceVmQemuRead(d, meta)
 }
 
 func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
+	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
 	client := pconf.Client
 
 	_, _, vmID, err := parseResourceId(d.Id())
@@ -1480,9 +1456,12 @@ func prepareDiskSize(
 		logger.Debug().Int("diskId", diskID).Msgf("Checking disk sizing. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
 		if diskSize > clonedDiskSize {
 			logger.Debug().Int("diskId", diskID).Msgf("Resizing disk. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
-			_, err = client.ResizeQemuDiskRaw(vmr, diskName, diskConf["size"].(string))
-			if err != nil {
-				return err
+			for ii := 0; ii < 5; ii++ {
+				_, err = client.ResizeQemuDisk(vmr, diskName, int(diskSize-clonedDiskSize))
+				if err == nil {
+					break
+				}
+				time.Sleep(time.Duration(10) * time.Second)
 			}
 		} else if diskSize == clonedDiskSize || diskSize <= 0 {
 			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
@@ -1764,7 +1743,7 @@ func initConnInfo(
 	// }
 
 	// Done with proxmox API, end parallel and do the SSH things
-	lock.unlock()
+	//lock.unlock()
 	if sshHost == "" {
 		return fmt.Errorf("cannot find any IP address")
 	}
