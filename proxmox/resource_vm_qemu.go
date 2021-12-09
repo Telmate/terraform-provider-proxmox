@@ -195,6 +195,14 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"lsi",
+					"lsi53c810",
+					"virtio-scsi-pci",
+					"virtio-scsi-single",
+					"megasas",
+					"pvscsi",
+				}, false),
 			},
 			"vga": {
 				Type:     schema.TypeSet,
@@ -350,6 +358,15 @@ func resourceVmQemu() *schema.Resource {
 								}
 								return
 							},
+						},
+						"aio": {
+							Type: schema.TypeString,
+							Optional: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								"native",
+								"threads",
+								"io_uring",
+							}, false),
 						},
 						//Maximum r/w speed in megabytes per second
 						"mbps": {
