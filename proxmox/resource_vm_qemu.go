@@ -1432,9 +1432,15 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
 	vmr := pxapi.NewVmRef(vmId)
-	_, err := client.StopVm(vmr)
+	log.Print("[DEBUG][QemuDelete] shutting down VM")
+	_, err = client.ShutdownVm(vmr)
+
 	if err != nil {
-		return err
+		log.Print("[DEBUG][QemuDelete] shutdown failed, stopping VM forcefully")
+		_, err = client.StopVm(vmr)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Wait until vm is stopped. Otherwise, deletion will fail.
