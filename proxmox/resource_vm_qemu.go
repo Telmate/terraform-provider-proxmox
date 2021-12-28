@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -21,10 +24,10 @@ var thisResource *schema.Resource
 
 func resourceVmQemu() *schema.Resource {
 	thisResource = &schema.Resource{
-		Create: resourceVmQemuCreate,
-		Read:   resourceVmQemuRead,
-		Update: resourceVmQemuUpdate,
-		Delete: resourceVmQemuDelete,
+		Create:        resourceVmQemuCreate,
+		Read:          resourceVmQemuRead,
+		UpdateContext: resourceVmQemuUpdate,
+		Delete:        resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -360,7 +363,7 @@ func resourceVmQemu() *schema.Resource {
 							},
 						},
 						"aio": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Optional: true,
 							ValidateFunc: validation.StringInSlice([]string{
 								"native",
@@ -668,6 +671,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional:   true,
 				Default:    100,
 			},
+			"automatic_reboot": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Automatically reboot the VM if any of the modified parameters require a reboot to take effect.",
+			},
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -675,7 +684,6 @@ func resourceVmQemu() *schema.Resource {
 }
 
 func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
-
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_create")
 
@@ -921,7 +929,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	return resourceVmQemuRead(d, meta)
 }
 
-func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	//defer lock.unlock()
@@ -932,7 +940,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	logger.Info().Int("vmid", vmID).Msg("Starting update of the VM resource")
@@ -940,7 +948,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	vmr := pxapi.NewVmRef(vmID)
 	_, err = client.GetVmInfo(vmr)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
@@ -957,7 +965,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	qemuNetworks, err := ExpandDevicesList(d.Get("network").([]interface{}))
 	if err != nil {
-		return fmt.Errorf("error while processing Network configuration: %v", err)
+		return diag.FromErr(fmt.Errorf("error while processing Network configuration: %v", err))
 	}
 	logger.Debug().Int("vmid", vmID).Msgf("Processed NetworkSet into qemuNetworks as %+v", qemuNetworks)
 
@@ -968,7 +976,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 	if d.HasChange("target_node") {
 		_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 		vmr.SetNode(d.Get("target_node").(string))
 	}
@@ -1032,7 +1040,7 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	err = config.UpdateConfig(vmr, client)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	// Give some time to proxmox to catchup.
@@ -1054,13 +1062,13 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 
 		_, err := client.UpdateVMPool(vmr, newPool)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	}
 
 	err = initConnInfo(d, pconf, client, vmr, &config, lock)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	// If any of the "critical" keys are changed then a reboot is required.
@@ -1171,21 +1179,35 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	// If a reboot is required: if the VM is running attempt graceful shutdown. If failed, try a forced poweroff.
+	var diags diag.Diagnostics
+
+	// Try rebooting the VM is a reboot is required and automatic_reboot is
+	// enabled. Attempt a graceful shutdown or if that fails, force poweroff.
 	vmState, err := client.GetVmState(vmr)
 	if err == nil && vmState["status"] != "stopped" && d.Get("reboot_required").(bool) {
-		log.Print("[DEBUG][QemuVmUpdate] shutting down VM")
-		_, err = client.ShutdownVm(vmr)
-		// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
-		if err != nil {
-			log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
-			_, err = client.StopVm(vmr)
+		if d.Get("automatic_reboot").(bool) {
+			log.Print("[DEBUG][QemuVmUpdate] shutting down VM")
+			_, err = client.ShutdownVm(vmr)
+			// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
 			if err != nil {
-				return err
+				log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
+				_, err = client.StopVm(vmr)
+				if err != nil {
+					return diag.FromErr(err)
+				}
 			}
+		} else {
+			// Automatic reboots is not enabled, show the user a warning message that
+			// the VM needs a reboot for the changed parameters to take in effect.
+			diags = append(diags, diag.Diagnostic{
+				Severity:      diag.Warning,
+				Summary:       "VM needs to be rebooted and automatic_reboot is disabled",
+				Detail:        "One or more parameters are modified that only take effect after a reboot (shutdown & start).",
+				AttributePath: cty.Path{},
+			})
 		}
 	} else if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	// Start VM only if it wasn't running.
@@ -1194,13 +1216,21 @@ func resourceVmQemuUpdate(d *schema.ResourceData, meta interface{}) error {
 		log.Print("[DEBUG][QemuVmUpdate] starting VM")
 		_, err = client.StartVm(vmr)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	} else if err != nil {
-		return err
+		diags = append(diags, diag.FromErr(err)...)
+		return diags
 	}
 	lock.unlock()
-	return resourceVmQemuRead(d, meta)
+
+	err = resourceVmQemuRead(d, meta)
+	if err != nil {
+		diags = append(diags, diag.FromErr(err)...)
+		return diags
+	}
+
+	return diags
 }
 
 func resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
