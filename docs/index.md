@@ -110,6 +110,7 @@ The following arguments are supported in the provider block:
 - `pm_timeout` - (Optional; defaults to 300) Timeout value (seconds) for proxmox API calls.
 - `pm_debug` - (Optional; defaults to false) Enable verbose output in proxmox-api-go
 - `pm_proxy_server` - (Optional; defaults to nil) Send provider api call to a proxy server for easy debugging
+- `pm_delete_with_graceful_shutdown` - (Optional; defaults to false) Use graceful shutdown instead of hard stop on vm/lxc deletion for down scaling
 
 Additionally, one can set the `PM_OTP_PROMPT` environment variable to prompt for OTP 2FA code (if required).
 

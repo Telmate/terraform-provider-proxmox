@@ -22,6 +22,7 @@ type providerConfiguration struct {
 	LogFile                            string
 	LogLevels                          map[string]string
 	DangerouslyIgnoreUnknownAttributes bool
+	DeleteWithGracefulShutdown         bool
 }
 
 // Provider - Terrafrom properties for proxmox
@@ -115,6 +116,12 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("PM_DANGEROUSLY_IGNORE_UNKNOWN_ATTRIBUTES", false),
 				Description: "By default this provider will exit if an unknown attribute is found. This is to prevent the accidential destruction of VMs or Data when something in the proxmox API has changed/updated and is not confirmed to work with this provider. Set this to true at your own risk. It may allow you to proceed in cases when the provider refuses to work, but be aware of the danger in doing so.",
 			},
+			"pm_delete_with_graceful_shutdown": {
+                Type:        schema.TypeBool,
+                Optional:    true,
+                DefaultFunc: schema.EnvDefaultFunc("PM_DELETE_WITH_GRACEFUL_SHUTDOWN", false),
+                Description: "By default VM/LXC will be hard stopped on delete if scaled down. Set this to true to do a graceful shutdown instead.",
+            },
 			"pm_debug": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -191,6 +198,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		LogFile:                            d.Get("pm_log_file").(string),
 		LogLevels:                          logLevels,
 		DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
+		DeleteWithGracefulShutdown:         d.Get("pm_delete_with_graceful_shutdown").(bool),
 	}, nil
 }
 
