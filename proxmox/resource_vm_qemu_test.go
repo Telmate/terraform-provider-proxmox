@@ -2,12 +2,13 @@ package proxmox
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // TODO is there a better place for this config?
@@ -87,21 +88,21 @@ resource "proxmox_vm_qemu" "%s" {
 
 // testAccExampleResource generates a virtual machine and uses the disk
 // slot setting to assign a non-standard disk position (scsi5 vs scsi0)
-func testAccExampleQemuWithDiskSlot(name string, diskSlot int, targetNode string) string {
-	return fmt.Sprintf(`
-resource "proxmox_vm_qemu" "%s" {
-  name = "%s"
-  target_node = "%s"
-  iso = "local:iso/SpinRite.iso"
-  disk {
-    size = "1G"
-    type = "scsi"
-    storage = "local"
-    slot = %v
-  }
-}
-`, name, name, targetNode, diskSlot)
-}
+// func testAccExampleQemuWithDiskSlot(name string, diskSlot int, targetNode string) string {
+// 	return fmt.Sprintf(`
+// resource "proxmox_vm_qemu" "%s" {
+//   name = "%s"
+//   target_node = "%s"
+//   iso = "local:iso/SpinRite.iso"
+//   disk {
+//     size = "1G"
+//     type = "scsi"
+//     storage = "local"
+//     slot = %v
+//   }
+// }
+// `, name, name, targetNode, diskSlot)
+// }
 
 // testAccExampleResource generates a configured VM with a 1G disk
 // the goal with this resource is to make a "basic" but "standard" virtual machine

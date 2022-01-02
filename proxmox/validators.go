@@ -29,9 +29,9 @@ func VMIDValidator() schema.SchemaValidateDiagFunc {
 	}
 }
 
-func BIOSValidator() schema.SchemaValidateFunc {
-	return validation.StringInSlice([]string{
+func BIOSValidator() schema.SchemaValidateDiagFunc {
+	return validation.ToDiagFunc(validation.StringInSlice([]string{
 		"ovmf",
 		"seabios",
-	}, false)
+	}, false))
 }

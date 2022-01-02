@@ -433,3 +433,24 @@ func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource)
 // 	}
 // 	return ""
 // }
+
+// Because default values are not stored in Proxmox, so the API returns only active values.
+// So to prevent Terraform doing unnecessary diffs, this function reads default values
+// from Terraform itself, and fill empty fields.
+// func updateDevicesDefaults(
+// 	activeDevicesMap pxapi.QemuDevices,
+// 	configDevicesMap pxapi.QemuDevices,
+// ) pxapi.QemuDevices {
+
+// 	for deviceID, deviceConf := range configDevicesMap {
+// 		if _, ok := activeDevicesMap[deviceID]; !ok {
+// 			activeDevicesMap[deviceID] = configDevicesMap[deviceID]
+// 		}
+// 		for key, value := range deviceConf {
+// 			if _, ok := activeDevicesMap[deviceID][key]; !ok {
+// 				activeDevicesMap[deviceID][key] = value
+// 			}
+// 		}
+// 	}
+// 	return activeDevicesMap
+// }
