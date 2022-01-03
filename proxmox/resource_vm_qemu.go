@@ -1432,7 +1432,7 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
 	vmr := pxapi.NewVmRef(vmId)
-
+	
 	if pconf.DeleteWithGracefulShutdown {
 		_, err := client.ShutdownVm(vmr)
 
