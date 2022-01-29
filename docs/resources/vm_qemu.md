@@ -262,6 +262,22 @@ details.
 | `type`                                                                                                               | `str` |               | **          |
 | Required** The type of serial device to create. Options: `socket`, or the path to a serial device like `/dev/ttyS0`. |       |               |             |
 
+### USB Block
+
+The `usb` block is used to configure USB devices. It may be specified multiple times. The order in which the
+blocks are specified determines the ID for each net device. i.e. The first `usb` block will become `usb0`, the
+second will be `usb1` etc...
+
+See the [docs about USB passthrough](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_usb_passthrough) for more
+details.
+
+| Argument                                                                                                          | Type   | Default Value | Description                                                      |
+|-------------------------------------------------------------------------------------------------------------------|--------|---------------|------------------------------------------------------------------|
+| `host`                                                                                                            | `str`  |               | **                                                               |
+| Required** USB device host. This can either be done via the vendor- and product-id, or via the host bus and port. |        |               |                                                                  |
+| `usb3`                                                                                                            | `bool` | `false`       | Specifies whether if given host option is a USB3 device or port. |
+
+
 ## Attribute Reference
 
 In addition to the arguments above, the following attributes can be referenced from this resource.
