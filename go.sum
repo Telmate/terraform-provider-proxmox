@@ -43,8 +43,10 @@ github.com/Microsoft/go-winio v0.4.16/go.mod h1:XB6nPKklQyQ7GC9LdcBEcBl8PF76WugX
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 h1:YoJbenK9C67SkzkDfmQuVln04ygHj3vjZfd9FL+GmQQ=
 github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7/go.mod h1:z4/9nQmJSSwwds7ejkxaJwO37dru3geImFUdJlaLzQo=
-github.com/Telmate/proxmox-api-go v0.0.0-20220113001728-0c6f43a60b62 h1:GaUo3RX1bsawjZspP8EWwrk2AiG7uLRRnzF0HyalaJY=
-github.com/Telmate/proxmox-api-go v0.0.0-20220113001728-0c6f43a60b62/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
+github.com/Telmate/proxmox-api-go v0.0.0-20211123192920-062fd1a6ab10 h1:lJNkRZEptfaQsmo4pWBIsWRo9cOGw0somkXecKapedU=
+github.com/Telmate/proxmox-api-go v0.0.0-20211123192920-062fd1a6ab10/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
+github.com/Telmate/proxmox-api-go v0.0.0-20220129131641-6909b62b8cf0 h1:tq3jryt750KRU0oxEQCQHKxh2QQ+Y8nFMtyZtO7yv8I=
+github.com/Telmate/proxmox-api-go v0.0.0-20220129131641-6909b62b8cf0/go.mod h1:keBhXWLa+UBajvf79xvKcfiqeIc7vZL9wOqxuy1CBGw=
 github.com/acomagu/bufpipe v1.0.3 h1:fxAGrHZTgQ9w5QqVItgzwj235/uYZYgbXitB+dLupOk=
 github.com/acomagu/bufpipe v1.0.3/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=

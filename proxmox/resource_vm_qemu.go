@@ -509,6 +509,22 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
+			"usb": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"host": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"usb3": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"os_type": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -715,6 +731,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials, _ := DevicesSetToMap(serials)
 
+	qemuUsbs, _ := ExpandDevicesList(d.Get("usb").([]interface{}))
+
 	config := pxapi.ConfigQemu{
 		Name:         vmName,
 		Description:  d.Get("desc").(string),
@@ -743,6 +761,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
 		QemuSerials:  qemuSerials,
+		QemuUsbs:     qemuUsbs,
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -1007,6 +1026,11 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials, _ := DevicesSetToMap(serials)
 
+	qemuUsbs, err := ExpandDevicesList(d.Get("usb").([]interface{}))
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("error while processing Usb configuration: %v", err))
+	}
+
 	d.Partial(true)
 	if d.HasChange("target_node") {
 		_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
@@ -1045,6 +1069,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuNetworks: qemuNetworks,
 		QemuDisks:    qemuDisks,
 		QemuSerials:  qemuSerials,
+		QemuUsbs:     qemuUsbs,
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -1134,6 +1159,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"kvm",
 		"vga",
 		"serial",
+		"usb",
 	) {
 		d.Set("reboot_required", true)
 	}
