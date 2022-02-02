@@ -24,6 +24,7 @@ Follow this [install guide](docs/guides/installation.md) to install the plugin.
 * `proxmox_vm_qemu` does not (yet) validate vm names, be sure to only use alphanumeric and dashes otherwise you may get
   an opaque 400 Parameter Verification failed (indicating a bad value was sent to proxmox).
 * When using the `proxmox_lxc` resource, the provider will crash unless `rootfs` is defined.
+* When using the Network Boot mode (PXE), a valid NIC must be defined for the VM, and the boot order must specify network first.
 
 ## Contributing
 

@@ -4,19 +4,30 @@ This resource manages a Proxmox VM Qemu container.
 
 ## Create a Qemu VM resource
 
-You can start from either an ISO or clone an existing VM. Optimally, you could create a VM resource you will use a clone
-base with an ISO, and make the rest of the VM resources depend on that base "template" and clone it.
+You can start from either an ISO, PXE boot the VM, or clone an existing VM. Optimally, you could
+create a VM resource you will use a clone base with an ISO, and make the rest of the VM resources
+depend on that base "template" and clone it.
 
-When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. The name and target node of the VM are
-the only required parameters.
+When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. For ISO and clone
+modes, the name and target node of the VM are the only required parameters.
+
+For the PXE mode, the `boot` directive must contain a *Network* boot order first.  Generally, PXE
+boot VMs should NOT contain the Agent config (`agent = 1`).  PXE boot mode also requires external
+infrastructure to support the Network PXE boot request by the VM.
 
 ```hcl
 resource "proxmox_vm_qemu" "resource-name" {
   name        = "VM-name"
   target_node = "Node to create the VM on"
   iso         = "ISO file name"
-  # or
+
+  ### or for a Clone VM operation
   # clone = "template to clone"
+
+  ### or for a PXE boot VM operation
+  # pxe = true
+  # boot = "net0;scsi0"
+  # agent = 0
 }
 ```
 
@@ -80,6 +91,34 @@ variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfi
 
 For more information, see the [Cloud-init guide](../guides/cloud_init.md).
 
+## Provision through PXE Network Boot
+
+Specifying the `pxe = true` option will enable the Virtual Machine to perform a Network Boot (PXE).
+In addition to enabling the PXE mode, a few other options should be specified to ensure successful
+boot of the VM.  A minimal Resource stanza for a PXE boot VM might look like this:
+
+```
+resource "proxmox_vm_qemu" "pxe-minimal-example" {
+    name                      = "pxe-minimal-example"
+    agent                     = 0
+    boot                      = "order=net0;scsi0"
+    pxe                       = true
+    target_node               = "test"
+    network {
+        bridge    = "vmbr0"
+        firewall  = false
+        link_down = false
+        model     = "e1000"
+    }
+}
+```
+
+The primary options that effect the correct operation of Network PXE boot mode are:
+
+  * `boot`: a valid boot order must be specified with Network type first (eg `net0;scsi0` or `ncd`)
+  * a valid NIC attached to a network with a PXE boot server must be added to the VM
+  * generally speaking, disable the Agent (`agent = 0`) unless the installed OS contains the Agent in OS install configurations
+
 ## Argument reference
 
 **Note: Except where explicitly stated in the description, all arguments are assumed to be optional.**
@@ -104,8 +143,9 @@ The following arguments are supported in the top level resource block.
 | `boot`                                                            | `str`  | `"cdn"`              | The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).                                                                                                                                                                        |
 | `bootdisk`                                                        | `str`  |                      | Enable booting from specified disk. You shouldn't need to change it under most circumstances.                                                                                                                                                                                                                               |
 | `agent`                                                           | `int`  | `0`                  | Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the quest for this to have any effect.                                                                                                                                      |
-| `iso`                                                             | `str`  |                      | The name of the ISO image to mount to the VM. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.                                                                                                                                                                                                |
-| `clone`                                                           | `str`  |                      | The base VM from which to clone to create the new VM.                                                                                                                                                                                                                                                                       |
+| `iso`                                                             | `str`  |                      | The name of the ISO image to mount to the VM. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.  Note that `iso` is mutually exclussive with `clone` and `pxe` modes.                                                                                                                          |
+| `pxe`                                                             | `bool` | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network first (eg `boot = "net0;scsi0"`).  Note that `pxe` is mutually exclussive with `iso` and `clone` modes.                                                                                                                      |
+| `clone`                                                           | `str`  |                      | The base VM from which to clone to create the new VM.  Note that `clone` is mutually exclussive with `pxe` and `iso` modes.                                                                                                                                                                                                 |
 | `full_clone`                                                      | `bool` | `true`               | Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.                                                                                                |
 | `hastate`                                                         | `str`  |                      | Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.                                                                                          |
 | `hagroup`                                                         | `str`  |                      | The HA group identifier the resource belongs to (requires `hastate` to be set!). See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.                                                                                                                |

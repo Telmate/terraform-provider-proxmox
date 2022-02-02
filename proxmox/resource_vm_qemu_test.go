@@ -86,6 +86,27 @@ resource "proxmox_vm_qemu" "%s" {
 `, name, name, targetNode)
 }
 
+// testAccExampleQemuPxe generates the most simplistic PXE boot VM
+// we're able to make this confirms we can spin up a PXE boot VM
+// using just default values, a valid Network must be specified
+// for the VM to be able to Network boot
+func testAccExampleQemuPxe(name string, targetNode string) string {
+	return fmt.Sprintf(`
+resource "proxmox_vm_qemu" "%s" {
+  name = "%s"
+  target_node = "%s"
+	pxe = true
+	boot = "order=net0;scsi0"
+	network {
+    bridge    = "vmbr0"
+    firewall  = false
+    link_down = false
+    model     = "e1000"
+  }
+}
+`, name, name, targetNode)
+}
+
 // testAccExampleResource generates a virtual machine and uses the disk
 // slot setting to assign a non-standard disk position (scsi5 vs scsi0)
 // func testAccExampleQemuWithDiskSlot(name string, diskSlot int, targetNode string) string {
