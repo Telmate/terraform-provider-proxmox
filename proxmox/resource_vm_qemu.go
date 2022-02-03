@@ -893,7 +893,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			if err != nil {
 				return err
 			}
-		} else if d.Get("pxe").(bool) == true {
+		} else if d.Get("pxe").(bool) {
 			var found bool
 			bs := d.Get("boot").(string)
 			regs := [...]string{"^n.*$", "^order=net.*$"}

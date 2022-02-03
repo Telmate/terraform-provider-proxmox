@@ -321,6 +321,27 @@ func TestAccProxmoxVmQemu_CreateCloneWithTwoDisks(t *testing.T) {
 	})
 }
 
+// TestAccProxmoxVmQemu_PxeCreate tests a simple creation and destruction of the smallest, but
+// but still viable, configuration for a PXE Network boot VM we can create.
+func TestAccProxmoxVmQemu_PxeCreate(t *testing.T) {
+	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
+	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProxmoxProviderFactory(),
+		//CheckDestroy: testAccCheckExampleResourceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccExampleQemuPxe(resourceName, testAccProxmoxTargetNode),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
+				),
+			},
+		},
+	})
+}
+
 // TestAccProxmoxVmQemu_StandardUpdateNoReboot tests a simple update of a vm_qemu resource,
 // and the modified parameters can be applied without reboot.
 func TestAccProxmoxVmQemu_UpdateNoReboot(t *testing.T) {
