@@ -2,7 +2,7 @@ provider "proxmox" {
     pm_tls_insecure = true
     pm_api_url = "https://proxmox.org/api2/json"
     pm_password = "supersecret"
-    pm_user = "terraform-user@pve"
+    pm_user = "terraform-prov@pve"
     pm_otp = ""
 }
 
