@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -102,15 +103,23 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
+			"pxe": {
+				Type:          schema.TypeBool,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"clone"},
+			},
 			"iso": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"clone"},
 			},
 			"clone": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"iso", "pxe"},
 			},
 			"cloudinit_cdrom_storage": {
 				Type:     schema.TypeString,
@@ -811,7 +820,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			vmr.SetPool(pool)
 		}
 
-		// check if ISO or clone
+		// check if ISO, clone, or PXE boot
 		if d.Get("clone").(string) != "" {
 			fullClone := 1
 			if !d.Get("full_clone").(bool) {
@@ -884,8 +893,34 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			if err != nil {
 				return err
 			}
+		} else if d.Get("pxe").(bool) {
+			var found bool
+			bs := d.Get("boot").(string)
+			regs := [...]string{"^n.*$", "^order=net.*$"}
+
+			for _, reg := range regs {
+				re, err := regexp.Compile(reg)
+				if err != nil {
+					return err
+				}
+
+				found = re.MatchString(bs)
+
+				if found {
+					break
+				}
+			}
+
+			if !found {
+				return fmt.Errorf("no network boot option matched in 'boot' config")
+			}
+
+			err := config.CreateVm(vmr, client)
+			if err != nil {
+				return err
+			}
 		} else {
-			return fmt.Errorf("either clone or iso must be set")
+			return fmt.Errorf("either 'clone', 'iso', or 'pxe' must be set")
 		}
 	} else {
 		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
