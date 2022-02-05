@@ -27,7 +27,9 @@ resource "proxmox_vm_qemu" "pxe-example" {
     automatic_reboot          = true
     balloon                   = 0
     bios                      = "seabios"
-# boot order MUST include network first, this is enforced in the Provider
+# boot order MUST include network, this is enforced in the Provider
+# Optinally, setting a disk first means that PXE will be used first boot
+# and future boots will run off the disk
     boot                      = "order=net0;scsi0"
     cores                     = 2
     cpu                       = "host"
