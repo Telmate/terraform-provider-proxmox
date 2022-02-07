@@ -40,7 +40,7 @@ One can supply fields using the provider syntax in Terraform. It is recommended 
 variables.
 
 ```bash
-export PM_USER="terraform-user@pve"
+export PM_USER="terraform-prov@pve"
 export PM_PASS="password"
 ```
 
@@ -56,7 +56,7 @@ provider "proxmox" {
 ## Creating the connection via username and API token
 
 ```bash
-export PM_API_TOKEN_ID="terraform-user@pve!mytoken"
+export PM_API_TOKEN_ID="terraform-prov@pve!mytoken"
 export PM_API_TOKEN_SECRET="afcd8f45-acc1-4d0f-bb12-a70b0777ec11"
 ```
 
