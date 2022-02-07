@@ -269,6 +269,10 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
+						"mtu": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
 						"queues": {
 							Type:     schema.TypeInt,
 							Optional: true,
