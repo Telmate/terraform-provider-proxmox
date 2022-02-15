@@ -256,7 +256,7 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 						},
 						"mtu": {
-							Type:     schema.TypeString,
+							Type:     schema.TypeInt,
 							Optional: true,
 						},
 						"rate": {
