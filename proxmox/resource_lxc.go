@@ -90,6 +90,10 @@ func resourceLxc() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 						},
+						"mknod": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
 						"mount": {
 							Type:     schema.TypeString,
 							Optional: true,
