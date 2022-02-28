@@ -1233,6 +1233,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				if oldValues[i].(map[string]interface{})["cache"] != newValues[i].(map[string]interface{})["cache"] {
 					d.Set("reboot_required", true)
 				}
+				if oldValues[i].(map[string]interface{})["size"] != newValues[i].(map[string]interface{})["size"] {
+					d.Set("reboot_required", true)
+				}
 				// these paramater changes only require reboot if disk hotplug is disabled
 				if !strings.Contains(d.Get("hotplug").(string), "disk") {
 					if oldValues[i].(map[string]interface{})["type"] != newValues[i].(map[string]interface{})["type"] {
@@ -1576,20 +1579,21 @@ func prepareDiskSize(
 			return err
 		}
 
-		logger.Debug().Int("diskId", diskID).Msgf("Checking disk sizing. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
+		logger.Debug().Int("diskId", diskID).Msgf("Checking disk sizing. Original '%+v', New '%+v'", fmt.Sprintf("%vG", clonedDiskSize), fmt.Sprintf("%vG", diskSize))
 		if diskSize > clonedDiskSize {
-			logger.Debug().Int("diskId", diskID).Msgf("Resizing disk. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
+			logger.Debug().Int("diskId", diskID).Msgf("Resizing disk")
 			for ii := 0; ii < 5; ii++ {
-				_, err = client.ResizeQemuDisk(vmr, diskName, int(diskSize-clonedDiskSize))
+				_, err = client.ResizeQemuDiskRaw(vmr, diskName, fmt.Sprintf("%vG", diskSize))
 				if err == nil {
 					break
 				}
+				logger.Debug().Int("diskId", diskID).Msgf("Error returned from api: %+v", err)
 				time.Sleep(time.Duration(10) * time.Second)
 			}
 		} else if diskSize == clonedDiskSize || diskSize <= 0 {
-			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", diskSize, clonedDiskSize)
+			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", fmt.Sprintf("%vG", clonedDiskSize), fmt.Sprintf("%vG", diskSize))
 		} else {
-			return fmt.Errorf("proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%vG' to '%vG'", diskName, clonedDiskSize, diskSize)
+			return fmt.Errorf("proxmox does not support decreasing disk size. Disk '%v' wanted to go from '%vG' to '%vG'", diskName, fmt.Sprintf("%vG", clonedDiskSize), fmt.Sprintf("%vG", diskSize))
 		}
 
 	}
