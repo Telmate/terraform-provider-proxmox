@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"log"
 
 	"github.com/Telmate/terraform-provider-proxmox/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -19,19 +17,9 @@ func main() {
 	flag.StringVar(&pluginPath, "registry", "registry.terraform.io/telmate/proxmox", "specify path, useful for local debugging")
 	flag.Parse()
 
-	opts := &plugin.ServeOpts{
-		ProviderFunc: func() *schema.Provider {
-			return proxmox.Provider()
-		},
-	}
-
-	if debugMode {
-		err := plugin.Debug(context.Background(), pluginPath, opts)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		return
-	}
+	opts := &plugin.ServeOpts{ProviderFunc: func() *schema.Provider {
+		return proxmox.Provider()
+	}, Debug: debugMode}
 
 	plugin.Serve(opts)
 }
