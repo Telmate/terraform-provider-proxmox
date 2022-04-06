@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"golang.org/x/exp/slices"
 )
 
 // using a global variable here so that we have an internally accessible
@@ -1280,7 +1281,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	// Start VM only if it wasn't running.
 	vmState, err = client.GetVmState(vmr)
-	if err == nil && vmState["status"] == "stopped" {
+	if err == nil && vmState["status"] == "stopped" && slices.Contains([]string{"", "started", "enabled"}, vmr.HaState()) {
 		log.Print("[DEBUG][QemuVmUpdate] starting VM")
 		_, err = client.StartVm(vmr)
 		if err != nil {
