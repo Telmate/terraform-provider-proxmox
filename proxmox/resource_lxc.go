@@ -320,6 +320,26 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"acl": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"quota": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"replicate": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"ro": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"shared": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
 						"storage": {
 							Type:     schema.TypeString,
 							ForceNew: true,
