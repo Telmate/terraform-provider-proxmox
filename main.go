@@ -19,7 +19,7 @@ func main() {
 
 	opts := &plugin.ServeOpts{ProviderFunc: func() *schema.Provider {
 		return proxmox.Provider()
-	}, Debug: debugMode}
+	}, Debug: debugMode, ProviderAddr: pluginPath}
 
 	plugin.Serve(opts)
 }
