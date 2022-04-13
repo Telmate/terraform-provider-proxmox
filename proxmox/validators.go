@@ -16,12 +16,11 @@ func VMIDValidator() schema.SchemaValidateDiagFunc {
 
 		if !ok {
 			return diag.Errorf("expected type of %v to be int", k)
-
 		}
 
-		if val != -1 {
+		if val != 0 {
 			if val < min || val > max {
-				return diag.Errorf("proxmox %s must be in the range (%d - %d), got %d", k, min, max, val)
+				return diag.Errorf("proxmox %s must be in the range (%d - %d) or 0 for next available ID, got %d", k, min, max, val)
 			}
 		}
 
