@@ -80,8 +80,8 @@ local-dev-install: build
 	@echo "$(CURRENT_VERSION_MICRO)"
 	@echo "$(KERNEL)"
 	@echo "$(ARCH)"
-	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(CURRENT_VERSION_MICRO)/$(KERNEL)_$(ARCH)/
-	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(CURRENT_VERSION_MICRO)/$(KERNEL)_$(ARCH)/
+	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
+	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 
 clean:
 	@git clean -f -d
