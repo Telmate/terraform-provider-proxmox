@@ -61,6 +61,7 @@ func resourceLxc() *schema.Resource {
 			"cores": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				Default:  1,
 			},
 			"cpulimit": {
 				Type:     schema.TypeInt,
@@ -85,22 +86,27 @@ func resourceLxc() *schema.Resource {
 						"fuse": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"keyctl": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"mknod": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 						"mount": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Default:  "",
 						},
 						"nesting": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -384,7 +390,7 @@ func resourceLxc() *schema.Resource {
 			"swap": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  512,
+				Default:  0,
 			},
 			"template": {
 				Type:     schema.TypeBool,
@@ -417,9 +423,12 @@ func resourceLxc() *schema.Resource {
 				ForceNew: true,
 			},
 			"vmid": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  0,
+				Type:             schema.TypeInt,
+				Optional:         true,
+				Computed:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: VMIDValidator(),
+				Description:      "The VM identifier in proxmox (100-999999999)",
 			},
 		},
 		Timeouts: resourceTimeouts(),
@@ -547,6 +556,27 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 			}
 			time.Sleep(5 * time.Second)
 			log.Print("[DEBUG][LxcCreate] Clone still not ready, checking again")
+		}
+		if config_post_clone.RootFs["size"] == config.RootFs["size"] {
+			log.Print("[DEBUG][LxcCreate] Waiting for clone becoming ready")
+		} else {
+			log.Print("[DEBUG][LxcCreate] We must resize")
+			processDiskResize(config_post_clone.RootFs, config.RootFs, "rootfs", pconf, vmr)
+		}
+		config_post_resize, err := pxapi.NewConfigLxcFromApi(vmr, client)
+		if err != nil {
+			return err
+		}
+		config.RootFs["size"] = config_post_resize.RootFs["size"]
+		config.RootFs["volume"] = config_post_resize.RootFs["volume"]
+
+		if err != nil {
+			return err
+		}
+		// Update all remaining stuff
+		err = config.UpdateConfig(vmr, client)
+		if err != nil {
+			return err
 		}
 
 	} else {
