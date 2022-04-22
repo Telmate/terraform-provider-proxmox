@@ -794,8 +794,7 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	if err == nil {
 		for _, poolInfo := range pools["data"].([]interface{}) {
 			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
-			poolMembers := poolContent["data"].(map[string]interface{})["members"]
-			for _, member := range poolMembers.([]interface{}) {
+			for _, member := range poolContent["members"].([]interface{}) {
 				if member.(map[string]interface{})["type"] != "storage" {
 					if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
 						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
