@@ -82,12 +82,12 @@ func _resourcePoolRead(d *schema.ResourceData, meta interface{}) error {
 
 	d.SetId(clusterResourceId("pools", poolID))
 	d.Set("comment", "")
-	if poolInfo["data"].(map[string]interface{})["comment"] != nil {
-		d.Set("comment", poolInfo["data"].(map[string]interface{})["comment"].(string))
+	if poolInfo["comment"] != nil {
+		d.Set("comment", poolInfo["comment"].(string))
 	}
 
 	// DEBUG print the read result
-	logger.Debug().Str("poolid", poolID).Msgf("Finished pool read resulting in data: '%+v'", poolInfo["data"])
+	logger.Debug().Str("poolid", poolID).Msgf("Finished pool read resulting in data: '%+v'", poolInfo)
 	return nil
 }
 
