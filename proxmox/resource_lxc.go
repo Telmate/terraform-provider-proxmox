@@ -721,14 +721,14 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	
 	if d.HasChange("start") {
 		vmState, err := client.GetVmState(vmr)
-		if err == nil && vmState["status"] == "stopped" && d.Get("start").(bool) == true {
+		if err == nil && vmState["status"] == "stopped" && d.Get("start").(bool) {
 			log.Print("[DEBUG][LXCUpdate] starting LXC")
 			_, err = client.StartVm(vmr)
 			if err != nil {
 				return err
 			}
 
-		} else if err == nil && vmState["status"] == "running" && d.Get("start").(bool) == false {
+		} else if err == nil && vmState["status"] == "running" && !d.Get("start").(bool) {
 			log.Print("[DEBUG][LXCUpdate] stopping LXC")
 			_, err = client.StopVm(vmr)
 			if err != nil {
