@@ -573,11 +573,24 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			return err
 		}
+		
 		// Update all remaining stuff
 		err = config.UpdateConfig(vmr, client)
 		if err != nil {
 			return err
 		}
+		
+		//Start LXC if start parameter is set to true
+		if d.Get("start").(bool) {
+	  		log.Print("[DEBUG][LxcCreate] starting LXC")
+	  		_, err := client.StartVm(vmr)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			log.Print("[DEBUG][LxcCreate] start = false, not starting LXC")
+    		}
 
 	} else {
 		err = config.CreateLxc(vmr, client)
@@ -702,6 +715,26 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 
 		_, err := client.UpdateVMPool(vmr, newPool)
 		if err != nil {
+			return err
+		}
+	}
+	
+	if d.HasChange("start") {
+		vmState, err := client.GetVmState(vmr)
+		if err == nil && vmState["status"] == "stopped" && d.Get("start").(bool) {
+			log.Print("[DEBUG][LXCUpdate] starting LXC")
+			_, err = client.StartVm(vmr)
+			if err != nil {
+				return err
+			}
+
+		} else if err == nil && vmState["status"] == "running" && !d.Get("start").(bool) {
+			log.Print("[DEBUG][LXCUpdate] stopping LXC")
+			_, err = client.StopVm(vmr)
+			if err != nil {
+				return err
+			}
+		} else if err != nil {
 			return err
 		}
 	}
