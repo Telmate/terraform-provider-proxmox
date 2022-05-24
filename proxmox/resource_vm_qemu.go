@@ -328,7 +328,7 @@ func resourceVmQemu() *schema.Resource {
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
 								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
-									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
+									errs = append(errs, fmt.Errorf("disk size must end with G, M, or K, got %s", v))
 								}
 								return
 							},
@@ -682,7 +682,7 @@ func resourceVmQemu() *schema.Resource {
 			"reboot_required": {
 				Type:        schema.TypeBool,
 				Computed:    true,
-				Description: "Internal variable, true if any of the modified parameters require a reboot to take effect.",
+				Description: "Internal variable, true if any of the modified parameters requires a reboot to take effect.",
 			},
 			"default_ipv4_address": {
 				Type:        schema.TypeString,
@@ -704,7 +704,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     true,
-				Description: "Automatically reboot the VM if any of the modified parameters require a reboot to take effect.",
+				Description: "Automatically reboot the VM if any of the modified parameters requires a reboot to take effect.",
 			},
 		},
 		Timeouts: resourceTimeouts(),
