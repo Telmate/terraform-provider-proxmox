@@ -75,6 +75,12 @@ func resourceVmQemu() *schema.Resource {
 				Default:     false,
 				Description: "VM autostart on boot",
 			},
+			"startup": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "Startup order of the VM",
+			},
 			"oncreate": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -743,6 +749,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Pool:         d.Get("pool").(string),
 		Bios:         d.Get("bios").(string),
 		Onboot:       d.Get("onboot").(bool),
+		Startup:	  d.Get("startup").(string),
 		Tablet:       d.Get("tablet").(bool),
 		Boot:         d.Get("boot").(string),
 		BootDisk:     d.Get("bootdisk").(string),
@@ -1051,6 +1058,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Pool:         d.Get("pool").(string),
 		Bios:         d.Get("bios").(string),
 		Onboot:       d.Get("onboot").(bool),
+		Startup:      d.Get("startup").(string),
 		Tablet:       d.Get("tablet").(bool),
 		Boot:         d.Get("boot").(string),
 		BootDisk:     d.Get("bootdisk").(string),
@@ -1357,6 +1365,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("desc", config.Description)
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
+	d.Set("startup", config.Startup)
 	d.Set("tablet", config.Tablet)
 	d.Set("boot", config.Boot)
 	d.Set("bootdisk", config.BootDisk)
