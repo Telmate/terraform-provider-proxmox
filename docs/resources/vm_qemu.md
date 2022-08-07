@@ -332,3 +332,11 @@ The following arguments are deprecated, and should no longer be used.
 - `clone_wait` - (do not use, api should manage timeouts)
 - `additional_wait` - (do not use, api should manage timeouts)
 - `preprovision` - (do not use, provider do not fully support preprovisioning anymore)
+
+## Import
+
+A VM Qemu Resource can be imported using its node, type and VM ID i.e.:
+
+```
+$ terraform import [options] [node]/[type]/[vmId]
+```
