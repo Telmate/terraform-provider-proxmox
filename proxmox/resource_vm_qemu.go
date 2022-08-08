@@ -416,6 +416,52 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  0,
 						},
+						// Maximum I/O operations per second
+						"iops": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_max": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_max_length": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_rd": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_rd_max": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_rd_max_length": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_wr": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_wr_max": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
+						"iops_wr_max_length": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  0,
+						},
 						// Misc
 						"file": {
 							Type:     schema.TypeString,
