@@ -86,8 +86,9 @@ Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.pro
 creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig`
 parameter to create based
 on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html) or use the Proxmox
-variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfig3`, `ipconfig4`, `ipconfig5`
-, `searchdomain`, `nameserver` and `sshkeys`.
+variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfig3`, `ipconfig4`, `ipconfig5`,
+`ipconfig6`, `ipconfig7`, `ipconfig7`, `ipconfig8`, `ipconfig9`, `ipconfig10`, `ipconfig11`, `ipconfig12`, `ipconfig13`,
+`ipconfig14`, `ipconfig15`, `searchdomain`, `nameserver` and `sshkeys`.
 
 For more information, see the [Cloud-init guide](../guides/cloud_init.md).
 
