@@ -86,8 +86,9 @@ Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.pro
 creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig`
 parameter to create based
 on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html) or use the Proxmox
-variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfig3`, `ipconfig4`, `ipconfig5`
-, `searchdomain`, `nameserver` and `sshkeys`.
+variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfig3`, `ipconfig4`, `ipconfig5`,
+`ipconfig6`, `ipconfig7`, `ipconfig8`, `ipconfig9`, `ipconfig10`, `ipconfig11`, `ipconfig12`, `ipconfig13`,
+`ipconfig14`,`ipconfig15`, `searchdomain`, `nameserver` and `sshkeys`.
 
 For more information, see the [Cloud-init guide](../guides/cloud_init.md).
 
@@ -178,9 +179,6 @@ The following arguments are supported in the top level resource block.
 | `ipconfig0`                   | `str`  |                      | The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`.                                                                                                                                                                            |
 | `ipconfig1` to `ipconfig15`   | `str`  |                      | The second IP address to assign to the guest. Same format as `ipconfig0`.                                                                                                                                                                                                                                                   |
 | `automatic_reboot`            | `bool` | `true`               | Automatically reboot the VM when parameter changes require this. If disabled the provider will emit a warning when the VM needs to be rebooted.                                                                                                                                                                             |
-
-Note: Proxmox supports ipconfigN arbitrary numbers of interfaces, but at the moment this Terraform provider has support
-for 0-5 addresses only. If there is interest, this could be refactored to support any number of interfaces.
 
 ### VGA Block
 
