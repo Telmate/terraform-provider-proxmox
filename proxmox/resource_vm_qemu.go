@@ -462,6 +462,13 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  0,
 						},
+
+						// Import disk
+						"import_from": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+
 						// Misc
 						"file": {
 							Type:     schema.TypeString,
