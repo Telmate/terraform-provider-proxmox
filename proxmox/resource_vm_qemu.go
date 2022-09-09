@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"path"
 	"regexp"
 	"strconv"
@@ -1926,11 +1927,11 @@ func initConnInfo(
 	}
 	log.Print("[DEBUG][initConnInfo] trying to find IP address of first network card")
 
+	interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
 	// wait until we find a valid ipv4 address
 	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
 		log.Printf("[DEBUG][initConnInfo] checking network card...")
 		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
-		interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
 		if err != nil {
 			return err
 		} else {
@@ -1952,26 +1953,36 @@ func initConnInfo(
 	}
 	// todo - log a warning if we couldn't get an IP
 
-	d.Set("default_ipv4_address", sshHost)
-
 	if config.HasCloudInit() {
 		log.Print("[DEBUG][initConnInfo] vm has a cloud-init configuration")
-		if sshHost == "" {
-			log.Print("[DEBUG][initConnInfo] not found an ip configuration yet")
-			_, ipconfig0Set := d.GetOk("ipconfig0")
-			if ipconfig0Set {
-				vmState, err := client.GetVmState(vmr)
-				if err != nil {
-					return err
-				}
+		_, ipconfig0Set := d.GetOk("ipconfig0")
+		if ipconfig0Set {
+			vmState, err := client.GetVmState(vmr)
+			if err != nil {
+				return err
+			}
 
-				if d.Get("ipconfig0").(string) != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
-					// parse IP address out of ipconfig0
-					ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
+			if d.Get("ipconfig0").(string) != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
+				// parse IP address out of ipconfig0
+				ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
+				if sshHost == "" {
 					sshHost = ipMatch[1]
+				}
+				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
+				for _, iface := range interfaces {
+					if sshHost == ipMatch[1] {
+						break
+					}
+					for _, addr := range iface.IPAddresses {
+						if addr.Equal(ipconfig0) {
+							sshHost = ipMatch[1]
+							break
+						}
+					}
 				}
 			}
 		}
+
 		log.Print("[DEBUG]  found an ip configuration")
 		// Check if we got a speficied port
 		if strings.Contains(sshHost, ":") {
@@ -2000,6 +2011,7 @@ func initConnInfo(
 	}
 
 	// Optional convience attributes for provisioners
+	d.Set("default_ipv4_address", sshHost)
 	d.Set("ssh_host", sshHost)
 	d.Set("ssh_port", sshPort)
 
