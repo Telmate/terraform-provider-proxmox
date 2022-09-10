@@ -40,12 +40,9 @@ CURRENT_TAG_MICRO  := "v$(CURRENT_VERSION_MICRO)"
 CURRENT_TAG_MINOR  := "v$(CURRENT_VERSION_MINOR)"
 CURRENT_TAG_MAJOR  := "v$(CURRENT_VERSION_MAJOR)"
 
-KERNEL=$(shell if [ "$$(uname -s)" == "Linux" ]; then echo linux; fi)
-ARCH=$(shell if [ "$$(uname -m)" == "x86_64" ]; then echo amd64; fi)
-
-# $(info $$KERNEL = $(KERNEL))
-
-# $(error $$ARCH = $(ARCH))
+# Determine KERNEL and ARCH
+GOOS := $(shell go tool dist env | grep 'GOOS' | sed -e 's|.*"\(.*\)"|\1|')
+GOARCH := $(shell go tool dist env | grep 'GOARCH' | sed -e 's|.*"\(.*\)"|\1|')
 
 .PHONY: build fmt vet test clean install acctest local-dev-install
 
@@ -78,10 +75,10 @@ install: build
 
 local-dev-install: build
 	@echo "$(CURRENT_VERSION_MICRO)"
-	@echo "$(KERNEL)"
-	@echo "$(ARCH)"
-	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
-	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
+	@echo "GOOS=$(GOOS)"
+	@echo "GOARCH=$(GOARCH)"
+	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(GOOS)_$(GOARCH)/
+	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(GOOS)_$(GOARCH)/
 
 clean:
 	@git clean -f -d
