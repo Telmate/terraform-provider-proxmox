@@ -1927,10 +1927,10 @@ func initConnInfo(
 	}
 	log.Print("[DEBUG][initConnInfo] trying to find IP address of first network card")
 
-	interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
 	// wait until we find a valid ipv4 address
 	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
 		log.Printf("[DEBUG][initConnInfo] checking network card...")
+		interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
 		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
 		if err != nil {
 			return err
@@ -1969,14 +1969,19 @@ func initConnInfo(
 					sshHost = ipMatch[1]
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
-				for _, iface := range interfaces {
-					if sshHost == ipMatch[1] {
-						break
-					}
-					for _, addr := range iface.IPAddresses {
-						if addr.Equal(ipconfig0) {
-							sshHost = ipMatch[1]
+				interfaces, errInterfaces := client.GetVmAgentNetworkInterfaces(vmr)
+				if errInterfaces != nil {
+					return err
+				} else {
+					for _, iface := range interfaces {
+						if sshHost == ipMatch[1] {
 							break
+						}
+						for _, addr := range iface.IPAddresses {
+							if addr.Equal(ipconfig0) {
+								sshHost = ipMatch[1]
+								break
+							}
 						}
 					}
 				}
