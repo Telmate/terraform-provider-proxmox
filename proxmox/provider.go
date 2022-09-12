@@ -106,8 +106,8 @@ func Provider() *schema.Provider {
 			"pm_timeout": {
 				Type:        schema.TypeInt,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_TIMEOUT", defaultTimeout),
-				Description: "How many seconds to wait for operations for both provider and api-client, default is 300s",
+				DefaultFunc: schema.EnvDefaultFunc("PM_TIMEOUT", 1200),
+				Description: "How many seconds to wait for operations for both provider and api-client, default is 20m",
 			},
 			"pm_dangerously_ignore_unknown_attributes": {
 				Type:        schema.TypeBool,
