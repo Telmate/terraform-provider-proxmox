@@ -1971,7 +1971,7 @@ func initConnInfo(
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
 				interfaces, errInterfaces := client.GetVmAgentNetworkInterfaces(vmr)
 				if errInterfaces != nil {
-					return err
+					return errInterfaces
 				} else {
 					for _, iface := range interfaces {
 						if sshHost == ipMatch[1] {
