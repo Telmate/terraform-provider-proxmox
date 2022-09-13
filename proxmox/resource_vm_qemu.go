@@ -1877,7 +1877,9 @@ func initConnInfo(
 ) error {
 
 	var err error
+	var interr error
 	var lasterr error
+	var interfaces []pxapi.AgentNetworkInterface
 	// allow user to opt-out of setting the connection info for the resource
 	if !d.Get("define_connection_info").(bool) {
 		log.Printf("[DEBUG][initConnInfo] define_connection_info is %t, no further action\n", d.Get("define_connection_info").(bool))
@@ -1930,10 +1932,10 @@ func initConnInfo(
 	// wait until we find a valid ipv4 address
 	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
 		log.Printf("[DEBUG][initConnInfo] checking network card...")
-		interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
+		interfaces, interr = client.GetVmAgentNetworkInterfaces(vmr)
 		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
-		if err != nil {
-			return err
+		if interr != nil {
+			return interr
 		} else {
 			for _, iface := range interfaces {
 				if strings.EqualFold(strings.ToUpper(iface.MACAddress), strings.ToUpper(net0MacAddress)) {
@@ -1969,9 +1971,8 @@ func initConnInfo(
 					sshHost = ipMatch[1]
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
-				interfaces, errInterfaces := client.GetVmAgentNetworkInterfaces(vmr)
-				if errInterfaces != nil {
-					return errInterfaces
+				if interr != nil {
+					return interr
 				} else {
 					for _, iface := range interfaces {
 						if sshHost == ipMatch[1] {
