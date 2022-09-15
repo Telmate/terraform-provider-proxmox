@@ -822,7 +822,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// DEBUG print out the create request
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Debug().Str("vmid", d.Id()).Msgf("Invoking VM create with resource data:  '%+v'", string(jsonString))
+	logger.Info().Str("vmid", d.Id()).Msgf("VM creation")
+	logger.Debug().Str("vmid", d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
 
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
@@ -1913,7 +1914,7 @@ func initConnInfo(
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
 
 	for time.Now().Before(guestAgentWaitEnd) {
-		interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
+		interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
 		lasterr = err
 		if err != nil {
 			log.Printf("[DEBUG][initConnInfo] check ip result error %s", err.Error())
@@ -1950,7 +1951,7 @@ func initConnInfo(
 	log.Printf("[DEBUG][initConnInfo] checking network card...")
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card...")
 	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
-		interfaces, err := client.GetVmAgentNetworkInterfaces(vmr)
+		interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
 		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
 		if err != nil {
 			log.Printf("[DEBUG][initConnInfo] checking network card error %s", err.Error())
@@ -1986,7 +1987,11 @@ func initConnInfo(
 		_, ipconfig0Set := d.GetOk("ipconfig0")
 		if ipconfig0Set {
 			vmState, err := client.GetVmState(vmr)
+			log.Print("[DEBUG][initConnInfo] cloudinitcheck vm state %v", vmState)
+			logger.Debug().Int("vmid", vmr.VmId()).Msgf("cloudinitcheck vm state %v", vmState)
 			if err != nil {
+				log.Printf("[DEBUG][initConnInfo] vmstate error %s", err.Error())
+				logger.Debug().Int("vmid", vmr.VmId()).Msgf("vmstate error %s", err.Error())
 				return err
 			}
 
@@ -1998,6 +2003,8 @@ func initConnInfo(
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
 				interfaces, errInterfaces := client.GetVmAgentNetworkInterfaces(vmr)
+				log.Print("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
+				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig0 interfaces %v", interfaces)
 				if errInterfaces != nil {
 					return errInterfaces
 				} else {
