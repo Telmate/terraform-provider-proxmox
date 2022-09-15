@@ -1883,6 +1883,7 @@ func initConnInfo(
 
 	var err error
 	var lasterr error
+	var interfaces []pxapi.AgentNetworkInterface
 	// allow user to opt-out of setting the connection info for the resource
 	if !d.Get("define_connection_info").(bool) {
 		log.Printf("[INFO][initConnInfo] define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
@@ -2002,11 +2003,16 @@ func initConnInfo(
 					sshHost = ipMatch[1]
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
+<<<<<<< HEAD
 				interfaces, errInterfaces := client.GetVmAgentNetworkInterfaces(vmr)
 				log.Print("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig0 interfaces %v", interfaces)
 				if errInterfaces != nil {
 					return errInterfaces
+=======
+				if interr != nil {
+					return interr
+>>>>>>> 7e4a6e8570e2bebec05e8f908f676573f31b4782
 				} else {
 					for _, iface := range interfaces {
 						if sshHost == ipMatch[1] {
