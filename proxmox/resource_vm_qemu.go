@@ -1904,7 +1904,6 @@ func initConnInfo(
 	sshHost := ""
 	// assume guest agent not running yet or not enabled
 	guestAgentRunning := false
-	var interfaces []pxapi.AgentNetworkInterface
 
 	// wait until the os has started the guest agent
 	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
@@ -1952,6 +1951,7 @@ func initConnInfo(
 	log.Printf("[DEBUG][initConnInfo] checking network card...")
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card...")
 	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
+		log.Printf("[DEBUG][initConnInfo] checking network card...")
 		interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
 		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
 		if err != nil {
@@ -2003,16 +2003,11 @@ func initConnInfo(
 					sshHost = ipMatch[1]
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
-<<<<<<< HEAD
-				interfaces, errInterfaces := client.GetVmAgentNetworkInterfaces(vmr)
+				interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
 				log.Print("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig0 interfaces %v", interfaces)
-				if errInterfaces != nil {
-					return errInterfaces
-=======
-				if interr != nil {
-					return interr
->>>>>>> 7e4a6e8570e2bebec05e8f908f676573f31b4782
+				if err != nil {
+					return err
 				} else {
 					for _, iface := range interfaces {
 						if sshHost == ipMatch[1] {
