@@ -3,6 +3,7 @@ package proxmox
 import (
 	"crypto/tls"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -58,8 +59,25 @@ func Provider() *schema.Provider {
 			},
 			"pm_api_url": {
 				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_API_URL", nil),
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_API_URL", ""),
+				ValidateFunc: func(v interface{}, k string) (warns []string, errs []error) {
+					value := v.(string)
+
+					if value == "" {
+						errs = append(errs, fmt.Errorf("you must specify an endpoint for the Proxmox Virtual Environment API (valid: https://host:port)"))
+						return
+					}
+
+					_, err := url.ParseRequestURI(value)
+
+					if err != nil {
+						errs = append(errs, fmt.Errorf("you must specify an endpoint for the Proxmox Virtual Environment API (valid: https://host:port)"))
+						return
+					}
+
+					return
+				},
 				Description: "https://host.fqdn:8006/api2/json",
 			},
 			"pm_api_token_id": {
@@ -106,8 +124,8 @@ func Provider() *schema.Provider {
 			"pm_timeout": {
 				Type:        schema.TypeInt,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_TIMEOUT", defaultTimeout),
-				Description: "How many seconds to wait for operations for both provider and api-client, default is 300s",
+				DefaultFunc: schema.EnvDefaultFunc("PM_TIMEOUT", 1200),
+				Description: "How many seconds to wait for operations for both provider and api-client, default is 20m",
 			},
 			"pm_dangerously_ignore_unknown_attributes": {
 				Type:        schema.TypeBool,

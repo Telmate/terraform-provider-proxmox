@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"testing"
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
@@ -14,7 +15,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const defaultTimeout = 300
+// const defaultTimeout = 300
 
 var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\d+)`)
 
@@ -57,23 +58,24 @@ var logLevels map[string]string
 // doesn't care about.
 //
 // logLevels can be specifed as follows:
-//   map[string]string
 //
-//   keys can be:
-//    * '_root' - to affect the root logger
-//    * '_capturelog' - (with any level set) to tell us to capture all message through the native log library
-//    * '_default' - sets the default log level (if this is not set, the default is INFO)
-//    (any other string) - the level to set that SubLogger to
+//	map[string]string
 //
-//   Eventually we'll have a list of all subloggers that can be displayed/generated but for now, unfortuantely,
-//   the code is the manual on that. I'll do my best to keep this doc string updated.
+//	keys can be:
+//	 * '_root' - to affect the root logger
+//	 * '_capturelog' - (with any level set) to tell us to capture all message through the native log library
+//	 * '_default' - sets the default log level (if this is not set, the default is INFO)
+//	 (any other string) - the level to set that SubLogger to
 //
-//   Known Subloggers:
-//    * resource_vm_create - logs from the create function
-//    * resource_vm_read  - logs from the read function
+//	Eventually we'll have a list of all subloggers that can be displayed/generated but for now, unfortuantely,
+//	the code is the manual on that. I'll do my best to keep this doc string updated.
 //
-//   values can be one of "panic", "fatal", "error", "warn", "info", "debug", "trace".
-//   these will be mapped out to the zerolog levels.  See the levelStringToZerologLevel function.
+//	Known Subloggers:
+//	 * resource_vm_create - logs from the create function
+//	 * resource_vm_read  - logs from the read function
+//
+//	values can be one of "panic", "fatal", "error", "warn", "info", "debug", "trace".
+//	these will be mapped out to the zerolog levels.  See the levelStringToZerologLevel function.
 //
 // logs will be written out to the logPath specified. An existing file at that path will be appended to.
 // note that there are some information (like our redirection of the built-in log library) which will not
@@ -454,3 +456,16 @@ func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource)
 // 	}
 // 	return activeDevicesMap
 // }
+
+func testOptionalArguments(t *testing.T, s *schema.Resource) {
+	for k, _ := range s.Schema {
+		fmt.Println(k)
+		if s.Schema[k] == nil {
+			t.Fatalf("Error in Schema: Missing definition for \"%s\"", k)
+		}
+
+		if s.Schema[k].Optional != true {
+			t.Fatalf("Error in Schema: Argument \"%s\" is not optional", k)
+		}
+	}
+}
