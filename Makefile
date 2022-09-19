@@ -76,8 +76,8 @@ build: clean
 	CGO_ENABLED=0 go build -trimpath -o bin/terraform-provider-proxmox
 	@echo "Built terraform-provider-proxmox"
 
+# to run only certain tests, run something of the form:  make acctest TESTARGS='-run=TestAccProxmoxVmQemu_DiskSlot'
 acctest: build
-	# to run only certain tests, run something of the form:  make acctest TESTARGS='-run=TestAccProxmoxVmQemu_DiskSlot'
 	TF_ACC=1 go test ./proxmox $(TESTARGS)
 
 install: build

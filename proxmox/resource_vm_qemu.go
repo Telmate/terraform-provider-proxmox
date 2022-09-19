@@ -1988,7 +1988,7 @@ func initConnInfo(
 		_, ipconfig0Set := d.GetOk("ipconfig0")
 		if ipconfig0Set {
 			vmState, err := client.GetVmState(vmr)
-			log.Print("[DEBUG][initConnInfo] cloudinitcheck vm state %v", vmState)
+			log.Printf("[DEBUG][initConnInfo] cloudinitcheck vm state %v", vmState)
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("cloudinitcheck vm state %v", vmState)
 			if err != nil {
 				log.Printf("[DEBUG][initConnInfo] vmstate error %s", err.Error())
@@ -2004,7 +2004,7 @@ func initConnInfo(
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
 				interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
-				log.Print("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
+				log.Printf("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig0 interfaces %v", interfaces)
 				if err != nil {
 					return err

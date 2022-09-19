@@ -3,8 +3,26 @@ package proxmox
 import (
 	"errors"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+func TestProviderInstantiation(t *testing.T) {
+	s := Provider()
+
+	if s == nil {
+		t.Fatalf("Cannot instantiate Provider")
+	}
+}
+
+func TestProviderSchema(t *testing.T) {
+	s := &schema.Resource{
+		Schema: Provider().Schema,
+	}
+
+	testOptionalArguments(t, s)
+
+}
 func TestParseClusteResources(t *testing.T) {
 	type ParseClusterResourceTestResult struct {
 		ResourceType string
