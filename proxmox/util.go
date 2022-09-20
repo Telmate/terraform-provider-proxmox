@@ -458,13 +458,13 @@ func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource)
 // }
 
 func testOptionalArguments(t *testing.T, s *schema.Resource) {
-	for k, _ := range s.Schema {
+	for k := range s.Schema {
 		fmt.Println(k)
 		if s.Schema[k] == nil {
 			t.Fatalf("Error in Schema: Missing definition for \"%s\"", k)
 		}
 
-		if s.Schema[k].Optional != true {
+		if !s.Schema[k].Optional {
 			t.Fatalf("Error in Schema: Argument \"%s\" is not optional", k)
 		}
 	}
