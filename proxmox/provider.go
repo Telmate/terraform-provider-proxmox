@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -179,37 +180,74 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 
-	// look to see what logging we should be outputting according to the provider configuration
-	logLevels := make(map[string]string)
-	for logger, level := range d.Get("pm_log_levels").(map[string]interface{}) {
-		levelAsString, ok := level.(string)
-		if ok {
-			logLevels[logger] = levelAsString
-		} else {
-			return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
-		}
+	//permission check
+	minimum_permissions := []string{
+		"Datastore.AllocateSpace",
+		"Datastore.Audit",
+		"Pool.Allocate",
+		"Sys.Audit",
+		"VM.Allocate",
+		"VM.Audit",
+		"VM.Clone",
+		"VM.Config.CDROM",
+		"VM.Config.CPU",
+		"VM.Config.Cloudinit",
+		"VM.Config.Disk",
+		"VM.Config.HWType",
+		"VM.Config.Memory",
+		"VM.Config.Network",
+		"VM.Config.Options",
+		"VM.Monitor",
+		"VM.PowerMgmt"}
+	var id string
+	if result, getok := d.GetOk("pm_api_token_id"); getok {
+		id = result.(string)
+	} else if result, getok := d.GetOk("pm_user"); getok {
+		id = result.(string)
 	}
+	permlist, err := client.GetUserPermissions(id, "/")
+	if err != nil {
+		err = fmt.Errorf("cannot find provided user %s on proxmox", id)
+		return nil, err
+	}
+	sort.Strings(permlist)
+	if subslice(minimum_permissions, permlist) {
 
-	// actually configure logging
-	// note that if enable is false here, the configuration will squash all output
-	ConfigureLogger(
-		d.Get("pm_log_enable").(bool),
-		d.Get("pm_log_file").(string),
-		logLevels,
-	)
+		// look to see what logging we should be outputting according to the provider configuration
+		logLevels := make(map[string]string)
+		for logger, level := range d.Get("pm_log_levels").(map[string]interface{}) {
+			levelAsString, ok := level.(string)
+			if ok {
+				logLevels[logger] = levelAsString
+			} else {
+				return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
+			}
+		}
 
-	var mut sync.Mutex
-	return &providerConfiguration{
-		Client:                             client,
-		MaxParallel:                        d.Get("pm_parallel").(int),
-		CurrentParallel:                    0,
-		MaxVMID:                            -1,
-		Mutex:                              &mut,
-		Cond:                               sync.NewCond(&mut),
-		LogFile:                            d.Get("pm_log_file").(string),
-		LogLevels:                          logLevels,
-		DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
-	}, nil
+		// actually configure logging
+		// note that if enable is false here, the configuration will squash all output
+		ConfigureLogger(
+			d.Get("pm_log_enable").(bool),
+			d.Get("pm_log_file").(string),
+			logLevels,
+		)
+
+		var mut sync.Mutex
+		return &providerConfiguration{
+			Client:                             client,
+			MaxParallel:                        d.Get("pm_parallel").(int),
+			CurrentParallel:                    0,
+			MaxVMID:                            -1,
+			Mutex:                              &mut,
+			Cond:                               sync.NewCond(&mut),
+			LogFile:                            d.Get("pm_log_file").(string),
+			LogLevels:                          logLevels,
+			DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
+		}, nil
+	} else {
+		err = fmt.Errorf("permsission for user/token %s are not sufficient, make sure you permission on Proxmox are set ok", id)
+		return nil, err
+	}
 }
 
 func getClient(pm_api_url string,
