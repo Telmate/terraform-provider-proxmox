@@ -245,7 +245,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
 		}, nil
 	} else {
-		err = fmt.Errorf("Permsission for user/token %s are not sufficient, make sure you permission on Proxmox are set ok", id)
+		err = fmt.Errorf("permsission for user/token %s are not sufficient, make sure you permission on Proxmox are set ok", id)
 		return nil, err
 	}
 }
