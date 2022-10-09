@@ -315,6 +315,22 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
+			"hostpci": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"host": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"rombar": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"disk": {
 				Type:          schema.TypeList,
 				Optional:      true,
@@ -839,38 +855,41 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials, _ := DevicesSetToMap(serials)
 
+	qemuPCIDevices, _ := ExpandDevicesList(d.Get("hostpci").([]interface{}))
+
 	qemuUsbs, _ := ExpandDevicesList(d.Get("usb").([]interface{}))
 
 	config := pxapi.ConfigQemu{
-		Name:         vmName,
-		Description:  d.Get("desc").(string),
-		Pool:         d.Get("pool").(string),
-		Bios:         d.Get("bios").(string),
-		Onboot:       d.Get("onboot").(bool),
-		Startup:      d.Get("startup").(string),
-		Tablet:       d.Get("tablet").(bool),
-		Boot:         d.Get("boot").(string),
-		BootDisk:     d.Get("bootdisk").(string),
-		Agent:        d.Get("agent").(int),
-		Memory:       d.Get("memory").(int),
-		Balloon:      d.Get("balloon").(int),
-		QemuCores:    d.Get("cores").(int),
-		QemuSockets:  d.Get("sockets").(int),
-		QemuVcpus:    d.Get("vcpus").(int),
-		QemuCpu:      d.Get("cpu").(string),
-		QemuNuma:     d.Get("numa").(bool),
-		QemuKVM:      d.Get("kvm").(bool),
-		Hotplug:      d.Get("hotplug").(string),
-		Scsihw:       d.Get("scsihw").(string),
-		HaState:      d.Get("hastate").(string),
-		HaGroup:      d.Get("hagroup").(string),
-		QemuOs:       d.Get("qemu_os").(string),
-		Tags:         d.Get("tags").(string),
-		Args:         d.Get("args").(string),
-		QemuNetworks: qemuNetworks,
-		QemuDisks:    qemuDisks,
-		QemuSerials:  qemuSerials,
-		QemuUsbs:     qemuUsbs,
+		Name:           vmName,
+		Description:    d.Get("desc").(string),
+		Pool:           d.Get("pool").(string),
+		Bios:           d.Get("bios").(string),
+		Onboot:         BoolPointer(d.Get("onboot").(bool)),
+		Startup:        d.Get("startup").(string),
+		Tablet:         BoolPointer(d.Get("tablet").(bool)),
+		Boot:           d.Get("boot").(string),
+		BootDisk:       d.Get("bootdisk").(string),
+		Agent:          d.Get("agent").(int),
+		Memory:         d.Get("memory").(int),
+		Balloon:        d.Get("balloon").(int),
+		QemuCores:      d.Get("cores").(int),
+		QemuSockets:    d.Get("sockets").(int),
+		QemuVcpus:      d.Get("vcpus").(int),
+		QemuCpu:        d.Get("cpu").(string),
+		QemuNuma:       BoolPointer(d.Get("numa").(bool)),
+		QemuKVM:        BoolPointer(d.Get("kvm").(bool)),
+		Hotplug:        d.Get("hotplug").(string),
+		Scsihw:         d.Get("scsihw").(string),
+		HaState:        d.Get("hastate").(string),
+		HaGroup:        d.Get("hagroup").(string),
+		QemuOs:         d.Get("qemu_os").(string),
+		Tags:           d.Get("tags").(string),
+		Args:           d.Get("args").(string),
+		QemuNetworks:   qemuNetworks,
+		QemuDisks:      qemuDisks,
+		QemuSerials:    qemuSerials,
+		QemuPCIDevices: qemuPCIDevices,
+		QemuUsbs:       qemuUsbs,
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -894,14 +913,6 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Ipconfig13:   d.Get("ipconfig13").(string),
 		Ipconfig14:   d.Get("ipconfig14").(string),
 		Ipconfig15:   d.Get("ipconfig15").(string),
-		// Deprecated single disk config.
-		Storage:  d.Get("storage").(string),
-		DiskSize: d.Get("disk_gb").(float64),
-		// Deprecated single nic config.
-		QemuNicModel: d.Get("nic").(string),
-		QemuBrige:    d.Get("bridge").(string),
-		QemuVlanTag:  d.Get("vlan").(int),
-		QemuMacAddr:  d.Get("mac").(string),
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1147,6 +1158,11 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials, _ := DevicesSetToMap(serials)
 
+	qemuPCIDevices, err := ExpandDevicesList(d.Get("hostpci").([]interface{}))
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("error while processing HostPCI configuration: %v", err))
+	}
+
 	qemuUsbs, err := ExpandDevicesList(d.Get("usb").([]interface{}))
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("error while processing Usb configuration: %v", err))
@@ -1163,35 +1179,36 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	d.Partial(false)
 
 	config := pxapi.ConfigQemu{
-		Name:         d.Get("name").(string),
-		Description:  d.Get("desc").(string),
-		Pool:         d.Get("pool").(string),
-		Bios:         d.Get("bios").(string),
-		Onboot:       d.Get("onboot").(bool),
-		Startup:      d.Get("startup").(string),
-		Tablet:       d.Get("tablet").(bool),
-		Boot:         d.Get("boot").(string),
-		BootDisk:     d.Get("bootdisk").(string),
-		Agent:        d.Get("agent").(int),
-		Memory:       d.Get("memory").(int),
-		Balloon:      d.Get("balloon").(int),
-		QemuCores:    d.Get("cores").(int),
-		QemuSockets:  d.Get("sockets").(int),
-		QemuVcpus:    d.Get("vcpus").(int),
-		QemuCpu:      d.Get("cpu").(string),
-		QemuNuma:     d.Get("numa").(bool),
-		QemuKVM:      d.Get("kvm").(bool),
-		Hotplug:      d.Get("hotplug").(string),
-		Scsihw:       d.Get("scsihw").(string),
-		HaState:      d.Get("hastate").(string),
-		HaGroup:      d.Get("hagroup").(string),
-		QemuOs:       d.Get("qemu_os").(string),
-		Tags:         d.Get("tags").(string),
-		Args:         d.Get("args").(string),
-		QemuNetworks: qemuNetworks,
-		QemuDisks:    qemuDisks,
-		QemuSerials:  qemuSerials,
-		QemuUsbs:     qemuUsbs,
+		Name:           d.Get("name").(string),
+		Description:    d.Get("desc").(string),
+		Pool:           d.Get("pool").(string),
+		Bios:           d.Get("bios").(string),
+		Onboot:         BoolPointer(d.Get("onboot").(bool)),
+		Startup:        d.Get("startup").(string),
+		Tablet:         BoolPointer(d.Get("tablet").(bool)),
+		Boot:           d.Get("boot").(string),
+		BootDisk:       d.Get("bootdisk").(string),
+		Agent:          d.Get("agent").(int),
+		Memory:         d.Get("memory").(int),
+		Balloon:        d.Get("balloon").(int),
+		QemuCores:      d.Get("cores").(int),
+		QemuSockets:    d.Get("sockets").(int),
+		QemuVcpus:      d.Get("vcpus").(int),
+		QemuCpu:        d.Get("cpu").(string),
+		QemuNuma:       BoolPointer(d.Get("numa").(bool)),
+		QemuKVM:        BoolPointer(d.Get("kvm").(bool)),
+		Hotplug:        d.Get("hotplug").(string),
+		Scsihw:         d.Get("scsihw").(string),
+		HaState:        d.Get("hastate").(string),
+		HaGroup:        d.Get("hagroup").(string),
+		QemuOs:         d.Get("qemu_os").(string),
+		Tags:           d.Get("tags").(string),
+		Args:           d.Get("args").(string),
+		QemuNetworks:   qemuNetworks,
+		QemuDisks:      qemuDisks,
+		QemuSerials:    qemuSerials,
+		QemuPCIDevices: qemuPCIDevices,
+		QemuUsbs:       qemuUsbs,
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -1215,14 +1232,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Ipconfig13:   d.Get("ipconfig13").(string),
 		Ipconfig14:   d.Get("ipconfig14").(string),
 		Ipconfig15:   d.Get("ipconfig15").(string),
-		// Deprecated single disk config.
-		Storage:  d.Get("storage").(string),
-		DiskSize: d.Get("disk_gb").(float64),
-		// Deprecated single nic config.
-		QemuNicModel: d.Get("nic").(string),
-		QemuBrige:    d.Get("bridge").(string),
-		QemuVlanTag:  d.Get("vlan").(int),
-		QemuMacAddr:  d.Get("mac").(string),
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1302,6 +1311,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"vga",
 		"serial",
 		"usb",
+		"hostpci",
 	) {
 		d.Set("reboot_required", true)
 	}
@@ -1508,6 +1518,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("cpu", config.QemuCpu)
 	d.Set("numa", config.QemuNuma)
 	d.Set("kvm", config.QemuKVM)
+	// d.Set("hostpci", config.QemuPCIDevices)
 	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
 	d.Set("hastate", vmr.HaState())
@@ -1627,15 +1638,6 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	// Deprecated single disk config.
-	d.Set("storage", config.Storage)
-	d.Set("disk_gb", config.DiskSize)
-	d.Set("storage_type", config.StorageType)
-	// Deprecated single nic config.
-	d.Set("nic", config.QemuNicModel)
-	d.Set("bridge", config.QemuBrige)
-	d.Set("vlan", config.QemuVlanTag)
-	d.Set("mac", config.QemuMacAddr)
 	d.Set("pool", vmr.Pool())
 	//Serials
 	configSerialsSet := d.Get("serial").(*schema.Set)

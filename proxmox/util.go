@@ -489,3 +489,7 @@ func subslice(s1 []string, s2 []string) bool {
 	}
 	return true
 }
+
+func BoolPointer(b bool) *bool {
+	return &b
+}

@@ -105,6 +105,12 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", true), //we assume it's a lab!
 				Description: "By default, every TLS connection is verified to be secure. This option allows terraform to proceed and operate on servers considered insecure. For example if you're connecting to a remote host and you do not have the CA cert that issued the proxmox api url's certificate.",
 			},
+			"pm_http_headers": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_HTTP_HEADERS", nil),
+				Description: "Set custom http headers e.g. Key,Value,Key1,Value1",
+			},
 			"pm_log_enable": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -172,6 +178,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		d.Get("pm_api_token_secret").(string),
 		d.Get("pm_otp").(string),
 		d.Get("pm_tls_insecure").(bool),
+		d.Get("pm_http_headers").(string),
 		d.Get("pm_timeout").(int),
 		d.Get("pm_debug").(bool),
 		d.Get("pm_proxy_server").(string),
@@ -257,6 +264,7 @@ func getClient(pm_api_url string,
 	pm_api_token_secret string,
 	pm_otp string,
 	pm_tls_insecure bool,
+	pm_http_headers string,
 	pm_timeout int,
 	pm_debug bool,
 	pm_proxy_server string) (*pxapi.Client, error) {
@@ -284,7 +292,7 @@ func getClient(pm_api_url string,
 		err = fmt.Errorf("your API TokenID username should contain a !, check your API credentials")
 	}
 
-	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_proxy_server, pm_timeout)
+	client, _ := pxapi.NewClient(pm_api_url, nil, pm_http_headers, tlsconf, pm_proxy_server, pm_timeout)
 	*pxapi.Debug = pm_debug
 
 	// User+Pass authentication
