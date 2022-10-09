@@ -328,6 +328,10 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
+						"pcie": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -809,9 +813,10 @@ func resourceVmQemu() *schema.Resource {
 				Description: "Use to track vm ipv4 address",
 			},
 			"define_connection_info": { // by default define SSH for provisioner info
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "By default define SSH for provisioner info",
 			},
 			"guest_agent_ready_timeout": {
 				Type:       schema.TypeInt,
@@ -976,7 +981,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			if err != nil {
 				return err
 			}
-			time.Sleep(30 * time.Second)
+			time.Sleep(5 * time.Second)
 
 			config_post_clone, err := pxapi.NewConfigQemuFromApi(vmr, client)
 			if err != nil {
@@ -1518,7 +1523,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("cpu", config.QemuCpu)
 	d.Set("numa", config.QemuNuma)
 	d.Set("kvm", config.QemuKVM)
-	// d.Set("hostpci", config.QemuPCIDevices)
+	d.Set("hostpci", config.QemuPCIDevices)
 	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
 	d.Set("hastate", vmr.HaState())
@@ -1553,10 +1558,14 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig15", config.Ipconfig15)
 
 	// Some dirty hacks to populate undefined keys with default values.
-	checkedKeys := []string{"force_create", "define_connection_info"}
+	checkedKeys := []string{"force_create", "define_connection_info", "oncreate"}
 	for _, key := range checkedKeys {
-		if _, ok := d.GetOk(key); !ok {
+		if val := d.Get(key); val == nil {
+			logger.Debug().Int("vmid", vmID).Msgf("key '%s' not found, setting to default", key)
 			d.Set(key, thisResource.Schema[key].Default)
+		} else {
+			logger.Debug().Int("vmid", vmID).Msgf("key '%s' is set to %t", key, val.(bool))
+			d.Set(key, val.(bool))
 		}
 	}
 	// Check "full_clone" separately, as it causes issues in loop above due to how GetOk returns values on false bools.
@@ -1581,7 +1590,15 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 
 	// need to set cache because proxmox-api-go requires a value for cache but doesn't return a value for
 	// it when it is empty. thus if cache is "" then we should insert "none" instead for consistency
-	for _, qemuDisk := range config.QemuDisks {
+	var rxCloudInitDrive = regexp.MustCompile(`^.*-cloudinit$`)
+	for id, qemuDisk := range config.QemuDisks {
+		logger.Debug().Int("vmid", vmID).Msgf("[READ] Disk Processed '%v'", qemuDisk)
+		// ugly hack to avoid cloudinit disk to be removed since they usually are not present in resource definition
+		// but are created from proxmox as ide2 so threated
+		if ciDisk := rxCloudInitDrive.FindStringSubmatch(qemuDisk["file"].(string)); len(ciDisk) > 0 {
+			config.QemuDisks[id] = nil
+			logger.Debug().Int("vmid", vmID).Msgf("[READ] Remove cloudinit disk")
+		}
 		// cache == "none" is required for disk creation/updates but proxmox-api-go returns cache == "" or cache == nil in reads
 		if qemuDisk["cache"] == "" || qemuDisk["cache"] == nil {
 			qemuDisk["cache"] = "none"
@@ -1601,7 +1618,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
-	logger.Debug().Int("vmid", vmID).Msgf("Unused Disk Block Processed '%v'", config.QemuNetworks)
+	logger.Debug().Int("vmid", vmID).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
 	if d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return err
 	}
@@ -1615,8 +1632,9 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	// Networks.
 	// add an explicit check that the keys in the config.QemuNetworks map are a strict subset of
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
-	logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", config.QemuNetworks)
+	logger.Debug().Int("vmid", vmID).Msgf("Analyzing Network blocks ")
 	for _, networkEntry := range config.QemuNetworks {
+		logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", networkEntry)
 		// If network tag was not set, assign default value.
 		if networkEntry["tag"] == "" || networkEntry["tag"] == nil {
 			networkEntry["tag"] = thisResource.Schema["network"].Elem.(*schema.Resource).Schema["tag"].Default
