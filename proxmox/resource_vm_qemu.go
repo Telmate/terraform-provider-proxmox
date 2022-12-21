@@ -639,16 +639,14 @@ func resourceVmQemu() *schema.Resource {
 				Default:  false,
 			},
 			"clone_wait": {
-				Type:       schema.TypeInt,
-				Deprecated: "do not use anymore",
-				Optional:   true,
-				Default:    0,
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  10,
 			},
 			"additional_wait": {
-				Type:       schema.TypeInt,
-				Deprecated: "do not use anymore",
-				Optional:   true,
-				Default:    0,
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  10,
 			},
 			"ci_wait": { // how long to wait before provision
 				Type:     schema.TypeInt,
@@ -977,11 +975,13 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			}
 
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
+			logger.Debug().Str("vmid", d.Id()).Msgf("Cloning VM")
 			err = config.CloneVm(sourceVmr, vmr, client)
 			if err != nil {
 				return err
 			}
-			time.Sleep(5 * time.Second)
+			// give sometime to proxmox to catchup
+			time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
 
 			config_post_clone, err := pxapi.NewConfigQemuFromApi(vmr, client)
 			if err != nil {
@@ -1012,9 +1012,6 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 				return err
 			}
-
-			// give sometime to proxmox to catchup
-			//time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
 
 			err = prepareDiskSize(client, vmr, qemuDisks)
 			if err != nil {
@@ -1092,7 +1089,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// give sometime to proxmox to catchup
-	//time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 	if d.Get("oncreate").(bool) {
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
