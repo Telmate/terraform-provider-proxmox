@@ -209,6 +209,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	var id string
 	if result, getok := d.GetOk("pm_api_token_id"); getok {
 		id = result.(string)
+		id = strings.Split(id, "!")[0]
 	} else if result, getok := d.GetOk("pm_user"); getok {
 		id = result.(string)
 	}
