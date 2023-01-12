@@ -900,22 +900,24 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig0:    d.Get("ipconfig0").(string),
-		Ipconfig1:    d.Get("ipconfig1").(string),
-		Ipconfig2:    d.Get("ipconfig2").(string),
-		Ipconfig3:    d.Get("ipconfig3").(string),
-		Ipconfig4:    d.Get("ipconfig4").(string),
-		Ipconfig5:    d.Get("ipconfig5").(string),
-		Ipconfig6:    d.Get("ipconfig6").(string),
-		Ipconfig7:    d.Get("ipconfig7").(string),
-		Ipconfig8:    d.Get("ipconfig8").(string),
-		Ipconfig9:    d.Get("ipconfig9").(string),
-		Ipconfig10:   d.Get("ipconfig10").(string),
-		Ipconfig11:   d.Get("ipconfig11").(string),
-		Ipconfig12:   d.Get("ipconfig12").(string),
-		Ipconfig13:   d.Get("ipconfig13").(string),
-		Ipconfig14:   d.Get("ipconfig14").(string),
-		Ipconfig15:   d.Get("ipconfig15").(string),
+		Ipconfig: pxapi.IpconfigMap{
+			0:  d.Get("ipconfig0").(string),
+			1:  d.Get("ipconfig1").(string),
+			2:  d.Get("ipconfig2").(string),
+			3:  d.Get("ipconfig3").(string),
+			4:  d.Get("ipconfig4").(string),
+			5:  d.Get("ipconfig5").(string),
+			6:  d.Get("ipconfig6").(string),
+			7:  d.Get("ipconfig7").(string),
+			8:  d.Get("ipconfig8").(string),
+			9:  d.Get("ipconfig9").(string),
+			10: d.Get("ipconfig10").(string),
+			11: d.Get("ipconfig11").(string),
+			12: d.Get("ipconfig12").(string),
+			13: d.Get("ipconfig13").(string),
+			14: d.Get("ipconfig14").(string),
+			15: d.Get("ipconfig15").(string),
+		},
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1218,22 +1220,24 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig0:    d.Get("ipconfig0").(string),
-		Ipconfig1:    d.Get("ipconfig1").(string),
-		Ipconfig2:    d.Get("ipconfig2").(string),
-		Ipconfig3:    d.Get("ipconfig3").(string),
-		Ipconfig4:    d.Get("ipconfig4").(string),
-		Ipconfig5:    d.Get("ipconfig5").(string),
-		Ipconfig6:    d.Get("ipconfig6").(string),
-		Ipconfig7:    d.Get("ipconfig7").(string),
-		Ipconfig8:    d.Get("ipconfig8").(string),
-		Ipconfig9:    d.Get("ipconfig9").(string),
-		Ipconfig10:   d.Get("ipconfig10").(string),
-		Ipconfig11:   d.Get("ipconfig11").(string),
-		Ipconfig12:   d.Get("ipconfig12").(string),
-		Ipconfig13:   d.Get("ipconfig13").(string),
-		Ipconfig14:   d.Get("ipconfig14").(string),
-		Ipconfig15:   d.Get("ipconfig15").(string),
+		Ipconfig: pxapi.IpconfigMap{
+			0:  d.Get("ipconfig0").(string),
+			1:  d.Get("ipconfig1").(string),
+			2:  d.Get("ipconfig2").(string),
+			3:  d.Get("ipconfig3").(string),
+			4:  d.Get("ipconfig4").(string),
+			5:  d.Get("ipconfig5").(string),
+			6:  d.Get("ipconfig6").(string),
+			7:  d.Get("ipconfig7").(string),
+			8:  d.Get("ipconfig8").(string),
+			9:  d.Get("ipconfig9").(string),
+			10: d.Get("ipconfig10").(string),
+			11: d.Get("ipconfig11").(string),
+			12: d.Get("ipconfig12").(string),
+			13: d.Get("ipconfig13").(string),
+			14: d.Get("ipconfig14").(string),
+			15: d.Get("ipconfig15").(string),
+		},
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1537,22 +1541,22 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("searchdomain", config.Searchdomain)
 	d.Set("nameserver", config.Nameserver)
 	d.Set("sshkeys", config.Sshkeys)
-	d.Set("ipconfig0", config.Ipconfig0)
-	d.Set("ipconfig1", config.Ipconfig1)
-	d.Set("ipconfig2", config.Ipconfig2)
-	d.Set("ipconfig3", config.Ipconfig3)
-	d.Set("ipconfig4", config.Ipconfig4)
-	d.Set("ipconfig5", config.Ipconfig5)
-	d.Set("ipconfig6", config.Ipconfig6)
-	d.Set("ipconfig7", config.Ipconfig7)
-	d.Set("ipconfig8", config.Ipconfig8)
-	d.Set("ipconfig9", config.Ipconfig9)
-	d.Set("ipconfig10", config.Ipconfig10)
-	d.Set("ipconfig11", config.Ipconfig11)
-	d.Set("ipconfig12", config.Ipconfig12)
-	d.Set("ipconfig13", config.Ipconfig13)
-	d.Set("ipconfig14", config.Ipconfig14)
-	d.Set("ipconfig15", config.Ipconfig15)
+	d.Set("ipconfig0", config.Ipconfig[0])
+	d.Set("ipconfig1", config.Ipconfig[1])
+	d.Set("ipconfig2", config.Ipconfig[2])
+	d.Set("ipconfig3", config.Ipconfig[3])
+	d.Set("ipconfig4", config.Ipconfig[4])
+	d.Set("ipconfig5", config.Ipconfig[5])
+	d.Set("ipconfig6", config.Ipconfig[6])
+	d.Set("ipconfig7", config.Ipconfig[7])
+	d.Set("ipconfig8", config.Ipconfig[8])
+	d.Set("ipconfig9", config.Ipconfig[9])
+	d.Set("ipconfig10", config.Ipconfig[10])
+	d.Set("ipconfig11", config.Ipconfig[11])
+	d.Set("ipconfig12", config.Ipconfig[12])
+	d.Set("ipconfig13", config.Ipconfig[13])
+	d.Set("ipconfig14", config.Ipconfig[14])
+	d.Set("ipconfig15", config.Ipconfig[15])
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"force_create", "define_connection_info", "oncreate"}
