@@ -1030,7 +1030,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		} else if d.Get("pxe").(bool) {
 			var found bool
 			bs := d.Get("boot").(string)
-			regs := [...]string{".*n.*$", "^order=.*net.*$"}
+			regs := [...]string{"legacy=[acd]*n[acd]*$", "^order=.*net.*$"}
 
 			for _, reg := range regs {
 				re, err := regexp.Compile(reg)
