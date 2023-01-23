@@ -1030,7 +1030,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		} else if d.Get("pxe").(bool) {
 			var found bool
 			bs := d.Get("boot").(string)
-			// This used to be multiple regexes. Keeping the loop for flexibility
+			// This used to be multiple regexes. Keeping the loop for flexibility.
 			regs := [...]string{"^order=.*net.*$"}
 
 			for _, reg := range regs {
