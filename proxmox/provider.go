@@ -252,7 +252,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
 		}, nil
 	} else {
-		err = fmt.Errorf("permsission for user/token %s are not sufficient, make sure you permission on Proxmox are set ok", id)
+		err = fmt.Errorf("permissions for user/token %s are not sufficient, please provide the following permissions at minimum: %v", id, minimum_permissions)
 		return nil, err
 	}
 }
@@ -369,7 +369,7 @@ func resourceId(targetNode string, resType string, vmId int) string {
 
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
 	if !rxRsId.MatchString(resId) {
-		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be node/type/vmId", resId)
+		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be <node>/<type>/<vmid>", resId)
 	}
 	idMatch := rxRsId.FindStringSubmatch(resId)
 	targetNode = idMatch[1]
@@ -384,7 +384,7 @@ func clusterResourceId(resType string, resId string) string {
 
 func parseClusterResourceId(resId string) (resType string, id string, err error) {
 	if !rxClusterRsId.MatchString(resId) {
-		return "", "", fmt.Errorf("invalid resource format: %s. Must be type/resId", resId)
+		return "", "", fmt.Errorf("invalid resource format: %s. Must be <type>/<resourceid>", resId)
 	}
 	idMatch := rxClusterRsId.FindStringSubmatch(resId)
 	return idMatch[1], idMatch[2], nil
