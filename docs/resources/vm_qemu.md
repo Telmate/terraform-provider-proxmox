@@ -11,7 +11,7 @@ depend on that base "template" and clone it.
 When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. For ISO and clone
 modes, the name and target node of the VM are the only required parameters.
 
-For the PXE mode, the `boot` directive must contain a *Network* boot order first.  Generally, PXE
+For the PXE mode, the `boot` directive must contain a *Network* in its boot order.  Generally, PXE
 boot VMs should NOT contain the Agent config (`agent = 1`).  PXE boot mode also requires external
 infrastructure to support the Network PXE boot request by the VM.
 
@@ -116,7 +116,7 @@ resource "proxmox_vm_qemu" "pxe-minimal-example" {
 
 The primary options that effect the correct operation of Network PXE boot mode are:
 
-  * `boot`: a valid boot order must be specified with Network type first (eg `net0;scsi0` or `ncd`)
+  * `boot`: a valid boot order must be specified with Network type included (eg `order=net0;scsi0`)
   * a valid NIC attached to a network with a PXE boot server must be added to the VM
   * generally speaking, disable the Agent (`agent = 0`) unless the installed OS contains the Agent in OS install configurations
 
@@ -140,7 +140,7 @@ The following arguments are supported in the top level resource block.
 | `startup`                      | `string` | `""`               | The [startup and shutdown behaviour](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_startup_and_shutdown)                                                                                                                                                                                                        |
 | `oncreate`                    | `bool` | `true`               | Whether to have the VM startup after the VM is created.                                                                                                                                                                                                                                                                     |
 | `tablet`                      | `bool` | `true`               | Enable/disable the USB tablet device. This device is usually needed to allow absolute mouse positioning with VNC.                                                                                                                                                                                                           |
-| `boot`                        | `str`  | `"cdn"`              | The boot order for the VM. Use either the deprecated `legacy=[acdn]{1,4}` syntax or use `order=<device[;device...]>`. See the `boot` option in the [Proxmox manual](https://pve.proxmox.com/wiki/Manual:_qm.conf#_options) for more information.
+| `boot`                        | `str`  | `"cdn"`              | The boot order for the VM. For example: `order=scsi0;ide2;net0`. The deprecated `legacy=` syntax is no longer supported. See the `boot` option in the [Proxmox manual](https://pve.proxmox.com/wiki/Manual:_qm.conf#_options) for more information.
 | `bootdisk`                    | `str`  |                      | Enable booting from specified disk. You shouldn't need to change it under most circumstances.                                                                                                                                                                                                                               |
 | `agent`                       | `int`  | `0`                  | Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the guest for this to have any effect.                                                                                                                                      |
 | `iso`                         | `str`  |                      | The name of the ISO image to mount to the VM in the format: [storage pool]:iso/[name of iso file]. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.  Note that `iso` is mutually exclussive with `clone` and `pxe` modes.                                                                                                                          |
