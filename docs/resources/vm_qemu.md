@@ -11,7 +11,7 @@ depend on that base "template" and clone it.
 When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. For ISO and clone
 modes, the name and target node of the VM are the only required parameters.
 
-For the PXE mode, the `boot` directive must contain a *Network* boot order first.  Generally, PXE
+For the PXE mode, the `boot` directive must contain a *Network* in its boot order.  Generally, PXE
 boot VMs should NOT contain the Agent config (`agent = 1`).  PXE boot mode also requires external
 infrastructure to support the Network PXE boot request by the VM.
 
@@ -116,7 +116,7 @@ resource "proxmox_vm_qemu" "pxe-minimal-example" {
 
 The primary options that effect the correct operation of Network PXE boot mode are:
 
-  * `boot`: a valid boot order must be specified with Network type first (eg `net0;scsi0` or `ncd`)
+  * `boot`: a valid boot order must be specified with Network type included (eg `order=net0;scsi0`)
   * a valid NIC attached to a network with a PXE boot server must be added to the VM
   * generally speaking, disable the Agent (`agent = 0`) unless the installed OS contains the Agent in OS install configurations
 
@@ -140,11 +140,11 @@ The following arguments are supported in the top level resource block.
 | `startup`                      | `string` | `""`               | The [startup and shutdown behaviour](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_startup_and_shutdown)                                                                                                                                                                                                        |
 | `oncreate`                    | `bool` | `true`               | Whether to have the VM startup after the VM is created.                                                                                                                                                                                                                                                                     |
 | `tablet`                      | `bool` | `true`               | Enable/disable the USB tablet device. This device is usually needed to allow absolute mouse positioning with VNC.                                                                                                                                                                                                           |
-| `boot`                        | `str`  | `"cdn"`              | The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).                                                                                                                                                                        |
+| `boot`                        | `str`  | `"cdn"`              | The boot order for the VM. For example: `order=scsi0;ide2;net0`. The deprecated `legacy=` syntax is no longer supported. See the `boot` option in the [Proxmox manual](https://pve.proxmox.com/wiki/Manual:_qm.conf#_options) for more information.
 | `bootdisk`                    | `str`  |                      | Enable booting from specified disk. You shouldn't need to change it under most circumstances.                                                                                                                                                                                                                               |
 | `agent`                       | `int`  | `0`                  | Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the guest for this to have any effect.                                                                                                                                      |
 | `iso`                         | `str`  |                      | The name of the ISO image to mount to the VM in the format: [storage pool]:iso/[name of iso file]. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.  Note that `iso` is mutually exclussive with `clone` and `pxe` modes.                                                                                                                          |
-| `pxe`                         | `bool` | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network first (eg `boot = "net0;scsi0"`).  Note that `pxe` is mutually exclussive with `iso` and `clone` modes.                                                                                                                      |
+| `pxe`                         | `bool` | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network included (eg `boot = "order=net0;scsi0"`).  Note that `pxe` is mutually exclusive with `iso` and `clone` modes.                                                                                                                      |
 | `clone`                       | `str`  |                      | The base VM from which to clone to create the new VM.  Note that `clone` is mutually exclussive with `pxe` and `iso` modes.                                                                                                                                                                                                 |
 | `full_clone`                  | `bool` | `true`               | Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.                                                                                                |
 | `hastate`                     | `str`  |                      | Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.                                                                                          |
