@@ -212,9 +212,13 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	} else if result, getok := d.GetOk("pm_user"); getok {
 		id = result.(string)
 	}
-	permlist, err := client.GetUserPermissions(id, "/")
+	userID, err := pxapi.NewUserID(id)
 	if err != nil {
-		err = fmt.Errorf("cannot find provided user %s on proxmox", id)
+		return nil, err
+	}
+	permlist, err := client.GetUserPermissions(userID, "/")
+	if err != nil {
+		err = fmt.Errorf("cannot find provided user %s on proxmox", userID.ToString())
 		return nil, err
 	}
 	sort.Strings(permlist)
@@ -252,7 +256,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
 		}, nil
 	} else {
-		err = fmt.Errorf("permsission for user/token %s are not sufficient, make sure you permission on Proxmox are set ok", id)
+		err = fmt.Errorf("permsission for user/token %s are not sufficient, make sure you permission on Proxmox are set ok", userID.ToString())
 		return nil, err
 	}
 }
