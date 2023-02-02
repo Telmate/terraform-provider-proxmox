@@ -371,9 +371,9 @@ func resourceVmQemu() *schema.Resource {
 							Default:  "none",
 						},
 						"backup": {
-							Type:     schema.TypeInt,
+							Type:     schema.TypeBool,
 							Optional: true,
-							Default:  0,
+							Default:  true,
 						},
 						"iothread": {
 							Type:     schema.TypeInt,
