@@ -16,7 +16,7 @@ Log into the Proxmox cluster or host using ssh (or mimic these in the GUI) then:
 - Add the TERRAFORM-PROV role to the terraform-prov user
 
 ```bash
-pveum role add TerraformProv -privs "VM.Allocate VM.Clone VM.Config.CDROM VM.Config.CPU VM.Config.Cloudinit VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Monitor VM.Audit VM.PowerMgmt Datastore.AllocateSpace Datastore.Audit"
+pveum role add TerraformProv -privs "VM.Allocate VM.Clone VM.Config.CDROM VM.Config.CPU VM.Config.Cloudinit VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Monitor VM.Migrate VM.Audit VM.PowerMgmt Datastore.AllocateSpace Datastore.Audit Sys.Audit Sys.Console"
 pveum user add terraform-prov@pve --password <password>
 pveum aclmod / -user terraform-prov@pve -role TerraformProv
 ```
@@ -27,7 +27,7 @@ After the role is in use, if there is a need to modify the privileges, simply is
 removing privileges as needed.
 
 ```bash
-pveum role modify TerraformProv -privs "VM.Allocate VM.Clone VM.Config.CDROM VM.Config.CPU VM.Config.Cloudinit VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Monitor VM.Audit VM.PowerMgmt Datastore.AllocateSpace Datastore.Audit"
+pveum role modify TerraformProv -privs "VM.Allocate VM.Clone VM.Config.CDROM VM.Config.CPU VM.Config.Cloudinit VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Monitor VM.Migration VM.Audit VM.PowerMgmt Datastore.AllocateSpace Datastore.Audit Sys.Console Sys.Audit"
 ```
 
 For more information on existing roles and privileges in Proxmox, refer to the vendor docs
