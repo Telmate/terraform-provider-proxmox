@@ -3,7 +3,7 @@ module github.com/Telmate/terraform-provider-proxmox
 go 1.18
 
 require (
-	github.com/Telmate/proxmox-api-go v0.0.0-20230201114211-205f18a553e4
+	github.com/Telmate/proxmox-api-go v0.0.0-20230204135528-d6cbb5471bed
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.24.1
 	github.com/rs/zerolog v1.29.0
@@ -50,10 +50,10 @@ require (
 	github.com/zclconf/go-cty v1.12.1 // indirect
 	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b // indirect
 	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230131230820-1c016267d619 // indirect
+	google.golang.org/genproto v0.0.0-20230202175211-008b39050e57 // indirect
 	google.golang.org/grpc v1.52.3 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
