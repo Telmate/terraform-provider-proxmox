@@ -44,9 +44,9 @@ func resourceVmQemu() *schema.Resource {
 				Description:      "The VM identifier in proxmox (100-999999999)",
 			},
 			"name": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "",
+				Type:     schema.TypeString,
+				Optional: true,
+				//Default:     "",
 				Description: "The VM name",
 			},
 			"desc": {
@@ -55,7 +55,7 @@ func resourceVmQemu() *schema.Resource {
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
-				Default:     "",
+				//Default:     "",
 				Description: "The VM description",
 			},
 			"target_node": {
@@ -77,9 +77,9 @@ func resourceVmQemu() *schema.Resource {
 				Description: "VM autostart on boot",
 			},
 			"startup": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "",
+				Type:     schema.TypeString,
+				Optional: true,
+				//Default:     "",
 				Description: "Startup order of the VM",
 			},
 			"oncreate": {
@@ -97,7 +97,7 @@ func resourceVmQemu() *schema.Resource {
 			"boot": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Default:     "c",
+				Computed:    true,
 				Description: "Boot order of the VM",
 			},
 			"bootdisk": {
@@ -108,7 +108,7 @@ func resourceVmQemu() *schema.Resource {
 			"agent": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  0,
+				//Default:  0,
 			},
 			"pxe": {
 				Type:          schema.TypeBool,
@@ -149,11 +149,11 @@ func resourceVmQemu() *schema.Resource {
 			"qemu_os": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "l26",
+				// Default:  "l26",
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if new == "l26" {
-						return len(d.Get("clone").(string)) > 0 // the cloned source may have a different os, which we shoud leave alone
-					}
+					// 	if new == "l26" {
+					// 		return len(d.Get("clone").(string)) > 0 // the cloned source may have a different os, which we shoud leave alone
+					// 	}
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
@@ -198,7 +198,7 @@ func resourceVmQemu() *schema.Resource {
 			"numa": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  false,
+				// Default:  false,
 			},
 			"kvm": {
 				Type:     schema.TypeBool,
@@ -213,7 +213,7 @@ func resourceVmQemu() *schema.Resource {
 			"scsihw": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Computed: true,
+				Default:  "lsi",
 				ValidateFunc: validation.StringInSlice([]string{
 					"lsi",
 					"lsi53c810",
@@ -251,9 +251,10 @@ func resourceVmQemu() *schema.Resource {
 							Required: true,
 						},
 						"macaddr": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
+							Type:             schema.TypeString,
+							Optional:         true,
+							Computed:         true,
+							ValidateDiagFunc: MacAddressValidator(),
 						},
 						"bridge": {
 							Type:     schema.TypeString,
@@ -1122,13 +1123,13 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
+	client := pconf.Client
 	lock := pmParallelBegin(pconf)
-	//defer lock.unlock()
 
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_update")
 
-	client := pconf.Client
+	// get vmID
 	_, _, vmID, err := parseResourceId(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
@@ -1525,7 +1526,6 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("cpu", config.QemuCpu)
 	d.Set("numa", config.QemuNuma)
 	d.Set("kvm", config.QemuKVM)
-	d.Set("hostpci", config.QemuPCIDevices)
 	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
 	d.Set("hastate", vmr.HaState())
@@ -1605,16 +1605,31 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 		if qemuDisk["cache"] == "" || qemuDisk["cache"] == nil {
 			qemuDisk["cache"] = "none"
 		}
-		if qemuDisk["backup"] == false {
-			qemuDisk["backup"] = 0
-		} else if qemuDisk["backup"] == true {
-			qemuDisk["backup"] = 1
-		}
+		// backup is default true but state must be set!
+		if qemuDisk["backup"] == "" || qemuDisk["backup"] == nil {
+			qemuDisk["backup"] = true
+		} // else if qemuDisk["backup"] == true {
+		// 	qemuDisk["backup"] = 1
+		// }
 	}
 
 	flatDisks, _ := FlattenDevicesList(config.QemuDisks)
 	flatDisks, _ = DropElementsFromMap([]string{"id"}, flatDisks)
 	if d.Set("disk", flatDisks); err != nil {
+		return err
+	}
+
+	// read in the qemu hostpci
+	qemuPCIDevices, _ := FlattenDevicesList(config.QemuPCIDevices)
+	logger.Debug().Int("vmid", vmID).Msgf("Hostpci Block Processed '%v'", config.QemuPCIDevices)
+	if d.Set("hostpci", qemuPCIDevices); err != nil {
+		return err
+	}
+
+	// read in the qemu hostpci
+	qemuUsbsDevices, _ := FlattenDevicesList(config.QemuUsbs)
+	logger.Debug().Int("vmid", vmID).Msgf("Usb Block Processed '%v'", config.QemuUsbs)
+	if d.Set("usb", qemuUsbsDevices); err != nil {
 		return err
 	}
 
