@@ -193,19 +193,22 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		"Datastore.Audit",
 		"Pool.Allocate",
 		"Sys.Audit",
+		"Sys.Console",
 		"VM.Allocate",
 		"VM.Audit",
 		"VM.Clone",
 		"VM.Config.CDROM",
-		"VM.Config.CPU",
 		"VM.Config.Cloudinit",
+		"VM.Config.CPU",
 		"VM.Config.Disk",
 		"VM.Config.HWType",
 		"VM.Config.Memory",
 		"VM.Config.Network",
 		"VM.Config.Options",
+		"VM.Migrate",
 		"VM.Monitor",
-		"VM.PowerMgmt"}
+		"VM.PowerMgmt",
+	}
 	var id string
 	if result, getok := d.GetOk("pm_api_token_id"); getok {
 		id = result.(string)
