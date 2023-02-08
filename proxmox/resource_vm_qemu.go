@@ -165,6 +165,12 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"machine": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "Specifies the Qemu machine type.",
+				ValidateDiagFunc: MachineTypeValidator(),
+			},
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -640,14 +646,16 @@ func resourceVmQemu() *schema.Resource {
 				Default:  false,
 			},
 			"clone_wait": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  10,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     10,
+				Description: "Value in second to wait after a VM has been cloned, useful if system is not fast or during I/O intensive parallel terraform tasks",
 			},
 			"additional_wait": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  10,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     5,
+				Description: "Value in second to wait after some operations, useful if system is not fast or during I/O intensive parallel terraform tasks",
 			},
 			"ci_wait": { // how long to wait before provision
 				Type:     schema.TypeInt,
@@ -875,6 +883,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          d.Get("agent").(int),
 		Memory:         d.Get("memory").(int),
+		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
 		QemuCores:      d.Get("cores").(int),
 		QemuSockets:    d.Get("sockets").(int),
@@ -1071,7 +1080,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		}
 
 		// give sometime to proxmox to catchup
-		//time.Sleep(5 * time.Second)
+		// time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 		err = prepareDiskSize(client, vmr, qemuDisks)
 		if err != nil {
@@ -1101,8 +1110,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			return err
 		}
-		//wait 10s for the vm to start
-		time.Sleep(10 * time.Second)
+		// give sometime to proxmox to catchup
+		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 		err = initConnInfo(d, pconf, client, vmr, &config, lock)
 		if err != nil {
@@ -1196,6 +1205,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          d.Get("agent").(int),
 		Memory:         d.Get("memory").(int),
+		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
 		QemuCores:      d.Get("cores").(int),
 		QemuSockets:    d.Get("sockets").(int),
@@ -1252,13 +1262,13 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 
-	// Give some time to proxmox to catchup.
-	time.Sleep(5 * time.Second)
+	// give sometime to proxmox to catchup
+	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 	prepareDiskSize(client, vmr, qemuDisks)
 
-	// Give some time to proxmox to catchup.
-	time.Sleep(15 * time.Second)
+	// give sometime to proxmox to catchup
+	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 	if d.HasChange("pool") {
 		oldPool, newPool := func() (string, string) {
@@ -1290,6 +1300,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"balloon",
 		"cpu",
 		"numa",
+		"machine",
 		"hotplug",
 		"scsihw",
 		"os_type",
@@ -1519,6 +1530,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("bootdisk", config.BootDisk)
 	d.Set("agent", config.Agent)
 	d.Set("memory", config.Memory)
+	d.Set("machine", config.Machine)
 	d.Set("balloon", config.Balloon)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
@@ -1722,6 +1734,7 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Wait until vm is stopped. Otherwise, deletion will fail.
+	// ugly way to wait 5 minutes(300s)
 	waited := 0
 	for waited < 300 {
 		vmState, err := client.GetVmState(vmr)
@@ -1730,8 +1743,9 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 		} else if err != nil {
 			return err
 		}
-
-		time.Sleep(1 * time.Second)
+		// wait before next try
+		time.Sleep(5 * time.Second)
+		waited += 5
 	}
 
 	_, err = client.DeleteVm(vmr)
@@ -1774,7 +1788,8 @@ func prepareDiskSize(
 					break
 				}
 				logger.Debug().Int("diskId", diskID).Msgf("Error returned from api: %+v", err)
-				time.Sleep(time.Duration(10) * time.Second)
+				// wait before next try
+				time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 			}
 		} else if diskSize == clonedDiskSize || diskSize <= 0 {
 			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", fmt.Sprintf("%vG", clonedDiskSize), fmt.Sprintf("%vG", diskSize))
@@ -1970,7 +1985,8 @@ func initConnInfo(
 			// any other error should not happen here
 			return err
 		}
-		time.Sleep(10 * time.Second)
+		// wait before next try
+		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 	}
 	if lasterr != nil {
 		log.Printf("[INFO][initConnInfo] error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr)
@@ -2015,7 +2031,8 @@ func initConnInfo(
 				break
 			}
 		}
-		time.Sleep(10 * time.Second)
+		// wait before next try
+		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 	}
 	// todo - log a warning if we couldn't get an IP
 
