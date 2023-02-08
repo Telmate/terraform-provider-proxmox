@@ -1025,7 +1025,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				return err
 			}
 
-			err = prepareDiskSize(client, vmr, qemuDisks)
+			err = prepareDiskSize(client, vmr, qemuDisks, d)
 			if err != nil {
 				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 				return err
@@ -1082,7 +1082,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		// give sometime to proxmox to catchup
 		// time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-		err = prepareDiskSize(client, vmr, qemuDisks)
+		err = prepareDiskSize(client, vmr, qemuDisks, d)
 		if err != nil {
 			return err
 		}
@@ -1265,7 +1265,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	prepareDiskSize(client, vmr, qemuDisks)
+	prepareDiskSize(client, vmr, qemuDisks, d)
 
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
@@ -1757,6 +1757,7 @@ func prepareDiskSize(
 	client *pxapi.Client,
 	vmr *pxapi.VmRef,
 	diskConfMap pxapi.QemuDevices,
+	d *schema.ResourceData,
 ) error {
 	logger, _ := CreateSubLogger("prepareDiskSize")
 	clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
