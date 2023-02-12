@@ -18,6 +18,11 @@ func MacAddressValidator() schema.SchemaValidateDiagFunc {
 			return diag.Errorf("expected type of %v to be string", k)
 		}
 		mac := strings.Replace(value, ":", "", -1)
+		
+		// Check if a MAC address has been provided. If not, proxmox will generate random one.
+		if len(mac) == 0 {
+			return nil
+		}
 
 		// Check if the length of the MAC address is correct (12 hexadecimal characters)
 		if len(mac) != 12 {
