@@ -203,7 +203,7 @@ The following arguments may be optionally defined when using this resource:
 * `mountpoint` - An object for defining a volume to use as a container mount point. Can be specified multiple times.
     * `mp` __(required)__ - The path to the mount point as seen from inside the container. The path must not contain
       symlinks for security reasons.
-    * `size` __(required)__ - Size of the underlying volume. Must end in G, M, or K (e.g. `"1G"`, `"1024M"`
+    * `size` __(required)__ - Size of the underlying volume. Must end in T, G, M, or K (e.g. `"1T"`, `"1G"`, `"1024M"`
       , `"1048576K"`). Note that this is a read only value.
     * `slot` __(required)__ - A string containing the number that identifies the mount point (i.e. the `n`
       in [`mp[n]`](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_mount_points)).
@@ -245,7 +245,7 @@ The following arguments may be optionally defined when using this resource:
   being removed/updated. Default is `false`.
 * `restore` - A boolean to mark the container creation/update as a restore task.
 * `rootfs` - An object for configuring the root mount point of the container. Can only be specified once.
-    * `size` __(required)__ - Size of the underlying volume. Must end in G, M, or K (e.g. `"1G"`, `"1024M"`
+    * `size` __(required)__ - Size of the underlying volume. Must end in T, G, M, or K (e.g. `"1T"`, `"1G"`, `"1024M"`
       , `"1048576K"`). Note that this is a read only value.
     * `storage` __(required)__ - A string containing
       the [volume](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#_storage_backed_mount_points)
