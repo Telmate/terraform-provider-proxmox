@@ -26,7 +26,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
   ### or for a PXE boot VM operation
   # pxe = true
-  # boot = "net0;scsi0"
+  # boot = "scsi0;net0"
   # agent = 0
 }
 ```
