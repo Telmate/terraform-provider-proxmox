@@ -94,19 +94,10 @@ EOF
   }
 }
 
-/* Null resource that generates a cloud-config file per vm */
-data "template_file" "user_data" {
-  count    = var.vm_count
-  template = file("${path.module}/files/user_data.cfg")
-  vars     = {
-    pubkey   = file(pathexpand("~/.ssh/id_rsa.pub"))
-    hostname = "vm-${count.index}"
-    fqdn     = "vm-${count.index}.${var.domain_name}"
-  }
-}
+# Modify path for templatefile and use the recommended extention of .tftpl for syntax hylighting in code editors.
 resource "local_file" "cloud_init_user_data_file" {
   count    = var.vm_count
-  content  = data.template_file.user_data[count.index].rendered
+  content  = templatefile("${var.working_directory}/cloud-inits/cloud-init.cloud_config.tftpl", { ssh_key = var.ssh_public_key, hostname = var.name })
   filename = "${path.module}/files/user_data_${count.index}.cfg"
 }
 
