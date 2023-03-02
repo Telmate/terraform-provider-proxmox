@@ -901,24 +901,14 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig: pxapi.IpconfigMap{
-			0:  d.Get("ipconfig0").(string),
-			1:  d.Get("ipconfig1").(string),
-			2:  d.Get("ipconfig2").(string),
-			3:  d.Get("ipconfig3").(string),
-			4:  d.Get("ipconfig4").(string),
-			5:  d.Get("ipconfig5").(string),
-			6:  d.Get("ipconfig6").(string),
-			7:  d.Get("ipconfig7").(string),
-			8:  d.Get("ipconfig8").(string),
-			9:  d.Get("ipconfig9").(string),
-			10: d.Get("ipconfig10").(string),
-			11: d.Get("ipconfig11").(string),
-			12: d.Get("ipconfig12").(string),
-			13: d.Get("ipconfig13").(string),
-			14: d.Get("ipconfig14").(string),
-			15: d.Get("ipconfig15").(string),
-		},
+		Ipconfig:     pxapi.IpconfigMap{},
+	}
+	// Populate Ipconfig map
+	for i := 0; i < 16; i++ {
+		iface := fmt.Sprintf("ipconfig%d", i)
+		if v, ok := d.GetOk(iface); ok {
+			config.Ipconfig[i] = v.(string)
+		}
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
