@@ -10,6 +10,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
+func MachineTypeValidator() schema.SchemaValidateDiagFunc {
+	return func(i interface{}, k cty.Path) diag.Diagnostics {
+		value, ok := i.(string)
+
+		if !ok {
+			return diag.Errorf("expected type of %v to be string", value)
+		}
+		machineMatches := machineModelsRegex.FindString(value)
+
+		if len(machineMatches) < 1 {
+			return diag.Errorf("expected %s to match pattern %s", value, machineModelsRegex)
+		}
+
+		return nil
+	}
+}
+
 func MacAddressValidator() schema.SchemaValidateDiagFunc {
 	return func(i interface{}, k cty.Path) diag.Diagnostics {
 		value, ok := i.(string)
