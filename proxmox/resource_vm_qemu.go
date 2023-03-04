@@ -46,7 +46,7 @@ func resourceVmQemu() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
-				//Default:     "",
+				// Default:     "",
 				Description: "The VM name",
 			},
 			"desc": {
@@ -55,7 +55,7 @@ func resourceVmQemu() *schema.Resource {
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
-				//Default:     "",
+				// Default:     "",
 				Description: "The VM description",
 			},
 			"target_node": {
@@ -79,7 +79,7 @@ func resourceVmQemu() *schema.Resource {
 			"startup": {
 				Type:     schema.TypeString,
 				Optional: true,
-				//Default:     "",
+				// Default:     "",
 				Description: "Startup order of the VM",
 			},
 			"oncreate": {
@@ -108,7 +108,7 @@ func resourceVmQemu() *schema.Resource {
 			"agent": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				//Default:  0,
+				// Default:  0,
 			},
 			"pxe": {
 				Type:          schema.TypeBool,
@@ -303,7 +303,7 @@ func resourceVmQemu() *schema.Resource {
 			"unused_disk": {
 				Type:     schema.TypeList,
 				Computed: true,
-				//Optional:      true,
+				// Optional:      true,
 				Description: "Record unused disks in proxmox. This is intended to be read-only for now.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -392,7 +392,7 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  0,
 						},
-						//SSD emulation
+						// SSD emulation
 						"ssd": {
 							Type:     schema.TypeInt,
 							Optional: true,
@@ -418,7 +418,7 @@ func resourceVmQemu() *schema.Resource {
 								"io_uring",
 							}, false),
 						},
-						//Maximum r/w speed in megabytes per second
+						// Maximum r/w speed in megabytes per second
 						"mbps": {
 							Type:     schema.TypeInt,
 							Optional: true,
@@ -709,82 +709,66 @@ func resourceVmQemu() *schema.Resource {
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig1": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig2": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig3": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig4": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig5": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig6": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig7": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig8": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig9": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig10": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig11": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig12": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig13": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig14": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig15": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"preprovision": {
 				Type:       schema.TypeBool,
@@ -855,7 +839,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
-	//defer lock.unlock()
+	// defer lock.unlock()
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
@@ -1676,7 +1660,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.Set("pool", vmr.Pool())
-	//Serials
+	// Serials
 	configSerialsSet := d.Get("serial").(*schema.Set)
 	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials, "id")
 	d.Set("serial", activeSerialSet)
@@ -1754,7 +1738,7 @@ func prepareDiskSize(
 	if err != nil {
 		return err
 	}
-	//log.Printf("%s", clonedConfig)
+	// log.Printf("%s", clonedConfig)
 	for diskID, diskConf := range diskConfMap {
 		diskName := fmt.Sprintf("%v%v", diskConf["type"], diskID)
 
@@ -1897,9 +1881,9 @@ func UpdateDevicesSet(
 	idKey string,
 ) *schema.Set {
 
-	//configDevicesMap, _ := DevicesSetToMap(devicesSet)
+	// configDevicesMap, _ := DevicesSetToMap(devicesSet)
 
-	//activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
+	// activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
 	activeDevicesMap := devicesMap
 
 	for _, setConf := range devicesSet.List() {
@@ -2001,7 +1985,7 @@ func initConnInfo(
 		if err != nil {
 			log.Printf("[DEBUG][initConnInfo] checking network card error %s", err.Error())
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card error %s", err.Error())
-			//return err
+			// return err
 		} else {
 			log.Printf("[DEBUG][initConnInfo] checking network card loop")
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card loop")
@@ -2092,7 +2076,7 @@ func initConnInfo(
 	// }
 
 	// Done with proxmox API, end parallel and do the SSH things
-	//lock.unlock()
+	// lock.unlock()
 	if sshHost == "" {
 		log.Print("[DEBUG][initConnInfo] Cannot find any IP address")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Cannot find any IP address")
@@ -2112,8 +2096,8 @@ func initConnInfo(
 		"type": "ssh",
 		"host": sshHost,
 		"port": sshPort,
-		//"user":            d.Get("ssh_user").(string),
-		//"private_key":     d.Get("ssh_private_key").(string),
+		// "user":            d.Get("ssh_user").(string),
+		// "private_key":     d.Get("ssh_private_key").(string),
 		// not sure what the following stuff was for?!
 		// "pm_api_url":      client.ApiUrl,
 		// "pm_user":         client.Username,
