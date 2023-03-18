@@ -495,3 +495,23 @@ func subslice(s1 []string, s2 []string) bool {
 func BoolPointer(b bool) *bool {
 	return &b
 }
+
+func permissions_check(s1 []string, s2 []string) []string {
+
+	var diff []string
+
+	// loop through s2 and check if each element is in s1
+	for _, str2 := range s2 {
+		found := false
+		for _, str1 := range s1 {
+			if str2 == str1 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			diff = append(diff, str2)
+		}
+	}
+	return diff
+}
