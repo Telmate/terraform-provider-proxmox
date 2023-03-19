@@ -2,8 +2,6 @@ module github.com/Telmate/terraform-provider-proxmox
 
 go 1.18
 
-replace github.com/Telmate/proxmox-api-go => /Users/maleone/github/proxmox-api-go
-
 require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20230319185744-e7cde7198cdf
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
