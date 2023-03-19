@@ -221,9 +221,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	permlist, err2 := client.GetUserPermissions(userID, "/")
-	if err2 != nil {
-		err = fmt.Errorf("user does not exist or has insufficient permissions on proxmox: %s\n the error is: %s", userID.ToString(), err2)
+	permlist, err := client.GetUserPermissions(userID, "/")
+	if err != nil {
 		return nil, err
 	}
 	sort.Strings(permlist)
