@@ -25,6 +25,8 @@ var rxIPconfig = regexp.MustCompile(`ip6?=([0-9a-fA-F:\\.]+)`)
 
 var macAddressRegex = regexp.MustCompile(`([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}`)
 
+var machineModelsRegex = regexp.MustCompile(`(^pc|^q35|^virt)`)
+
 // given a string, return the appropriate zerolog level
 func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
 	conversionMap := map[string]zerolog.Level{
@@ -469,27 +471,27 @@ func testOptionalArguments(t *testing.T, s *schema.Resource) {
 		}
 	}
 }
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
-
-func subslice(s1 []string, s2 []string) bool {
-	if len(s1) > len(s2) {
-		return false
-	}
-	for _, e := range s1 {
-		if !contains(s2, e) {
-			return false
-		}
-	}
-	return true
-}
 
 func BoolPointer(b bool) *bool {
 	return &b
+}
+
+func permissions_check(s1 []string, s2 []string) []string {
+
+	var diff []string
+
+	// loop through s2 and check if each element is in s1
+	for _, str2 := range s2 {
+		found := false
+		for _, str1 := range s1 {
+			if str2 == str1 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			diff = append(diff, str2)
+		}
+	}
+	return diff
 }

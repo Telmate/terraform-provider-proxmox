@@ -46,7 +46,7 @@ func resourceVmQemu() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
-				//Default:     "",
+				// Default:     "",
 				Description: "The VM name",
 			},
 			"desc": {
@@ -55,7 +55,7 @@ func resourceVmQemu() *schema.Resource {
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
-				//Default:     "",
+				// Default:     "",
 				Description: "The VM description",
 			},
 			"target_node": {
@@ -79,7 +79,7 @@ func resourceVmQemu() *schema.Resource {
 			"startup": {
 				Type:     schema.TypeString,
 				Optional: true,
-				//Default:     "",
+				// Default:     "",
 				Description: "Startup order of the VM",
 			},
 			"oncreate": {
@@ -108,7 +108,7 @@ func resourceVmQemu() *schema.Resource {
 			"agent": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				//Default:  0,
+				// Default:  0,
 			},
 			"pxe": {
 				Type:          schema.TypeBool,
@@ -164,6 +164,12 @@ func resourceVmQemu() *schema.Resource {
 			"args": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"machine": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Description:      "Specifies the Qemu machine type.",
+				ValidateDiagFunc: MachineTypeValidator(),
 			},
 			"memory": {
 				Type:     schema.TypeInt,
@@ -297,7 +303,7 @@ func resourceVmQemu() *schema.Resource {
 			"unused_disk": {
 				Type:     schema.TypeList,
 				Computed: true,
-				//Optional:      true,
+				// Optional:      true,
 				Description: "Record unused disks in proxmox. This is intended to be read-only for now.",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -386,7 +392,7 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  0,
 						},
-						//SSD emulation
+						// SSD emulation
 						"ssd": {
 							Type:     schema.TypeInt,
 							Optional: true,
@@ -412,7 +418,7 @@ func resourceVmQemu() *schema.Resource {
 								"io_uring",
 							}, false),
 						},
-						//Maximum r/w speed in megabytes per second
+						// Maximum r/w speed in megabytes per second
 						"mbps": {
 							Type:     schema.TypeInt,
 							Optional: true,
@@ -640,14 +646,16 @@ func resourceVmQemu() *schema.Resource {
 				Default:  false,
 			},
 			"clone_wait": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  10,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     10,
+				Description: "Value in second to wait after a VM has been cloned, useful if system is not fast or during I/O intensive parallel terraform tasks",
 			},
 			"additional_wait": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  10,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     5,
+				Description: "Value in second to wait after some operations, useful if system is not fast or during I/O intensive parallel terraform tasks",
 			},
 			"ci_wait": { // how long to wait before provision
 				Type:     schema.TypeInt,
@@ -701,82 +709,66 @@ func resourceVmQemu() *schema.Resource {
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig1": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig2": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig3": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig4": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig5": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig6": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig7": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig8": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig9": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig10": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig11": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig12": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig13": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig14": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"ipconfig15": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 			},
 			"preprovision": {
 				Type:       schema.TypeBool,
@@ -847,7 +839,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
-	//defer lock.unlock()
+	// defer lock.unlock()
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
@@ -875,6 +867,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          d.Get("agent").(int),
 		Memory:         d.Get("memory").(int),
+		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
 		QemuCores:      d.Get("cores").(int),
 		QemuSockets:    d.Get("sockets").(int),
@@ -901,24 +894,14 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig: pxapi.IpconfigMap{
-			0:  d.Get("ipconfig0").(string),
-			1:  d.Get("ipconfig1").(string),
-			2:  d.Get("ipconfig2").(string),
-			3:  d.Get("ipconfig3").(string),
-			4:  d.Get("ipconfig4").(string),
-			5:  d.Get("ipconfig5").(string),
-			6:  d.Get("ipconfig6").(string),
-			7:  d.Get("ipconfig7").(string),
-			8:  d.Get("ipconfig8").(string),
-			9:  d.Get("ipconfig9").(string),
-			10: d.Get("ipconfig10").(string),
-			11: d.Get("ipconfig11").(string),
-			12: d.Get("ipconfig12").(string),
-			13: d.Get("ipconfig13").(string),
-			14: d.Get("ipconfig14").(string),
-			15: d.Get("ipconfig15").(string),
-		},
+		Ipconfig:     pxapi.IpconfigMap{},
+	}
+	// Populate Ipconfig map
+	for i := 0; i < 16; i++ {
+		iface := fmt.Sprintf("ipconfig%d", i)
+		if v, ok := d.GetOk(iface); ok {
+			config.Ipconfig[i] = v.(string)
+		}
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1016,7 +999,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 				return err
 			}
 
-			err = prepareDiskSize(client, vmr, qemuDisks)
+			err = prepareDiskSize(client, vmr, qemuDisks, d)
 			if err != nil {
 				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
 				return err
@@ -1071,9 +1054,9 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		}
 
 		// give sometime to proxmox to catchup
-		//time.Sleep(5 * time.Second)
+		// time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-		err = prepareDiskSize(client, vmr, qemuDisks)
+		err = prepareDiskSize(client, vmr, qemuDisks, d)
 		if err != nil {
 			return err
 		}
@@ -1101,8 +1084,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			return err
 		}
-		//wait 10s for the vm to start
-		time.Sleep(10 * time.Second)
+		// give sometime to proxmox to catchup
+		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 		err = initConnInfo(d, pconf, client, vmr, &config, lock)
 		if err != nil {
@@ -1196,6 +1179,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          d.Get("agent").(int),
 		Memory:         d.Get("memory").(int),
+		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
 		QemuCores:      d.Get("cores").(int),
 		QemuSockets:    d.Get("sockets").(int),
@@ -1252,13 +1236,13 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 
-	// Give some time to proxmox to catchup.
-	time.Sleep(5 * time.Second)
+	// give sometime to proxmox to catchup
+	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	prepareDiskSize(client, vmr, qemuDisks)
+	prepareDiskSize(client, vmr, qemuDisks, d)
 
-	// Give some time to proxmox to catchup.
-	time.Sleep(15 * time.Second)
+	// give sometime to proxmox to catchup
+	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
 	if d.HasChange("pool") {
 		oldPool, newPool := func() (string, string) {
@@ -1290,6 +1274,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"balloon",
 		"cpu",
 		"numa",
+		"machine",
 		"hotplug",
 		"scsihw",
 		"os_type",
@@ -1519,6 +1504,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("bootdisk", config.BootDisk)
 	d.Set("agent", config.Agent)
 	d.Set("memory", config.Memory)
+	d.Set("machine", config.Machine)
 	d.Set("balloon", config.Balloon)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
@@ -1674,7 +1660,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.Set("pool", vmr.Pool())
-	//Serials
+	// Serials
 	configSerialsSet := d.Get("serial").(*schema.Set)
 	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials, "id")
 	d.Set("serial", activeSerialSet)
@@ -1722,6 +1708,7 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	// Wait until vm is stopped. Otherwise, deletion will fail.
+	// ugly way to wait 5 minutes(300s)
 	waited := 0
 	for waited < 300 {
 		vmState, err := client.GetVmState(vmr)
@@ -1730,8 +1717,9 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 		} else if err != nil {
 			return err
 		}
-
-		time.Sleep(1 * time.Second)
+		// wait before next try
+		time.Sleep(5 * time.Second)
+		waited += 5
 	}
 
 	_, err = client.DeleteVm(vmr)
@@ -1743,13 +1731,14 @@ func prepareDiskSize(
 	client *pxapi.Client,
 	vmr *pxapi.VmRef,
 	diskConfMap pxapi.QemuDevices,
+	d *schema.ResourceData,
 ) error {
 	logger, _ := CreateSubLogger("prepareDiskSize")
 	clonedConfig, err := pxapi.NewConfigQemuFromApi(vmr, client)
 	if err != nil {
 		return err
 	}
-	//log.Printf("%s", clonedConfig)
+	// log.Printf("%s", clonedConfig)
 	for diskID, diskConf := range diskConfMap {
 		diskName := fmt.Sprintf("%v%v", diskConf["type"], diskID)
 
@@ -1774,7 +1763,8 @@ func prepareDiskSize(
 					break
 				}
 				logger.Debug().Int("diskId", diskID).Msgf("Error returned from api: %+v", err)
-				time.Sleep(time.Duration(10) * time.Second)
+				// wait before next try
+				time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 			}
 		} else if diskSize == clonedDiskSize || diskSize <= 0 {
 			logger.Debug().Int("diskId", diskID).Msgf("Disk is same size as before, skipping resize. Original '%+v', New '%+v'", fmt.Sprintf("%vG", clonedDiskSize), fmt.Sprintf("%vG", diskSize))
@@ -1891,9 +1881,9 @@ func UpdateDevicesSet(
 	idKey string,
 ) *schema.Set {
 
-	//configDevicesMap, _ := DevicesSetToMap(devicesSet)
+	// configDevicesMap, _ := DevicesSetToMap(devicesSet)
 
-	//activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
+	// activeDevicesMap := updateDevicesDefaults(devicesMap, configDevicesMap)
 	activeDevicesMap := devicesMap
 
 	for _, setConf := range devicesSet.List() {
@@ -1970,7 +1960,8 @@ func initConnInfo(
 			// any other error should not happen here
 			return err
 		}
-		time.Sleep(10 * time.Second)
+		// wait before next try
+		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 	}
 	if lasterr != nil {
 		log.Printf("[INFO][initConnInfo] error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr)
@@ -1994,7 +1985,7 @@ func initConnInfo(
 		if err != nil {
 			log.Printf("[DEBUG][initConnInfo] checking network card error %s", err.Error())
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card error %s", err.Error())
-			//return err
+			// return err
 		} else {
 			log.Printf("[DEBUG][initConnInfo] checking network card loop")
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card loop")
@@ -2015,7 +2006,8 @@ func initConnInfo(
 				break
 			}
 		}
-		time.Sleep(10 * time.Second)
+		// wait before next try
+		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 	}
 	// todo - log a warning if we couldn't get an IP
 
@@ -2084,7 +2076,7 @@ func initConnInfo(
 	// }
 
 	// Done with proxmox API, end parallel and do the SSH things
-	//lock.unlock()
+	// lock.unlock()
 	if sshHost == "" {
 		log.Print("[DEBUG][initConnInfo] Cannot find any IP address")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Cannot find any IP address")
@@ -2104,8 +2096,8 @@ func initConnInfo(
 		"type": "ssh",
 		"host": sshHost,
 		"port": sshPort,
-		//"user":            d.Get("ssh_user").(string),
-		//"private_key":     d.Get("ssh_private_key").(string),
+		// "user":            d.Get("ssh_user").(string),
+		// "private_key":     d.Get("ssh_private_key").(string),
 		// not sure what the following stuff was for?!
 		// "pm_api_url":      client.ApiUrl,
 		// "pm_user":         client.Username,

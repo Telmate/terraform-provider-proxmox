@@ -193,22 +193,27 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		"Datastore.Audit",
 		"Pool.Allocate",
 		"Sys.Audit",
+		"Sys.Console",
+		"Sys.Modify",
 		"VM.Allocate",
 		"VM.Audit",
 		"VM.Clone",
 		"VM.Config.CDROM",
-		"VM.Config.CPU",
 		"VM.Config.Cloudinit",
+		"VM.Config.CPU",
 		"VM.Config.Disk",
 		"VM.Config.HWType",
 		"VM.Config.Memory",
 		"VM.Config.Network",
 		"VM.Config.Options",
+		"VM.Migrate",
 		"VM.Monitor",
-		"VM.PowerMgmt"}
+		"VM.PowerMgmt",
+	}
 	var id string
 	if result, getok := d.GetOk("pm_api_token_id"); getok {
 		id = result.(string)
+		id = strings.Split(id, "!")[0]
 	} else if result, getok := d.GetOk("pm_user"); getok {
 		id = result.(string)
 	}
@@ -216,14 +221,15 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	permlist, err := client.GetUserPermissions(userID, "/")
-	if err != nil {
-		err = fmt.Errorf("user does not exist or has insufficient permissions on proxmox: %s", userID.ToString())
+	permlist, err2 := client.GetUserPermissions(userID, "/")
+	if err2 != nil {
+		err = fmt.Errorf("user does not exist or has insufficient permissions on proxmox: %s\n the error is: %s", userID.ToString(), err2)
 		return nil, err
 	}
 	sort.Strings(permlist)
-	if subslice(minimum_permissions, permlist) {
-
+	sort.Strings(minimum_permissions)
+	permDiff := permissions_check(permlist, minimum_permissions)
+	if len(permDiff) == 0 {
 		// look to see what logging we should be outputting according to the provider configuration
 		logLevels := make(map[string]string)
 		for logger, level := range d.Get("pm_log_levels").(map[string]interface{}) {
@@ -256,7 +262,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
 		}, nil
 	} else {
-		err = fmt.Errorf("permissions for user/token %s are not sufficient, please provide the following permissions at minimum: %v", userID.ToString(), minimum_permissions)
+		err = fmt.Errorf("permissions for user/token %s are not sufficient, please provide also the following permissions that are missing: %v", userID.ToString(), permDiff)
 		return nil, err
 	}
 }
