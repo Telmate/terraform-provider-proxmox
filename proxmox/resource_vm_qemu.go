@@ -70,6 +70,14 @@ func resourceVmQemu() *schema.Resource {
 				Description:      "The VM bios, it can be seabios or ovmf",
 				ValidateDiagFunc: BIOSValidator(),
 			},
+			"vm_state": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				Default:          "running",
+				Description:      "The state of the VM (running or stopped)",
+				ConflictsWith:    []string{"oncreate"},
+				ValidateDiagFunc: VMStateValidator(),
+			},
 			"onboot": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -83,10 +91,11 @@ func resourceVmQemu() *schema.Resource {
 				Description: "Startup order of the VM",
 			},
 			"oncreate": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
-				Description: "VM autostart on create",
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Default:       true,
+				Deprecated:    "Use `vm_state` instead",
+				ConflictsWith: []string{"vm_state"},
 			},
 			"tablet": {
 				Type:        schema.TypeBool,
@@ -1078,7 +1087,8 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	if d.Get("oncreate").(bool) {
+	// TODO: remove "oncreate" handling in next major release.
+	if d.Get("vm_state").(string) == "running" || d.Get("oncreate").(bool) {
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
 		_, err := client.StartVm(vmr)
 		if err != nil {
@@ -1092,7 +1102,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 	} else {
-		log.Print("[DEBUG][QemuVmCreate] oncreate = false, not starting VM")
+		log.Print("[DEBUG][QemuVmCreate] vm_state != running, not starting VM")
 	}
 
 	// err := initConnInfo(d, pconf, client, vmr, &config, lock)
@@ -1393,9 +1403,20 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
 	// enabled. Attempt a graceful shutdown or if that fails, force poweroff.
 	vmState, err := client.GetVmState(vmr)
-	if err == nil && vmState["status"] != "stopped" && d.Get("reboot_required").(bool) {
+	if err == nil && vmState["status"] != "stopped" && d.Get("vm_state").(string) == "stopped" {
+		log.Print("[DEBUG][QemuVmUpdate] shutting down VM to match `vm_state`")
+		_, err = client.ShutdownVm(vmr)
+		// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
+		if err != nil {
+			log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
+			_, err = client.StopVm(vmr)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	} else if err == nil && vmState["status"] != "stopped" && d.Get("reboot_required").(bool) {
 		if d.Get("automatic_reboot").(bool) {
-			log.Print("[DEBUG][QemuVmUpdate] shutting down VM")
+			log.Print("[DEBUG][QemuVmUpdate] shutting down VM for required reboot")
 			_, err = client.ShutdownVm(vmr)
 			// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
 			if err != nil {
@@ -1419,9 +1440,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 
-	// Start VM only if it wasn't running.
+	// Start VM only if it isn't running and it should be.
 	vmState, err = client.GetVmState(vmr)
-	if err == nil && vmState["status"] == "stopped" {
+	if err == nil && vmState["status"] == "stopped" && d.Get("vm_state").(string) == "running" {
 		log.Print("[DEBUG][QemuVmUpdate] starting VM")
 		_, err = client.StartVm(vmr)
 		if err != nil {
@@ -1479,6 +1500,9 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 
 	vmState, err := client.GetVmState(vmr)
 	log.Printf("[DEBUG] VM status: %s", vmState["status"])
+	if err == nil {
+		d.Set("vm_state", vmState["status"])
+	}
 	if err == nil && vmState["status"] == "started" {
 		log.Printf("[DEBUG] VM is running, cheking the IP")
 		err = initConnInfo(d, pconf, client, vmr, config, lock)
@@ -1546,6 +1570,7 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig15", config.Ipconfig[15])
 
 	// Some dirty hacks to populate undefined keys with default values.
+	// TODO: remove "oncreate" handling in next major release.
 	checkedKeys := []string{"force_create", "define_connection_info", "oncreate"}
 	for _, key := range checkedKeys {
 		if val := d.Get(key); val == nil {

@@ -40,7 +40,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
     memory                    = 2048
     numa                      = false
     onboot                    = false
-    oncreate                  = true
+    vm_state                  = "running"
     os_type                   = "Linux 5.x - 2.6 Kernel"
     qemu_os                   = "l26"
     scsihw                    = "virtio-scsi-pci"
