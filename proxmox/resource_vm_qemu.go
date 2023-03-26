@@ -602,6 +602,109 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
+			"disks": {
+				Type:          schema.TypeList,
+				Optional:      true,
+				ConflictsWith: []string{"disk_gb", "storage", "storage_type"},
+				MaxItems:      1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"ide": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"disk_0": schema_Ide("disk_0"),
+									"disk_1": schema_Ide("disk_1"),
+									"disk_2": schema_Ide("disk_2"),
+									"disk_3": schema_Ide("disk_3"),
+								},
+							},
+						},
+						"sata": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"disk_0": schema_Sata("disk_0"),
+									"disk_1": schema_Sata("disk_1"),
+									"disk_2": schema_Sata("disk_2"),
+									"disk_3": schema_Sata("disk_3"),
+									"disk_4": schema_Sata("disk_4"),
+									"disk_5": schema_Sata("disk_5"),
+								},
+							},
+						},
+						"scsi": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"disk_0":  schema_Scsi("disk_0"),
+									"disk_1":  schema_Scsi("disk_1"),
+									"disk_2":  schema_Scsi("disk_2"),
+									"disk_3":  schema_Scsi("disk_3"),
+									"disk_4":  schema_Scsi("disk_4"),
+									"disk_5":  schema_Scsi("disk_5"),
+									"disk_6":  schema_Scsi("disk_6"),
+									"disk_7":  schema_Scsi("disk_7"),
+									"disk_8":  schema_Scsi("disk_8"),
+									"disk_9":  schema_Scsi("disk_9"),
+									"disk_10": schema_Scsi("disk_10"),
+									"disk_11": schema_Scsi("disk_11"),
+									"disk_12": schema_Scsi("disk_12"),
+									"disk_13": schema_Scsi("disk_13"),
+									"disk_14": schema_Scsi("disk_14"),
+									"disk_15": schema_Scsi("disk_15"),
+									"disk_16": schema_Scsi("disk_16"),
+									"disk_17": schema_Scsi("disk_17"),
+									"disk_18": schema_Scsi("disk_18"),
+									"disk_19": schema_Scsi("disk_19"),
+									"disk_20": schema_Scsi("disk_20"),
+									"disk_21": schema_Scsi("disk_21"),
+									"disk_22": schema_Scsi("disk_22"),
+									"disk_23": schema_Scsi("disk_23"),
+									"disk_24": schema_Scsi("disk_24"),
+									"disk_25": schema_Scsi("disk_25"),
+									"disk_26": schema_Scsi("disk_26"),
+									"disk_27": schema_Scsi("disk_27"),
+									"disk_28": schema_Scsi("disk_28"),
+									"disk_29": schema_Scsi("disk_29"),
+									"disk_30": schema_Scsi("disk_30"),
+								},
+							},
+						},
+						"virtio": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"disk_0":  schema_Virtio("disk_0"),
+									"disk_1":  schema_Virtio("disk_1"),
+									"disk_2":  schema_Virtio("disk_2"),
+									"disk_3":  schema_Virtio("disk_3"),
+									"disk_4":  schema_Virtio("disk_4"),
+									"disk_5":  schema_Virtio("disk_5"),
+									"disk_6":  schema_Virtio("disk_6"),
+									"disk_7":  schema_Virtio("disk_7"),
+									"disk_8":  schema_Virtio("disk_8"),
+									"disk_9":  schema_Virtio("disk_9"),
+									"disk_10": schema_Virtio("disk_10"),
+									"disk_11": schema_Virtio("disk_11"),
+									"disk_12": schema_Virtio("disk_12"),
+									"disk_13": schema_Virtio("disk_13"),
+									"disk_14": schema_Virtio("disk_14"),
+									"disk_15": schema_Virtio("disk_15"),
+								},
+							},
+						},
+					},
+				},
+			},
 			// Deprecated single disk config.
 			"disk_gb": {
 				Type:       schema.TypeFloat,
@@ -2284,4 +2387,534 @@ func initConnInfo(ctx context.Context,
 		"port": sshPort,
 	})
 	return diags
+}
+
+func schema_CdRom(path string) *schema.Schema {
+	return &schema.Schema{
+		Type:          schema.TypeList,
+		Optional:      true,
+		MaxItems:      1,
+		ConflictsWith: []string{path + ".disk", path + ".passthrough"},
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"iso": schema_IsoFile(path + ".cdrom.0.passthrough"),
+				"passthrough": {
+					Type:          schema.TypeBool,
+					Optional:      true,
+					ConflictsWith: []string{path + ".cdrom.0.iso"},
+				},
+			},
+		},
+	}
+}
+
+func schema_CloudInit() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeSet,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"file": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+				"storage": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			},
+		},
+	}
+}
+
+func schema_IsoFile(setting string) *schema.Schema {
+	return &schema.Schema{
+		Type:          schema.TypeList,
+		Optional:      true,
+		ConflictsWith: []string{setting},
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"file": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+				"storage": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			},
+		},
+	}
+}
+
+func schema_Ide(setting string) *schema.Schema {
+	path := "disks.0.ide.0." + setting + ".0"
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"cdrom":     schema_CdRom(path),
+				"cloudinit": schema_CloudInit(),
+				"disk": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":    schema_DiskAsyncIO(),
+							"backup":     schema_DiskBackup(),
+							"bandwidth":  schema_DiskBandwidth(),
+							"cache":      schema_DiskCache(),
+							"discard":    {Type: schema.TypeBool, Optional: true},
+							"emulatessd": {Type: schema.TypeBool, Optional: true},
+							"format":     schema_DiskFormat(),
+							"id":         schema_DiskId(),
+							"replicate":  {Type: schema.TypeBool, Optional: true},
+							"serial":     schema_DiskSerial(),
+							"size":       schema_DiskSize(),
+							"storage":    schema_DiskStorage(),
+						},
+					},
+				},
+				"passthrough": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":    schema_DiskAsyncIO(),
+							"backup":     schema_DiskBackup(),
+							"bandwidth":  schema_DiskBandwidth(),
+							"cache":      schema_DiskCache(),
+							"discard":    {Type: schema.TypeBool, Optional: true},
+							"emulatessd": {Type: schema.TypeBool, Optional: true},
+							"file":       schema_PassthroughFile(),
+							"replicate":  {Type: schema.TypeBool, Optional: true},
+							"serial":     schema_DiskSerial(),
+							"size":       schema_PassthroughSize(),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_Sata(setting string) *schema.Schema {
+	path := "disks.0.sata.0." + setting + ".0"
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"cdrom":     schema_CdRom(path),
+				"cloudinit": schema_CloudInit(),
+				"disk": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":    schema_DiskAsyncIO(),
+							"backup":     schema_DiskBackup(),
+							"bandwidth":  schema_DiskBandwidth(),
+							"cache":      schema_DiskCache(),
+							"discard":    {Type: schema.TypeBool, Optional: true},
+							"emulatessd": {Type: schema.TypeBool, Optional: true},
+							"format":     schema_DiskFormat(),
+							"id":         schema_DiskId(),
+							"replicate":  {Type: schema.TypeBool, Optional: true},
+							"serial":     schema_DiskSerial(),
+							"size":       schema_DiskSize(),
+							"storage":    schema_DiskStorage(),
+						},
+					},
+				},
+				"passthrough": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":    schema_DiskAsyncIO(),
+							"backup":     schema_DiskBackup(),
+							"bandwidth":  schema_DiskBandwidth(),
+							"cache":      schema_DiskCache(),
+							"discard":    {Type: schema.TypeBool, Optional: true},
+							"emulatessd": {Type: schema.TypeBool, Optional: true},
+							"file":       schema_PassthroughFile(),
+							"replicate":  {Type: schema.TypeBool, Optional: true},
+							"serial":     schema_DiskSerial(),
+							"size":       schema_PassthroughSize(),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_Scsi(setting string) *schema.Schema {
+	path := "disks.0.scsi.0." + setting + ".0"
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"cdrom":     schema_CdRom(path),
+				"cloudinit": schema_CloudInit(),
+				"disk": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":    schema_DiskAsyncIO(),
+							"backup":     schema_DiskBackup(),
+							"bandwidth":  schema_DiskBandwidth(),
+							"cache":      schema_DiskCache(),
+							"discard":    {Type: schema.TypeBool, Optional: true},
+							"emulatessd": {Type: schema.TypeBool, Optional: true},
+							"format":     schema_DiskFormat(),
+							"id":         schema_DiskId(),
+							"iothread":   {Type: schema.TypeBool, Optional: true},
+							"readonly":   {Type: schema.TypeBool, Optional: true},
+							"replicate":  {Type: schema.TypeBool, Optional: true},
+							"serial":     schema_DiskSerial(),
+							"size":       schema_DiskSize(),
+							"storage":    schema_DiskStorage(),
+						},
+					},
+				},
+				"passthrough": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":    schema_DiskAsyncIO(),
+							"backup":     schema_DiskBackup(),
+							"bandwidth":  schema_DiskBandwidth(),
+							"cache":      schema_DiskCache(),
+							"discard":    {Type: schema.TypeBool, Optional: true},
+							"emulatessd": {Type: schema.TypeBool, Optional: true},
+							"file":       schema_PassthroughFile(),
+							"iothread":   {Type: schema.TypeBool, Optional: true},
+							"readonly":   {Type: schema.TypeBool, Optional: true},
+							"replicate":  {Type: schema.TypeBool, Optional: true},
+							"serial":     schema_DiskSerial(),
+							"size":       schema_PassthroughSize(),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_Virtio(setting string) *schema.Schema {
+	path := "disks.0.virtio.0." + setting + ".0"
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"cdrom":     schema_CdRom(path),
+				"cloudinit": schema_CloudInit(),
+				"disk": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":   schema_DiskAsyncIO(),
+							"backup":    schema_DiskBackup(),
+							"bandwidth": schema_DiskBandwidth(),
+							"cache":     schema_DiskCache(),
+							"discard":   {Type: schema.TypeBool, Optional: true},
+							"format":    schema_DiskFormat(),
+							"id":        schema_DiskId(),
+							"iothread":  {Type: schema.TypeBool, Optional: true},
+							"readonly":  {Type: schema.TypeBool, Optional: true},
+							"replicate": {Type: schema.TypeBool, Optional: true},
+							"serial":    schema_DiskSerial(),
+							"size":      schema_DiskSize(),
+							"storage":   schema_DiskStorage(),
+						},
+					},
+				},
+				"passthrough": {
+					Type:          schema.TypeList,
+					Optional:      true,
+					MaxItems:      1,
+					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"asyncio":   schema_DiskAsyncIO(),
+							"backup":    schema_DiskBackup(),
+							"bandwidth": schema_DiskBandwidth(),
+							"cache":     schema_DiskCache(),
+							"discard":   {Type: schema.TypeBool, Optional: true},
+							"file":      schema_PassthroughFile(),
+							"iothread":  {Type: schema.TypeBool, Optional: true},
+							"readonly":  {Type: schema.TypeBool, Optional: true},
+							"replicate": {Type: schema.TypeBool, Optional: true},
+							"serial":    schema_DiskSerial(),
+							"size":      schema_PassthroughSize(),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_DiskAsyncIO() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+			v, ok := i.(string)
+			if !ok {
+				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
+				return
+			}
+			if err := pxapi.QemuDiskAsyncIO(v).Validate(); err != nil {
+				errors = append(errors, err)
+			}
+			return
+		},
+	}
+}
+
+func schema_DiskBackup() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeBool,
+		Optional: true,
+		Default:  true,
+	}
+}
+
+func schema_DiskBandwidth() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"data": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"read":  schema_DiskBandwidthData(),
+							"write": schema_DiskBandwidthData(),
+						},
+					},
+				},
+				"iops": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"read":  schema_DiskBandwidthIops(),
+							"write": schema_DiskBandwidthIops(),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_DiskBandwidthData() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"burst": {
+					Type:     schema.TypeFloat,
+					Optional: true,
+					ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+						v, ok := i.(float64)
+						if !ok {
+							errors = append(errors, fmt.Errorf("expected type of %s to be a float", k))
+							return
+						}
+						if err := pxapi.QemuDiskBandwidthDataLimitConcurrent(v).Validate(); err != nil {
+							errors = append(errors, err)
+						}
+						return
+					},
+				},
+				"concurrent": {
+					Type:     schema.TypeFloat,
+					Optional: true,
+					ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+						v, ok := i.(float64)
+						if !ok {
+							errors = append(errors, fmt.Errorf("expected type of %s to be a float", k))
+							return
+						}
+						if err := pxapi.QemuDiskBandwidthDataLimitConcurrent(v).Validate(); err != nil {
+							errors = append(errors, err)
+						}
+						return
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_DiskBandwidthIops() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"burst": {
+					Type:     schema.TypeInt,
+					Optional: true,
+					ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+						v, ok := i.(int)
+						if !ok || v < 0 {
+							errors = append(errors, fmt.Errorf("expected type of %s to be a positive number (uint)", k))
+							return
+						}
+						if err := pxapi.QemuDiskBandwidthIopsLimitBurst(v).Validate(); err != nil {
+							errors = append(errors, err)
+						}
+						return
+					},
+				},
+				"concurrent": {
+					Type:     schema.TypeInt,
+					Optional: true,
+					ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+						v, ok := i.(int)
+						if !ok || v < 0 {
+							errors = append(errors, fmt.Errorf("expected type of %s to be a positive number (uint)", k))
+							return
+						}
+						if err := pxapi.QemuDiskBandwidthIopsLimitConcurrent(v).Validate(); err != nil {
+							errors = append(errors, err)
+						}
+						return
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_DiskCache() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "",
+		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+			v, ok := i.(string)
+			if !ok {
+				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
+				return
+			}
+			if err := pxapi.QemuDiskCache(v).Validate(); err != nil {
+				errors = append(errors, err)
+			}
+			return
+		},
+	}
+}
+
+func schema_DiskFormat() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "raw",
+		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+			v, ok := i.(string)
+			if !ok {
+				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
+				return
+			}
+			if err := pxapi.QemuDiskFormat(v).Validate(); err != nil {
+				errors = append(errors, err)
+			}
+			return
+		},
+	}
+}
+
+func schema_DiskId() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeInt,
+		Computed: true,
+	}
+}
+
+func schema_DiskSerial() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "",
+		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+			v, ok := i.(string)
+			if !ok {
+				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
+				return
+			}
+			if err := pxapi.QemuDiskSerial(v).Validate(); err != nil {
+				errors = append(errors, err)
+			}
+			return
+		},
+	}
+}
+
+func schema_DiskSize() *schema.Schema {
+	return &schema.Schema{
+		Type:         schema.TypeInt,
+		Required:     true,
+		ValidateFunc: uint_Validator(),
+	}
+}
+
+func schema_DiskStorage() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Required: true,
+	}
+}
+
+func schema_PassthroughFile() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Required: true,
+	}
+}
+
+func schema_PassthroughSize() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeInt,
+		Computed: true,
+	}
 }

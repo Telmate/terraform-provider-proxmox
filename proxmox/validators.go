@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -35,7 +36,7 @@ func MacAddressValidator() schema.SchemaValidateDiagFunc {
 			return diag.Errorf("expected type of %v to be string", k)
 		}
 		mac := strings.Replace(value, ":", "", -1)
-		
+
 		// Check if a MAC address has been provided. If not, proxmox will generate random one.
 		if len(mac) == 0 {
 			return nil
@@ -92,4 +93,15 @@ func VMStateValidator() schema.SchemaValidateDiagFunc {
 		"running",
 		"stopped",
 	}, false))
+}
+
+func uint_Validator() schema.SchemaValidateFunc {
+	return func(i interface{}, k string) (warnings []string, errors []error) {
+		v, ok := i.(int)
+		if !ok || v < 0 {
+			errors = append(errors, fmt.Errorf("expected type of %s to be a positive number (uint)", k))
+			return
+		}
+		return
+	}
 }
