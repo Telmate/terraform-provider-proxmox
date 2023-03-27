@@ -413,6 +413,29 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
+			"efidisk": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"storage": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+						"efitype": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "4m",
+							ValidateFunc: validation.StringInSlice([]string{
+								"2m",
+								"4m",
+							}, false),
+							ForceNew: true,
+						},
+					},
+				},
+			},
 			"disk": {
 				Type:          schema.TypeList,
 				Optional:      true,
@@ -930,6 +953,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	qemuNetworks, _ := ExpandDevicesList(d.Get("network").([]interface{}))
 	qemuDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
+	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials, _ := DevicesSetToMap(serials)
@@ -990,6 +1014,11 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
+
+	if len(qemuEfiDisks) > 0 {
+		config.EFIDisk = qemuEfiDisks[0]
+	}
+
 	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", vmName)
 	dupVmr, _ := client.GetVmRefByName(vmName)
 
