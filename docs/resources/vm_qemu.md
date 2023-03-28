@@ -31,55 +31,6 @@ resource "proxmox_vm_qemu" "resource-name" {
 }
 ```
 
-<del>
-## Preprovision
-
-With preprovision, you can provision a VM directly from the resource block. This provisioning method is therefore ran **
-before** provision blocks. When using preprovision, there are three `os_type` options: `ubuntu`, `centos`
-or `cloud-init`.
-
-```hcl
-resource "proxmox_vm_qemu" "preprovision-test" {
-  preprovision = true
-  os_type      = "ubuntu"
-}
-```
-
-### Preprovision for Linux (Ubuntu / CentOS)
-
-There is a pre-provision phase which is used to set a hostname, initialize eth0, and resize the VM disk to available
-space. This is done over SSH with the `ssh_forward_ip`, `ssh_user` and `ssh_private_key`. Disk resize is done if the
-file [/etc/auto_resize_vda.sh](https://github.com/Telmate/terraform-ubuntu-proxmox-iso/blob/master/auto_resize_vda.sh)
-exists.
-
-```hcl
-resource "proxmox_vm_qemu" "preprovision-test" {
-  preprovision      = true
-  os_type           = "ubuntu"
-  ssh_forward_ip    = "10.0.0.1"
-  ssh_user          = "terraform"
-  ssh_private_key   = <<EOF
------BEGIN RSA PRIVATE KEY-----
-private ssh key terraform
------END RSA PRIVATE KEY-----
-EOF
-  os_network_config = <<EOF
-auto eth0
-iface eth0 inet dhcp
-EOF
-
-  connection {
-    type        = "ssh"
-    user        = "${self.ssh_user}"
-    private_key = "${self.ssh_private_key}"
-    host        = "${self.ssh_host}"
-    port        = "${self.ssh_port}"
-  }
-}
-```
-
-</del>
-
 ## Provision through Cloud-Init
 
 Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When
