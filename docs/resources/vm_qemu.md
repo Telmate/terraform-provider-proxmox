@@ -240,6 +240,29 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 | `slot`               | `int` |               | _(not sure what this is for, seems to be deprecated, do not use)_. |
 | `storage_type`       | `str` |               | The type of pool that `storage` is backed by. You shouldn't need to specify this, use the `storage` parameter instead. |
 
+### EFI Disk Block
+
+The `efidisk` block is used to configure the disk used for EFI data storage. There may only be one EFI disk block.
+The EFI disk will be automatically pre-loaded with distribution-specific and Microsoft Standard Secure Boot keys.
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  // ...
+
+  efidisk {
+    efitype = "4m"
+    storage = "local-lvm"
+  }
+}
+```
+
+See the [docs about EFI disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_bios_and_uefi) for more details.
+
+| Argument       | Type  | Default Value | Description                                                                                                                                                                                                                                                                            |
+|----------------|-------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `efitype`      | `str` | `"4m"`        | The type of efi disk device to add. Options: `2m`, `4m`                                                                                                                                                                                                                                |
+| `storage`      | `str` |               | **Required** The name of the storage pool on which to store the disk.                                                                                                                                                                                                                  |
+
 ### Serial Block
 
 Create a serial device inside the VM (up to a maximum of 4 can be specified), and either pass through a host serial
