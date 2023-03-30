@@ -1702,24 +1702,30 @@ func resourceVmQemuDelete(d *schema.ResourceData, meta interface{}) error {
 	client := pconf.Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
 	vmr := pxapi.NewVmRef(vmId)
-	_, err := client.StopVm(vmr)
+	vmState, err := client.GetVmState(vmr)
 	if err != nil {
 		return err
 	}
-
-	// Wait until vm is stopped. Otherwise, deletion will fail.
-	// ugly way to wait 5 minutes(300s)
-	waited := 0
-	for waited < 300 {
-		vmState, err := client.GetVmState(vmr)
-		if err == nil && vmState["status"] == "stopped" {
-			break
-		} else if err != nil {
+	if vmState["status"] != "stopped" {
+		_, err := client.StopVm(vmr)
+		if err != nil {
 			return err
 		}
-		// wait before next try
-		time.Sleep(5 * time.Second)
-		waited += 5
+
+		// Wait until vm is stopped. Otherwise, deletion will fail.
+		// ugly way to wait 5 minutes(300s)
+		waited := 0
+		for waited < 300 {
+			vmState, err := client.GetVmState(vmr)
+			if err == nil && vmState["status"] == "stopped" {
+				break
+			} else if err != nil {
+				return err
+			}
+			// wait before next try
+			time.Sleep(5 * time.Second)
+			waited += 5
+		}
 	}
 
 	_, err = client.DeleteVm(vmr)
