@@ -2,6 +2,7 @@ package proxmox
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -305,6 +307,42 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  false,
+						},
+					},
+				},
+			},
+			"smbios": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"family": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"manufacturer": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"product": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"serial": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"sku": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"uuid": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"version": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
@@ -896,6 +934,7 @@ func resourceVmQemuCreate(d *schema.ResourceData, meta interface{}) error {
 		QemuSerials:    qemuSerials,
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
+		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -1209,6 +1248,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuSerials:    qemuSerials,
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
+		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		// Cloud-init.
 		CIuser:       d.Get("ciuser").(string),
 		CIpassword:   d.Get("cipassword").(string),
@@ -1569,6 +1609,8 @@ func _resourceVmQemuRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("ipconfig14", config.Ipconfig[14])
 	d.Set("ipconfig15", config.Ipconfig[15])
 
+	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
+
 	// Some dirty hacks to populate undefined keys with default values.
 	// TODO: remove "oncreate" handling in next major release.
 	checkedKeys := []string{"force_create", "define_connection_info", "oncreate"}
@@ -1869,6 +1911,64 @@ func FlattenDevicesList(proxmoxDevices pxapi.QemuDevices) ([]map[string]interfac
 	}
 
 	return flattenedDevices, nil
+}
+
+func BuildSmbiosArgs(smbiosList []interface{}) string {
+	if len(smbiosList) == 0 {
+		return ""
+	}
+
+	smbiosArgs := []string{}
+	for _, v := range smbiosList {
+		for conf, value := range v.(map[string]interface{}) {
+			switch conf {
+
+			case "uuid":
+				var s string
+				if value.(string) == "" {
+					s = fmt.Sprintf("%s=%s", conf, uuid.New().String())
+				} else {
+					s = fmt.Sprintf("%s=%s", conf, value.(string))
+				}
+				smbiosArgs = append(smbiosArgs, s)
+
+			case "serial", "manufacturer", "product", "version", "sku", "family":
+				if value.(string) == "" {
+					continue
+				}
+				s := fmt.Sprintf("%s=%s", conf, base64.StdEncoding.EncodeToString([]byte(value.(string))))
+				smbiosArgs = append(smbiosArgs, s)
+
+			default:
+				continue
+			}
+		}
+	}
+	smbiosArgs = append(smbiosArgs, "base64=1")
+
+	return strings.Join(smbiosArgs, ",")
+}
+
+func ReadSmbiosArgs(smbios string) []interface{} {
+	if smbios == "" {
+		return nil
+	}
+
+	smbiosArgs := []interface{}{}
+	smbiosMap := make(map[string]interface{}, 0)
+	for _, l := range strings.Split(smbios, ",") {
+		if l == "" {
+			continue
+		}
+		k, v := strings.Split(l, "=")[0], strings.Split(l, "=")[1]
+		decodedString, err := base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			decodedString = []byte(v)
+		}
+		smbiosMap[k] = string(decodedString)
+	}
+
+	return append(smbiosArgs, smbiosMap)
 }
 
 // Consumes a terraform TypeList of a Qemu Device (network, hard drive, etc) and returns the "Expanded"
