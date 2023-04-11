@@ -1813,6 +1813,9 @@ func prepareDiskSize(
 	}
 	// log.Printf("%s", clonedConfig)
 	for diskID, diskConf := range diskConfMap {
+		if diskConf["media"] == "cdrom" {
+			continue
+		}
 		diskName := fmt.Sprintf("%v%v", diskConf["type"], diskID)
 
 		diskSize := pxapi.DiskSizeGB(diskConf["size"])
