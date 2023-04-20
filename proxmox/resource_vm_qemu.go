@@ -1203,8 +1203,13 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	// robust solution can be found.
 	qemuDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
 	for _, diskParamMap := range qemuDisks {
-		delete(diskParamMap, "file")  // removed; causes a crash in proxmox-api-go
-		delete(diskParamMap, "media") // removed; results in a duplicate key issue causing a 400 from proxmox
+		if diskParamMap["format"] == "iso" {
+			delete(diskParamMap, "format") // removed; format=iso is not a valid option for proxmox
+		}
+		if diskParamMap["media"] != "cdrom" {
+			delete(diskParamMap, "media") // removed; results in a duplicate key issue causing a 400 from proxmox
+		}
+		delete(diskParamMap, "file") // removed; causes a crash in proxmox-api-go
 	}
 
 	qemuNetworks, err := ExpandDevicesList(d.Get("network").([]interface{}))
