@@ -112,7 +112,7 @@ func resourceCloudInitDiskCreate(ctx context.Context, d *schema.ResourceData, m 
 		return diag.FromErr(err)
 	}
 
-	fileName := fmt.Sprintf("%s.iso", d.Get("name").(string))
+	fileName := fmt.Sprintf("tf-ci-%s.iso", d.Get("name").(string))
 	err = client.Upload(d.Get("pve_node").(string), d.Get("storage").(string), isoContentType, fileName, r)
 	if err != nil {
 		return diag.FromErr(err)
