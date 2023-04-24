@@ -156,11 +156,11 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"proxmox_vm_qemu":    resourceVmQemu(),
-			"proxmox_lxc":        resourceLxc(),
-			"proxmox_lxc_disk":   resourceLxcDisk(),
-			"proxmox_pool":       resourcePool(),
-			"proxmox_cloud_init": resourceCloudInitDisk(),
+			"proxmox_vm_qemu":         resourceVmQemu(),
+			"proxmox_lxc":             resourceLxc(),
+			"proxmox_lxc_disk":        resourceLxcDisk(),
+			"proxmox_pool":            resourcePool(),
+			"proxmox_cloud_init_disk": resourceCloudInitDisk(),
 			// TODO - proxmox_storage_iso
 			// TODO - proxmox_bridge
 			// TODO - proxmox_vm_qemu_template

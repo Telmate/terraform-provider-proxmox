@@ -50,6 +50,11 @@ func resourceCloudInitDisk() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"vendor_data": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"network_config": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -69,26 +74,39 @@ func resourceCloudInitDisk() *schema.Resource {
 	}
 }
 
-func createCloudInitISO(metaData, userData, networkConfig string) (io.Reader, string, error) {
+func createCloudInitISO(metaData, userData, vendorData, networkConfig string) (io.Reader, string, error) {
 	isoWriter, err := iso9660.NewWriter()
 	if err != nil {
 		return nil, "", err
 	}
 	defer isoWriter.Cleanup()
 
-	err = isoWriter.AddFile(strings.NewReader(metaData), "meta-data")
-	if err != nil {
-		return nil, "", err
+	if metaData != "" {
+		err = isoWriter.AddFile(strings.NewReader(metaData), "meta-data")
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
-	err = isoWriter.AddFile(strings.NewReader(userData), "user-data")
-	if err != nil {
-		return nil, "", err
+	if userData != "" {
+		err = isoWriter.AddFile(strings.NewReader(userData), "user-data")
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
-	err = isoWriter.AddFile(strings.NewReader(networkConfig), "network-config")
-	if err != nil {
-		return nil, "", err
+	if vendorData != "" {
+		err = isoWriter.AddFile(strings.NewReader(vendorData), "vendor-data")
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	if networkConfig != "" {
+		err = isoWriter.AddFile(strings.NewReader(networkConfig), "network-config")
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
 	var b bytes.Buffer
@@ -107,7 +125,7 @@ func resourceCloudInitDiskCreate(ctx context.Context, d *schema.ResourceData, m 
 	pconf := m.(*providerConfiguration)
 	client := pconf.Client
 
-	r, sum, err := createCloudInitISO(d.Get("meta_data").(string), d.Get("user_data").(string), d.Get("network_config").(string))
+	r, sum, err := createCloudInitISO(d.Get("meta_data").(string), d.Get("user_data").(string), d.Get("vendor_data").(string), d.Get("network_config").(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -150,11 +168,9 @@ func resourceCloudInitDiskRead(ctx context.Context, d *schema.ResourceData, m in
 			break
 		}
 	}
-
 	if !isoFound {
 		// ISO not found so we (re)create it
 		d.SetId("")
-		return nil
 	}
 
 	return nil

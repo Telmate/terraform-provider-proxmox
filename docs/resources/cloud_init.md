@@ -7,7 +7,7 @@ This resource creates and manages a Proxmox Cloud Init disk.
 ### Basic example
 
 ```hcl
-resource "proxmox_cloud_init" "ci" {
+resource "proxmox_cloud_init_disk" "ci" {
   name      = var.name
   pve_node  = var.pve_node
   storage   = var.storage
@@ -46,8 +46,8 @@ resource "proxmox_vm_qemu" "my-vm" {
     type    = "ide"
     media   = "cdrom"
     storage = var.storage
-    volume  = proxmox_cloud_init.ci.id
-    size    = proxmox_cloud_init.ci.size
+    volume  = proxmox_cloud_init_disk.ci.id
+    size    = proxmox_cloud_init_disk.ci.size
   }
 ...
 }
@@ -68,6 +68,7 @@ The following arguments are supported in the top level resource block.
 | `meta_data`      | `string` | `""`          | Content of the meta-data file                                           |
 | `user_data`      | `string` | `""`          | Content of the user-data file                                           |
 | `network_config` | `string` | `""`          | Content of the network-config file                                      |
+| `vendor_data`    | `string` | `""`          | Content of the vendor-data file                                         |
 
 ## Attribute reference
 
