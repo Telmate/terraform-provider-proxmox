@@ -1,4 +1,4 @@
-# Cloud Init Resource
+# Cloud Init Disk Resource
 
 This resource creates and manages a Proxmox Cloud Init disk.
 
@@ -67,8 +67,8 @@ The following arguments are supported in the top level resource block.
 | `storage`        | `string` |               | **Required** The name of the Proxmox Storage on which to place the ISO. |
 | `meta_data`      | `string` | `""`          | Content of the meta-data file                                           |
 | `user_data`      | `string` | `""`          | Content of the user-data file                                           |
-| `network_config` | `string` | `""`          | Content of the network-config file                                      |
 | `vendor_data`    | `string` | `""`          | Content of the vendor-data file                                         |
+| `network_config` | `string` | `""`          | Content of the network-config file                                      |
 
 ## Attribute reference
 
