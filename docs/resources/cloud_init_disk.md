@@ -4,48 +4,53 @@ This resource creates and manages a Proxmox Cloud Init disk.
 
 ## Example Usage
 
-### Basic example
-
 ```hcl
-resource "proxmox_cloud_init_disk" "ci" {
-  name      = var.name
-  pve_node  = var.pve_node
-  storage   = var.storage
-
-  meta_data = <<EOF
-instance-id: ${var.name}
-local-hostname: ${var.name}
-EOF
-
-  user_data = <<EOF
-#cloud-config
-users:
-  - name: foobar
-    sudo: ALL=(ALL) NOPASSWD:ALL
-EOF
-
-  network_config = <<EOF
-version: 2
-ethernets:
-  nic0:
-    match:
-      name: "en*"
-    dhcp4: false
-    dhcp6: false
-    addresses: ["10.1.100.200/24"]
-    gateway4: "10.1.100.1"
-    nameservers:
-      addresses: ["8.8.8.8", "1.1.1.1"]
-EOF
+locals {
+  vm_name          = "awesome-vm"
+  pve_node         = "pve-node-1"
+  iso_storage_pool = "cephfs"
 }
 
-resource "proxmox_vm_qemu" "my-vm" {
+resource "proxmox_cloud_init_disk" "ci" {
+  name      = local.vm_name
+  pve_node  = local.pve_node
+  storage   = local.iso_storage_pool
+
+  meta_data = yamlencode({
+    instance_id    = sha1(local.vm_name)
+    local-hostname = local.vm_name
+  })
+
+  user_data = <<EOT
+#cloud-config
+users:
+  - default
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3N......
+EOT
+
+  network_config = yamlencode({
+    version = 1
+    config = [{
+      type = "physical"
+      name = "eth0"
+      subnets = [{
+        type            = "static"
+        address         = "192.168.1.100/24"
+        gateway         = "192.168.1.1"
+        dns_nameservers = ["1.1.1.1", "8.8.8.8"]
+      }]
+    }]
+  })
+}
+
+resource "proxmox_vm_qemu" "vm" {
 ....
-  // Define a disk block which will mount the generated cloud init ISO
+  // Define a disk block with media type cdrom which reference the generated cloud-init disk
   disk {
-    type    = "ide"
+    type    = "scsi"
     media   = "cdrom"
-    storage = var.storage
+    storage = local.iso_storage_pool
     volume  = proxmox_cloud_init_disk.ci.id
     size    = proxmox_cloud_init_disk.ci.size
   }
