@@ -1667,7 +1667,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// need to set cache because proxmox-api-go requires a value for cache but doesn't return a value for
 	// it when it is empty. thus if cache is "" then we should insert "none" instead for consistency
-	var rxCloudInitDrive = regexp.MustCompile(`^.*-cloudinit.*`)
+	var rxCloudInitDrive = regexp.MustCompile(`^vm-[0-9]+-cloudinit$`)
 	for id, qemuDisk := range config.QemuDisks {
 		logger.Debug().Int("vmid", vmID).Msgf("[READ] Disk Processed '%v'", qemuDisk)
 		// ugly hack to avoid cloudinit disk to be removed since they usually are not present in resource definition
