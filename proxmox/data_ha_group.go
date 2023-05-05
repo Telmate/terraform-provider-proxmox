@@ -9,7 +9,7 @@ func DataHAGroup() *schema.Resource {
 	return &schema.Resource{
 		Read: dataReadHAGroup,
 		Schema: map[string]*schema.Schema{
-			"name": {
+			"group_name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -25,7 +25,7 @@ func dataReadHAGroup(d *schema.ResourceData, meta interface{}) (err error) {
 	client := pconf.Client
 
 	var haGroup *proxmox.HAGroup
-	haGroup, err = client.GetHAGroupByName(d.Get("name").(string))
+	haGroup, err = client.GetHAGroupByName(d.Get("group_name").(string))
 	if err != nil {
 		return err
 	}
