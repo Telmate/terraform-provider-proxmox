@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/url"
 	"path"
@@ -84,8 +85,16 @@ func resourceVmQemu() *schema.Resource {
 			},
 			"target_node": {
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				Description: "The node where VM goes to",
+			},
+			"target_nodes": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "A list of nodes where VM goes to",
 			},
 			"bios": {
 				Type:             schema.TypeString,
@@ -982,7 +991,26 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	dupVmr, _ := client.GetVmRefByName(vmName)
 
 	forceCreate := d.Get("force_create").(bool)
-	targetNode := d.Get("target_node").(string)
+
+	var targetNodes []string
+	targetNodesRaw := d.Get("target_nodes").([]interface{})
+	targetNodes = make([]string, len(targetNodesRaw))
+	for i, raw := range targetNodesRaw {
+		targetNodes[i] = raw.(string)
+	}
+
+	var targetNode string
+
+	if targetNodes == nil || len(targetNodes) == 0 {
+		targetNode = d.Get("target_node").(string)
+	} else {
+		targetNode = targetNodes[rand.Intn(len(targetNodes))]
+	}
+
+	if targetNode == "" {
+		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use target_node or target_nodes to set a specific node! %v", vmName, targetNodes))
+	}
+
 	pool := d.Get("pool").(string)
 
 	if dupVmr != nil && forceCreate {
@@ -1228,10 +1256,15 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Partial(true)
 	if d.HasChange("target_node") {
-		_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
-		if err != nil {
-			return diag.FromErr(err)
+		// check if it must be migrated manually or it has been migrated by the promox high availability system
+		if vmr.Node() != d.Get("target_node").(string) {
+			_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
+
+		// update target node
 		vmr.SetNode(d.Get("target_node").(string))
 	}
 	d.Partial(false)
@@ -1539,12 +1572,45 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// Try to get information on the vm. If this call err's out
 	// that indicates the VM does not exist. We indicate that to terraform
 	// by calling a SetId("")
-	_, err = client.GetVmInfo(vmr)
-	if err != nil {
+
+	// loop through all virtual servers...?
+	var targetNodeVMR string = ""
+	var targetNodes []string
+	targetNodesRaw := d.Get("target_nodes").([]interface{})
+	targetNodes = make([]string, len(targetNodesRaw))
+	for i, raw := range targetNodesRaw {
+		targetNodes[i] = raw.(string)
+	}
+
+	if targetNodes == nil || len(targetNodes) == 0 {
+		_, err = client.GetVmInfo(vmr)
+		if err != nil {
+			logger.Debug().Int("vmid", vmID).Err(err).Msg("failed to get vm info")
+			d.SetId("")
+			return nil
+		}
+		targetNodeVMR = vmr.Node()
+	} else {
+		for _, targetNode := range targetNodes {
+			vmr.SetNode(targetNode)
+			_, err = client.GetVmInfo(vmr)
+			if err != nil {
+				d.SetId("")
+			}
+
+			d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
+			logger.Debug().Any("Setting node id to", d.Get(vmr.Node()))
+			targetNodeVMR = targetNode
+			break
+		}
+	}
+
+	if targetNodeVMR == "" {
 		logger.Debug().Int("vmid", vmID).Err(err).Msg("failed to get vm info")
 		d.SetId("")
 		return nil
 	}
+
 	config, err := pxapi.NewConfigQemuFromApi(vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1574,7 +1640,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	logger.Debug().Int("vmid", vmID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
-	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
 	d.Set("bios", config.Bios)
