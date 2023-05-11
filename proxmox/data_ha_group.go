@@ -49,8 +49,8 @@ func dataReadHAGroup(data *schema.ResourceData, meta interface{}) (err error) {
 
 	client := pconf.Client
 
-	var haGroup *proxmox.HAGroup
-	haGroup, err = client.GetHAGroupByName(d.Get("group_name").(string))
+	var group *proxmox.HAGroup
+	group, err = client.GetHAGroupByName(data.Get("group_name").(string))
 	if err != nil {
 		return err
 	}
