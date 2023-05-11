@@ -3,12 +3,13 @@ package proxmox
 import (
 	"sort"
 
+	"github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func DataHAGroup() *schema.Resource {
 	return &schema.Resource{
-		Read: dataHaGroupRead,
+		Read: dataReadHAGroup,
 		Schema: map[string]*schema.Schema{
 			"group_name": {
 				Type:     schema.TypeString,
@@ -41,14 +42,15 @@ func DataHAGroup() *schema.Resource {
 	}
 }
 
-func dataHaGroupRead(data *schema.ResourceData, meta interface{}) error {
+func dataReadHAGroup(data *schema.ResourceData, meta interface{}) (err error) {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
 	client := pconf.Client
 
-	group, err := client.GetHAGroupByName(data.Get("group_name").(string))
+	var haGroup *proxmox.HAGroup
+	haGroup, err = client.GetHAGroupByName(d.Get("group_name").(string))
 	if err != nil {
 		return err
 	}
@@ -62,6 +64,5 @@ func dataHaGroupRead(data *schema.ResourceData, meta interface{}) error {
 	_ = data.Set("restricted", group.Restricted)
 	_ = data.Set("nofailback", group.NoFailback)
 	_ = data.Set("comment", group.Comment)
-
 	return nil
 }
