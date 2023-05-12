@@ -561,6 +561,18 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  0,
 						},
+						"serial": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      "",
+							ValidateFunc: validation.StringLenBetween(0, 20),
+						},
+						"wwn": {
+							Type:         schema.TypeString,
+							Optional:     true,
+							Default:      "",
+							ValidateFunc: validation.StringMatch(regexp.MustCompile(`^0x[A-Fa-f0-9]+$`), "The drive’s worldwide name, encoded as 16 bytes hex string, prefixed by 0x."),
+						},
 						// Misc
 						"file": {
 							Type:     schema.TypeString,
@@ -1441,6 +1453,12 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 					d.Set("reboot_required", true)
 				}
 				if oldValues[i].(map[string]interface{})["size"] != newValues[i].(map[string]interface{})["size"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["serial"] != newValues[i].(map[string]interface{})["serial"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["wwn"] != newValues[i].(map[string]interface{})["wwn"] {
 					d.Set("reboot_required", true)
 				}
 				// these paramater changes only require reboot if disk hotplug is disabled

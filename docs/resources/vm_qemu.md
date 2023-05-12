@@ -218,7 +218,7 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 | `ssd`                | `int` | `0`           | Whether to expose this drive as an SSD, rather than a rotational hard disk. |
 | `discard`            | `str` |               | Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveats too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info. |
 | `aio`                | `str` |               | AIO type to use. Options: `io_uring`, `native`, `threads`. |
-| `mbps`               | `int` | `0`           | Maximum r/w speed in megabytes per second. `0` means unlimited. 
+| `mbps`               | `int` | `0`           | Maximum r/w speed in megabytes per second. `0` means unlimited.
 | `mbps_rd`            | `int` | `0`           | Maximum read speed in megabytes per second. `0` means unlimited. |
 | `mbps_rd_max`        | `int` | `0`           | Maximum read speed in megabytes per second. `0` means unlimited. |
 | `mbps_wr`            | `int` | `0`           | Maximum write speed in megabytes per second. `0` means unlimited.     |
@@ -232,6 +232,8 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 | `iops_wr`            | `int` | `0`           | Maximum write I/O in operations per second. `0` means unlimited. |
 | `iops_wr_max`        | `int` | `0`           | Maximum unthrottled write I/O pool in operations per second. `0` means unlimited. |
 | `iops_wr_max_length` | `int` | `0`           | Maximum length of write I/O bursts in seconds. `0` means unlimited. |
+| `serial`             | `str` |               | The drive’s reported serial number, url-encoded, up to 20 bytes long. |
+| `wwn`                | `str` |               | The drive’s worldwide name, encoded as 16 bytes hex string, prefixed by 0x. |
 | `file`               | `str` |               | The filename portion of the path to the drive’s backing volume. You shouldn't need to specify this, use the `storage` parameter instead. |
 | `media`              | `str` | `"disk"`      | The drive’s media type. Options: `cdrom`, `disk`. |
 | `volume`             | `str` |               | The full path to the drive’s backing volume including the storage pool name. You shouldn't need to specify this, use the `storage` parameter instead. |
