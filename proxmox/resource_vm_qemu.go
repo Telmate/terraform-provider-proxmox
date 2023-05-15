@@ -2456,8 +2456,7 @@ func schema_Ide(setting string) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom":     schema_CdRom(path),
-				"cloudinit": schema_CloudInit(),
+				"cdrom": schema_CdRom(path),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
@@ -2512,8 +2511,7 @@ func schema_Sata(setting string) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom":     schema_CdRom(path),
-				"cloudinit": schema_CloudInit(),
+				"cdrom": schema_CdRom(path),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
@@ -2568,8 +2566,7 @@ func schema_Scsi(setting string) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom":     schema_CdRom(path),
-				"cloudinit": schema_CloudInit(),
+				"cdrom": schema_CdRom(path),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
@@ -2628,8 +2625,7 @@ func schema_Virtio(setting string) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom":     schema_CdRom(path),
-				"cloudinit": schema_CloudInit(),
+				"cdrom": schema_CdRom(path),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
