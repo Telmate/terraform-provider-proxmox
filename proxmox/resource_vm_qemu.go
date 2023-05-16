@@ -2397,7 +2397,11 @@ func schema_CdRom(path string) *schema.Schema {
 		ConflictsWith: []string{path + ".disk", path + ".passthrough"},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"iso": schema_IsoFile(path + ".cdrom.0.passthrough"),
+				"iso": {
+					Type:          schema.TypeString,
+					Optional:      true,
+					ConflictsWith: []string{path + ".cdrom.0.passthrough"},
+				},
 				"passthrough": {
 					Type:          schema.TypeBool,
 					Optional:      true,
@@ -2413,26 +2417,6 @@ func schema_CloudInit() *schema.Schema {
 		Type:     schema.TypeSet,
 		Optional: true,
 		MaxItems: 1,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"file": {
-					Type:     schema.TypeString,
-					Required: true,
-				},
-				"storage": {
-					Type:     schema.TypeString,
-					Required: true,
-				},
-			},
-		},
-	}
-}
-
-func schema_IsoFile(setting string) *schema.Schema {
-	return &schema.Schema{
-		Type:          schema.TypeList,
-		Optional:      true,
-		ConflictsWith: []string{setting},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"file": {
