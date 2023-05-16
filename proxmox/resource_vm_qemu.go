@@ -416,6 +416,7 @@ func resourceVmQemu() *schema.Resource {
 			"disk": {
 				Type:          schema.TypeList,
 				Optional:      true,
+				Deprecated:    "Use `disks` instead",
 				ConflictsWith: []string{"disk_gb", "storage", "storage_type"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
