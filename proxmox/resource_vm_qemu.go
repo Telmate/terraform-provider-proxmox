@@ -1672,9 +1672,11 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		logger.Debug().Int("vmid", vmID).Msgf("[READ] Disk Processed '%v'", qemuDisk)
 		// ugly hack to avoid cloudinit disk to be removed since they usually are not present in resource definition
 		// but are created from proxmox as ide2 so threated
-		if ciDisk := rxCloudInitDrive.FindStringSubmatch(qemuDisk["file"].(string)); len(ciDisk) > 0 {
-			config.QemuDisks[id] = nil
-			logger.Debug().Int("vmid", vmID).Msgf("[READ] Remove cloudinit disk")
+		if qemuDisk["file"] != nil {
+			if ciDisk := rxCloudInitDrive.FindStringSubmatch(qemuDisk["file"].(string)); len(ciDisk) > 0 {
+				config.QemuDisks[id] = nil
+				logger.Debug().Int("vmid", vmID).Msgf("[READ] Remove cloudinit disk")
+			}
 		}
 		// cache == "none" is required for disk creation/updates but proxmox-api-go returns cache == "" or cache == nil in reads
 		if qemuDisk["cache"] == "" || qemuDisk["cache"] == nil {
