@@ -270,6 +270,20 @@ details.
 | `host`   | `str`  |               | **Required** USB device host. This can either be done via the vendor- and product-id, or via the host bus and port. |
 | `usb3`   | `bool` | `false`       | Specifies whether if given host option is a USB3 device or port.                                                    |
 
+## SMBIOS Block
+
+The `smbios` block sets SMBIOS type 1 settings for the VM.
+
+| Argument       | Type     | Description               |
+|----------------|----------|---------------------------|
+| `family`       | `string` | The SMBIOS family.        |
+| `manufacturer` | `string` | The SMBIOS manufacturer.  |
+| `serial`       | `string` | The SMBIOS serial number. |
+| `product`      | `string` | The SMBIOS product.       |
+| `sku`          | `string` | The SMBIOS SKU.           |
+| `uuid`         | `string` | The SMBIOS UUID.          |
+| `version`      | `string` | The SMBIOS version.       |
+
 ## Attribute Reference
 
 In addition to the arguments above, the following attributes can be referenced from this resource.

@@ -50,7 +50,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
     vcpus                     = 0
 
     disk {
-        backup       = 0
+        backup       = false
         cache        = "none"
         discard      = "on"
         iothread     = 1
@@ -71,5 +71,15 @@ resource "proxmox_vm_qemu" "pxe-example" {
         firewall  = false
         link_down = false
         model     = "e1000"
+    }
+
+    smbios {
+        family       = "VM"
+        manufacturer = "Hashibrown"
+        product      = "Terraform"
+        sku          = "dQw4w9WgXcQ"
+        uuid         = "5b710d2f-4ea2-4d49-9eaa-c18392fd734d"
+        version      = "v1.0"
+        serial       = "ABC123"
     }
 }
