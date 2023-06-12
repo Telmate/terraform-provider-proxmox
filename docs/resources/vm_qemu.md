@@ -195,7 +195,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Ide Block
 
-The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `disk_0` through `disk_1`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide1`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
@@ -207,12 +207,12 @@ resource "proxmox_vm_qemu" "resource-name" {
 
   disks {
     ide {
-      disk_0 {
+      ide0 {
         disk {
           //<arguments omitted for brevity...>
         }
       }
-      disk_1 {
+      ide1 {
         passthrough {
           //<arguments omitted for brevity...>
         }
@@ -225,7 +225,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Sata Block
 
-The `disks.sata` block is used to configure disks of type sata. It may only be specified once. It has the options `disk_0` through `disk_5`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.sata` block is used to configure disks of type sata. It may only be specified once. It has the options `sata0` through `sata5`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
@@ -237,17 +237,17 @@ resource "proxmox_vm_qemu" "resource-name" {
 
   disks {
     sata {
-      disk_0 {
+      sata0 {
         cdrom {
           //<arguments omitted for brevity...>
         }
       }
-      disk_1 {
+      sata1 {
         disk {
           //<arguments omitted for brevity...>
         }
       }
-      disk_2 {
+      sata2 {
         passthrough {
           //<arguments omitted for brevity...>
         }
@@ -261,7 +261,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Scsi Block
 
-The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `disk_0` through `disk_30`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `scsi0` through `scsi30`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
@@ -273,17 +273,17 @@ resource "proxmox_vm_qemu" "resource-name" {
 
   disks {
     scsi {
-      disk_0 {
+      scsi0 {
         cdrom {
           //<arguments omitted for brevity...>
         }
       }
-      disk_1 {
+      scsi1 {
         disk {
           //<arguments omitted for brevity...>
         }
       }
-      disk_2 {
+      scsi2 {
         passthrough {
           //<arguments omitted for brevity...>
         }
@@ -297,7 +297,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Virtio Block
 
-The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `disk_0` through `disk_15`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `virtio0` through `virtio15`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
@@ -309,17 +309,17 @@ resource "proxmox_vm_qemu" "resource-name" {
 
   disks {
     virtio {
-      disk_0 {
+      virtio0 {
         cdrom {
           //<arguments omitted for brevity...>
         }
       }
-      disk_1 {
+      virtio1 {
         disk {
           //<arguments omitted for brevity...>
         }
       }
-      disk_2 {
+      virtio2 {
         passthrough {
           //<arguments omitted for brevity...>
         }

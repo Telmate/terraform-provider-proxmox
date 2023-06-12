@@ -51,7 +51,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
 
     disks {
         scsi {
-            disk_0 {
+            scsi0 {
                 disk {
                     backup             = true
                     cache              = "none"

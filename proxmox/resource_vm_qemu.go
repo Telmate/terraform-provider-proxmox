@@ -616,10 +616,10 @@ func resourceVmQemu() *schema.Resource {
 							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_0": schema_Ide("disk_0"),
-									"disk_1": schema_Ide("disk_1"),
-									// disk_2 reserved for cdrom
-									// disk_3 reserved for cloudinit
+									"ide0": schema_Ide("ide0"),
+									"ide1": schema_Ide("ide1"),
+									// ide2 reserved for cdrom
+									// ide3 reserved for cloudinit
 								},
 							},
 						},
@@ -629,12 +629,12 @@ func resourceVmQemu() *schema.Resource {
 							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_0": schema_Sata("disk_0"),
-									"disk_1": schema_Sata("disk_1"),
-									"disk_2": schema_Sata("disk_2"),
-									"disk_3": schema_Sata("disk_3"),
-									"disk_4": schema_Sata("disk_4"),
-									"disk_5": schema_Sata("disk_5"),
+									"sata0": schema_Sata("sata0"),
+									"sata1": schema_Sata("sata1"),
+									"sata2": schema_Sata("sata2"),
+									"sata3": schema_Sata("sata3"),
+									"sata4": schema_Sata("sata4"),
+									"sata5": schema_Sata("sata5"),
 								},
 							},
 						},
@@ -644,37 +644,37 @@ func resourceVmQemu() *schema.Resource {
 							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_0":  schema_Scsi("disk_0"),
-									"disk_1":  schema_Scsi("disk_1"),
-									"disk_2":  schema_Scsi("disk_2"),
-									"disk_3":  schema_Scsi("disk_3"),
-									"disk_4":  schema_Scsi("disk_4"),
-									"disk_5":  schema_Scsi("disk_5"),
-									"disk_6":  schema_Scsi("disk_6"),
-									"disk_7":  schema_Scsi("disk_7"),
-									"disk_8":  schema_Scsi("disk_8"),
-									"disk_9":  schema_Scsi("disk_9"),
-									"disk_10": schema_Scsi("disk_10"),
-									"disk_11": schema_Scsi("disk_11"),
-									"disk_12": schema_Scsi("disk_12"),
-									"disk_13": schema_Scsi("disk_13"),
-									"disk_14": schema_Scsi("disk_14"),
-									"disk_15": schema_Scsi("disk_15"),
-									"disk_16": schema_Scsi("disk_16"),
-									"disk_17": schema_Scsi("disk_17"),
-									"disk_18": schema_Scsi("disk_18"),
-									"disk_19": schema_Scsi("disk_19"),
-									"disk_20": schema_Scsi("disk_20"),
-									"disk_21": schema_Scsi("disk_21"),
-									"disk_22": schema_Scsi("disk_22"),
-									"disk_23": schema_Scsi("disk_23"),
-									"disk_24": schema_Scsi("disk_24"),
-									"disk_25": schema_Scsi("disk_25"),
-									"disk_26": schema_Scsi("disk_26"),
-									"disk_27": schema_Scsi("disk_27"),
-									"disk_28": schema_Scsi("disk_28"),
-									"disk_29": schema_Scsi("disk_29"),
-									"disk_30": schema_Scsi("disk_30"),
+									"scsi0":  schema_Scsi("scsi0"),
+									"scsi1":  schema_Scsi("scsi1"),
+									"scsi2":  schema_Scsi("scsi2"),
+									"scsi3":  schema_Scsi("scsi3"),
+									"scsi4":  schema_Scsi("scsi4"),
+									"scsi5":  schema_Scsi("scsi5"),
+									"scsi6":  schema_Scsi("scsi6"),
+									"scsi7":  schema_Scsi("scsi7"),
+									"scsi8":  schema_Scsi("scsi8"),
+									"scsi9":  schema_Scsi("scsi9"),
+									"scsi10": schema_Scsi("scsi10"),
+									"scsi11": schema_Scsi("scsi11"),
+									"scsi12": schema_Scsi("scsi12"),
+									"scsi13": schema_Scsi("scsi13"),
+									"scsi14": schema_Scsi("scsi14"),
+									"scsi15": schema_Scsi("scsi15"),
+									"scsi16": schema_Scsi("scsi16"),
+									"scsi17": schema_Scsi("scsi17"),
+									"scsi18": schema_Scsi("scsi18"),
+									"scsi19": schema_Scsi("scsi19"),
+									"scsi20": schema_Scsi("scsi20"),
+									"scsi21": schema_Scsi("scsi21"),
+									"scsi22": schema_Scsi("scsi22"),
+									"scsi23": schema_Scsi("scsi23"),
+									"scsi24": schema_Scsi("scsi24"),
+									"scsi25": schema_Scsi("scsi25"),
+									"scsi26": schema_Scsi("scsi26"),
+									"scsi27": schema_Scsi("scsi27"),
+									"scsi28": schema_Scsi("scsi28"),
+									"scsi29": schema_Scsi("scsi29"),
+									"scsi30": schema_Scsi("scsi30"),
 								},
 							},
 						},
@@ -684,22 +684,22 @@ func resourceVmQemu() *schema.Resource {
 							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"disk_0":  schema_Virtio("disk_0"),
-									"disk_1":  schema_Virtio("disk_1"),
-									"disk_2":  schema_Virtio("disk_2"),
-									"disk_3":  schema_Virtio("disk_3"),
-									"disk_4":  schema_Virtio("disk_4"),
-									"disk_5":  schema_Virtio("disk_5"),
-									"disk_6":  schema_Virtio("disk_6"),
-									"disk_7":  schema_Virtio("disk_7"),
-									"disk_8":  schema_Virtio("disk_8"),
-									"disk_9":  schema_Virtio("disk_9"),
-									"disk_10": schema_Virtio("disk_10"),
-									"disk_11": schema_Virtio("disk_11"),
-									"disk_12": schema_Virtio("disk_12"),
-									"disk_13": schema_Virtio("disk_13"),
-									"disk_14": schema_Virtio("disk_14"),
-									"disk_15": schema_Virtio("disk_15"),
+									"virtio0":  schema_Virtio("virtio0"),
+									"virtio1":  schema_Virtio("virtio1"),
+									"virtio2":  schema_Virtio("virtio2"),
+									"virtio3":  schema_Virtio("virtio3"),
+									"virtio4":  schema_Virtio("virtio4"),
+									"virtio5":  schema_Virtio("virtio5"),
+									"virtio6":  schema_Virtio("virtio6"),
+									"virtio7":  schema_Virtio("virtio7"),
+									"virtio8":  schema_Virtio("virtio8"),
+									"virtio9":  schema_Virtio("virtio9"),
+									"virtio10": schema_Virtio("virtio10"),
+									"virtio11": schema_Virtio("virtio11"),
+									"virtio12": schema_Virtio("virtio12"),
+									"virtio13": schema_Virtio("virtio13"),
+									"virtio14": schema_Virtio("virtio14"),
+									"virtio15": schema_Virtio("virtio15"),
 								},
 							},
 						},
@@ -2487,8 +2487,8 @@ func mapFromStruct_QemuIdeDisks(config *pxapi.QemuIdeDisks) []interface{} {
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"disk_0": mapFromStruct_QemuIdeStorage(config.Disk_0, "disk_0"),
-			"disk_1": mapFromStruct_QemuIdeStorage(config.Disk_1, "disk_1"),
+			"ide0": mapFromStruct_QemuIdeStorage(config.Disk_0, "ide0"),
+			"ide1": mapFromStruct_QemuIdeStorage(config.Disk_1, "ide1"),
 		},
 	}
 }
@@ -2547,12 +2547,12 @@ func mapFromStruct_QemuSataDisks(config *pxapi.QemuSataDisks) []interface{} {
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"disk_0": mapFromStruct_QemuSataStorage(config.Disk_0, "disk_0"),
-			"disk_1": mapFromStruct_QemuSataStorage(config.Disk_1, "disk_1"),
-			"disk_2": mapFromStruct_QemuSataStorage(config.Disk_2, "disk_2"),
-			"disk_3": mapFromStruct_QemuSataStorage(config.Disk_3, "disk_3"),
-			"disk_4": mapFromStruct_QemuSataStorage(config.Disk_4, "disk_4"),
-			"disk_5": mapFromStruct_QemuSataStorage(config.Disk_5, "disk_5"),
+			"sata0": mapFromStruct_QemuSataStorage(config.Disk_0, "sata0"),
+			"sata1": mapFromStruct_QemuSataStorage(config.Disk_1, "sata1"),
+			"sata2": mapFromStruct_QemuSataStorage(config.Disk_2, "sata2"),
+			"sata3": mapFromStruct_QemuSataStorage(config.Disk_3, "sata3"),
+			"sata4": mapFromStruct_QemuSataStorage(config.Disk_4, "sata4"),
+			"sata5": mapFromStruct_QemuSataStorage(config.Disk_5, "sata5"),
 		},
 	}
 }
@@ -2611,37 +2611,37 @@ func mapFromStruct_QemuScsiDisks(config *pxapi.QemuScsiDisks) []interface{} {
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"disk_0":  mapFromStruct_QemuScsiStorage(config.Disk_0, "disk_0"),
-			"disk_1":  mapFromStruct_QemuScsiStorage(config.Disk_1, "disk_1"),
-			"disk_2":  mapFromStruct_QemuScsiStorage(config.Disk_2, "disk_2"),
-			"disk_3":  mapFromStruct_QemuScsiStorage(config.Disk_3, "disk_3"),
-			"disk_4":  mapFromStruct_QemuScsiStorage(config.Disk_4, "disk_4"),
-			"disk_5":  mapFromStruct_QemuScsiStorage(config.Disk_5, "disk_5"),
-			"disk_6":  mapFromStruct_QemuScsiStorage(config.Disk_6, "disk_6"),
-			"disk_7":  mapFromStruct_QemuScsiStorage(config.Disk_7, "disk_7"),
-			"disk_8":  mapFromStruct_QemuScsiStorage(config.Disk_8, "disk_8"),
-			"disk_9":  mapFromStruct_QemuScsiStorage(config.Disk_9, "disk_9"),
-			"disk_10": mapFromStruct_QemuScsiStorage(config.Disk_10, "disk_10"),
-			"disk_11": mapFromStruct_QemuScsiStorage(config.Disk_11, "disk_11"),
-			"disk_12": mapFromStruct_QemuScsiStorage(config.Disk_12, "disk_12"),
-			"disk_13": mapFromStruct_QemuScsiStorage(config.Disk_13, "disk_13"),
-			"disk_14": mapFromStruct_QemuScsiStorage(config.Disk_14, "disk_14"),
-			"disk_15": mapFromStruct_QemuScsiStorage(config.Disk_15, "disk_15"),
-			"disk_16": mapFromStruct_QemuScsiStorage(config.Disk_16, "disk_16"),
-			"disk_17": mapFromStruct_QemuScsiStorage(config.Disk_17, "disk_17"),
-			"disk_18": mapFromStruct_QemuScsiStorage(config.Disk_18, "disk_18"),
-			"disk_19": mapFromStruct_QemuScsiStorage(config.Disk_19, "disk_19"),
-			"disk_20": mapFromStruct_QemuScsiStorage(config.Disk_20, "disk_20"),
-			"disk_21": mapFromStruct_QemuScsiStorage(config.Disk_21, "disk_21"),
-			"disk_22": mapFromStruct_QemuScsiStorage(config.Disk_22, "disk_22"),
-			"disk_23": mapFromStruct_QemuScsiStorage(config.Disk_23, "disk_23"),
-			"disk_24": mapFromStruct_QemuScsiStorage(config.Disk_24, "disk_24"),
-			"disk_25": mapFromStruct_QemuScsiStorage(config.Disk_25, "disk_25"),
-			"disk_26": mapFromStruct_QemuScsiStorage(config.Disk_26, "disk_26"),
-			"disk_27": mapFromStruct_QemuScsiStorage(config.Disk_27, "disk_27"),
-			"disk_28": mapFromStruct_QemuScsiStorage(config.Disk_28, "disk_28"),
-			"disk_29": mapFromStruct_QemuScsiStorage(config.Disk_29, "disk_29"),
-			"disk_30": mapFromStruct_QemuScsiStorage(config.Disk_30, "disk_30"),
+			"scsi0":  mapFromStruct_QemuScsiStorage(config.Disk_0, "scsi0"),
+			"scsi1":  mapFromStruct_QemuScsiStorage(config.Disk_1, "scsi1"),
+			"scsi2":  mapFromStruct_QemuScsiStorage(config.Disk_2, "scsi2"),
+			"scsi3":  mapFromStruct_QemuScsiStorage(config.Disk_3, "scsi3"),
+			"scsi4":  mapFromStruct_QemuScsiStorage(config.Disk_4, "scsi4"),
+			"scsi5":  mapFromStruct_QemuScsiStorage(config.Disk_5, "scsi5"),
+			"scsi6":  mapFromStruct_QemuScsiStorage(config.Disk_6, "scsi6"),
+			"scsi7":  mapFromStruct_QemuScsiStorage(config.Disk_7, "scsi7"),
+			"scsi8":  mapFromStruct_QemuScsiStorage(config.Disk_8, "scsi8"),
+			"scsi9":  mapFromStruct_QemuScsiStorage(config.Disk_9, "scsi9"),
+			"scsi10": mapFromStruct_QemuScsiStorage(config.Disk_10, "scsi10"),
+			"scsi11": mapFromStruct_QemuScsiStorage(config.Disk_11, "scsi11"),
+			"scsi12": mapFromStruct_QemuScsiStorage(config.Disk_12, "scsi12"),
+			"scsi13": mapFromStruct_QemuScsiStorage(config.Disk_13, "scsi13"),
+			"scsi14": mapFromStruct_QemuScsiStorage(config.Disk_14, "scsi14"),
+			"scsi15": mapFromStruct_QemuScsiStorage(config.Disk_15, "scsi15"),
+			"scsi16": mapFromStruct_QemuScsiStorage(config.Disk_16, "scsi16"),
+			"scsi17": mapFromStruct_QemuScsiStorage(config.Disk_17, "scsi17"),
+			"scsi18": mapFromStruct_QemuScsiStorage(config.Disk_18, "scsi18"),
+			"scsi19": mapFromStruct_QemuScsiStorage(config.Disk_19, "scsi19"),
+			"scsi20": mapFromStruct_QemuScsiStorage(config.Disk_20, "scsi20"),
+			"scsi21": mapFromStruct_QemuScsiStorage(config.Disk_21, "scsi21"),
+			"scsi22": mapFromStruct_QemuScsiStorage(config.Disk_22, "scsi22"),
+			"scsi23": mapFromStruct_QemuScsiStorage(config.Disk_23, "scsi23"),
+			"scsi24": mapFromStruct_QemuScsiStorage(config.Disk_24, "scsi24"),
+			"scsi25": mapFromStruct_QemuScsiStorage(config.Disk_25, "scsi25"),
+			"scsi26": mapFromStruct_QemuScsiStorage(config.Disk_26, "scsi26"),
+			"scsi27": mapFromStruct_QemuScsiStorage(config.Disk_27, "scsi27"),
+			"scsi28": mapFromStruct_QemuScsiStorage(config.Disk_28, "scsi28"),
+			"scsi29": mapFromStruct_QemuScsiStorage(config.Disk_29, "scsi29"),
+			"scsi30": mapFromStruct_QemuScsiStorage(config.Disk_30, "scsi30"),
 		},
 	}
 }
@@ -2704,22 +2704,22 @@ func mapFromStruct_QemuVirtIODisks(config *pxapi.QemuVirtIODisks) []interface{} 
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"disk_0":  mapFromStruct_QemuVirtIOStorage(config.Disk_0, "disk_0"),
-			"disk_1":  mapFromStruct_QemuVirtIOStorage(config.Disk_1, "disk_1"),
-			"disk_2":  mapFromStruct_QemuVirtIOStorage(config.Disk_2, "disk_2"),
-			"disk_3":  mapFromStruct_QemuVirtIOStorage(config.Disk_3, "disk_3"),
-			"disk_4":  mapFromStruct_QemuVirtIOStorage(config.Disk_4, "disk_4"),
-			"disk_5":  mapFromStruct_QemuVirtIOStorage(config.Disk_5, "disk_5"),
-			"disk_6":  mapFromStruct_QemuVirtIOStorage(config.Disk_6, "disk_6"),
-			"disk_7":  mapFromStruct_QemuVirtIOStorage(config.Disk_7, "disk_7"),
-			"disk_8":  mapFromStruct_QemuVirtIOStorage(config.Disk_8, "disk_8"),
-			"disk_9":  mapFromStruct_QemuVirtIOStorage(config.Disk_9, "disk_9"),
-			"disk_10": mapFromStruct_QemuVirtIOStorage(config.Disk_10, "disk_10"),
-			"disk_11": mapFromStruct_QemuVirtIOStorage(config.Disk_11, "disk_11"),
-			"disk_12": mapFromStruct_QemuVirtIOStorage(config.Disk_12, "disk_12"),
-			"disk_13": mapFromStruct_QemuVirtIOStorage(config.Disk_13, "disk_13"),
-			"disk_14": mapFromStruct_QemuVirtIOStorage(config.Disk_14, "disk_14"),
-			"disk_15": mapFromStruct_QemuVirtIOStorage(config.Disk_15, "disk_15"),
+			"virtio0":  mapFromStruct_QemuVirtIOStorage(config.Disk_0, "virtio0"),
+			"virtio1":  mapFromStruct_QemuVirtIOStorage(config.Disk_1, "virtio1"),
+			"virtio2":  mapFromStruct_QemuVirtIOStorage(config.Disk_2, "virtio2"),
+			"virtio3":  mapFromStruct_QemuVirtIOStorage(config.Disk_3, "virtio3"),
+			"virtio4":  mapFromStruct_QemuVirtIOStorage(config.Disk_4, "virtio4"),
+			"virtio5":  mapFromStruct_QemuVirtIOStorage(config.Disk_5, "virtio5"),
+			"virtio6":  mapFromStruct_QemuVirtIOStorage(config.Disk_6, "virtio6"),
+			"virtio7":  mapFromStruct_QemuVirtIOStorage(config.Disk_7, "virtio7"),
+			"virtio8":  mapFromStruct_QemuVirtIOStorage(config.Disk_8, "virtio8"),
+			"virtio9":  mapFromStruct_QemuVirtIOStorage(config.Disk_9, "virtio9"),
+			"virtio10": mapFromStruct_QemuVirtIOStorage(config.Disk_10, "virtio10"),
+			"virtio11": mapFromStruct_QemuVirtIOStorage(config.Disk_11, "virtio11"),
+			"virtio12": mapFromStruct_QemuVirtIOStorage(config.Disk_12, "virtio12"),
+			"virtio13": mapFromStruct_QemuVirtIOStorage(config.Disk_13, "virtio13"),
+			"virtio14": mapFromStruct_QemuVirtIOStorage(config.Disk_14, "virtio14"),
+			"virtio15": mapFromStruct_QemuVirtIOStorage(config.Disk_15, "virtio15"),
 		},
 	}
 }
@@ -2838,8 +2838,8 @@ func mapToStruct_QemuIdeDisks(ide *pxapi.QemuIdeDisks, schema map[string]interfa
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	mapToStruct_QemuIdeStorage(ide.Disk_0, "disk_0", disks)
-	mapToStruct_QemuIdeStorage(ide.Disk_1, "disk_1", disks)
+	mapToStruct_QemuIdeStorage(ide.Disk_0, "ide0", disks)
+	mapToStruct_QemuIdeStorage(ide.Disk_1, "ide1", disks)
 }
 
 func mapToStruct_QemuIdeStorage(ide *pxapi.QemuIdeStorage, key string, schema map[string]interface{}) {
@@ -2903,12 +2903,12 @@ func mapToStruct_QemuSataDisks(sata *pxapi.QemuSataDisks, schema map[string]inte
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	mapToStruct_QemuSataStorage(sata.Disk_0, "disk_0", disks)
-	mapToStruct_QemuSataStorage(sata.Disk_1, "disk_1", disks)
-	mapToStruct_QemuSataStorage(sata.Disk_2, "disk_2", disks)
-	mapToStruct_QemuSataStorage(sata.Disk_3, "disk_3", disks)
-	mapToStruct_QemuSataStorage(sata.Disk_4, "disk_4", disks)
-	mapToStruct_QemuSataStorage(sata.Disk_5, "disk_5", disks)
+	mapToStruct_QemuSataStorage(sata.Disk_0, "sata0", disks)
+	mapToStruct_QemuSataStorage(sata.Disk_1, "sata1", disks)
+	mapToStruct_QemuSataStorage(sata.Disk_2, "sata2", disks)
+	mapToStruct_QemuSataStorage(sata.Disk_3, "sata3", disks)
+	mapToStruct_QemuSataStorage(sata.Disk_4, "sata4", disks)
+	mapToStruct_QemuSataStorage(sata.Disk_5, "sata5", disks)
 }
 
 func mapToStruct_QemuSataStorage(sata *pxapi.QemuSataStorage, key string, schema map[string]interface{}) {
@@ -2972,37 +2972,37 @@ func mapToStruct_QemuScsiDisks(scsi *pxapi.QemuScsiDisks, schema map[string]inte
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	mapToStruct_QemuScsiStorage(scsi.Disk_0, "disk_0", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_1, "disk_1", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_2, "disk_2", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_3, "disk_3", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_4, "disk_4", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_5, "disk_5", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_6, "disk_6", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_7, "disk_7", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_8, "disk_8", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_9, "disk_9", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_10, "disk_10", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_11, "disk_11", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_12, "disk_12", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_13, "disk_13", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_14, "disk_14", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_15, "disk_15", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_16, "disk_16", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_17, "disk_17", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_18, "disk_18", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_19, "disk_19", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_20, "disk_20", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_21, "disk_21", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_22, "disk_22", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_23, "disk_23", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_24, "disk_24", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_25, "disk_25", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_26, "disk_26", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_27, "disk_27", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_28, "disk_28", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_29, "disk_29", disks)
-	mapToStruct_QemuScsiStorage(scsi.Disk_30, "disk_30", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_0, "scsi0", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_1, "scsi1", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_2, "scsi2", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_3, "scsi3", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_4, "scsi4", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_5, "scsi5", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_6, "scsi6", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_7, "scsi7", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_8, "scsi8", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_9, "scsi9", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_10, "scsi10", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_11, "scsi11", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_12, "scsi12", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_13, "scsi13", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_14, "scsi14", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_15, "scsi15", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_16, "scsi16", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_17, "scsi17", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_18, "scsi18", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_19, "scsi19", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_20, "scsi20", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_21, "scsi21", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_22, "scsi22", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_23, "scsi23", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_24, "scsi24", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_25, "scsi25", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_26, "scsi26", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_27, "scsi27", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_28, "scsi28", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_29, "scsi29", disks)
+	mapToStruct_QemuScsiStorage(scsi.Disk_30, "scsi30", disks)
 }
 
 func mapToStruct_QemuScsiStorage(scsi *pxapi.QemuScsiStorage, key string, schema map[string]interface{}) {
@@ -3150,22 +3150,22 @@ func mapToStruct_QemuVirtIODisks(virtio *pxapi.QemuVirtIODisks, schema map[strin
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	mapToStruct_VirtIOStorage(virtio.Disk_0, "disk_0", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_1, "disk_1", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_2, "disk_2", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_3, "disk_3", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_4, "disk_4", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_5, "disk_5", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_6, "disk_6", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_7, "disk_7", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_8, "disk_8", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_9, "disk_9", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_10, "disk_10", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_11, "disk_11", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_12, "disk_12", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_13, "disk_13", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_14, "disk_14", disks)
-	mapToStruct_VirtIOStorage(virtio.Disk_15, "disk_15", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_0, "virtio0", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_1, "virtio1", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_2, "virtio2", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_3, "virtio3", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_4, "virtio4", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_5, "virtio5", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_6, "virtio6", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_7, "virtio7", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_8, "virtio8", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_9, "virtio9", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_10, "virtio10", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_11, "virtio11", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_12, "virtio12", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_13, "virtio13", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_14, "virtio14", disks)
+	mapToStruct_VirtIOStorage(virtio.Disk_15, "virtio15", disks)
 }
 
 func mapToStruct_VirtIOStorage(virtio *pxapi.QemuVirtIOStorage, key string, schema map[string]interface{}) {
