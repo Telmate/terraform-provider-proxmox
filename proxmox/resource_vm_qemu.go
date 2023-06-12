@@ -1008,6 +1008,10 @@ func resourceVmQemu() *schema.Resource {
 				Default:     true,
 				Description: "Automatically reboot the VM if any of the modified parameters requires a reboot to take effect.",
 			},
+			"linked_vmid": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
 		},
 		Timeouts: resourceTimeouts(),
 	}
