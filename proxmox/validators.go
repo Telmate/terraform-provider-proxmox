@@ -1,7 +1,6 @@
 package proxmox
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -95,13 +94,12 @@ func VMStateValidator() schema.SchemaValidateDiagFunc {
 	}, false))
 }
 
-func uint_Validator() schema.SchemaValidateFunc {
-	return func(i interface{}, k string) (warnings []string, errors []error) {
+func uint_Validator() schema.SchemaValidateDiagFunc {
+	return func(i interface{}, k cty.Path) diag.Diagnostics {
 		v, ok := i.(int)
 		if !ok || v < 0 {
-			errors = append(errors, fmt.Errorf("expected type of %s to be a positive number (uint)", k))
-			return
+			return diag.Errorf("expected type of %s to be a positive number (uint)", k)
 		}
-		return
+		return nil
 	}
 }

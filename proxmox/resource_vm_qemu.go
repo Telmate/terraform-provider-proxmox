@@ -3521,9 +3521,9 @@ func schema_DiskSerial() *schema.Schema {
 
 func schema_DiskSize() *schema.Schema {
 	return &schema.Schema{
-		Type:         schema.TypeInt,
-		Required:     true,
-		ValidateFunc: uint_Validator(),
+		Type:             schema.TypeInt,
+		Required:         true,
+		ValidateDiagFunc: uint_Validator(),
 	}
 }
 
