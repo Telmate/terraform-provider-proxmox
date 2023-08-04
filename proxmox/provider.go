@@ -161,7 +161,7 @@ func Provider() *schema.Provider {
 			"proxmox_lxc_disk":        resourceLxcDisk(),
 			"proxmox_pool":            resourcePool(),
 			"proxmox_cloud_init_disk": resourceCloudInitDisk(),
-			// TODO - proxmox_storage_iso
+			"proxmox_storage_iso":     resourceStorageIso(),
 			// TODO - proxmox_bridge
 			// TODO - proxmox_vm_qemu_template
 		},
