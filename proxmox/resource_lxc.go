@@ -61,7 +61,6 @@ func resourceLxc() *schema.Resource {
 			"cores": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  1,
 			},
 			"cpulimit": {
 				Type:     schema.TypeInt,
