@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20230411210559-73bbbf4297e1
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
 	github.com/rs/zerolog v1.29.1
