@@ -73,10 +73,10 @@ func resourceVmQemu() *schema.Resource {
 				// Default:     "",
 				Description: "The VM name",
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					v := val.(byte)
-					matched, err := regexp.Match("[^a-zA-Z0-9-]", v)
+					v := val.(string)
+					matched, err := regexp.Match("[^a-zA-Z0-9-]", []byte(v))
 					if err != nil {
-						warns = append(warns, fmt.Errorf("%q, had an error running regexp.Match err=[%v]", err))
+						warns = append(warns, fmt.Sprintf("%q, had an error running regexp.Match err=[%v]", key, err))
 					}
 					if matched {
 						errs = append(errs, fmt.Errorf("%q, must be contain only alphanumerics and hyphens", key, v))
