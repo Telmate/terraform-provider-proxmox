@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/rs/zerolog"
 )
 
 // using a global variable here so that we have an internally accessible
@@ -1426,6 +1427,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
+	var diags diag.Diagnostics
+
 	// some of the disk changes require reboot, even if hotplug is enabled
 	if d.HasChange("disk") {
 		oldValuesRaw, newValuesRaw := d.GetChange("disk")
@@ -1442,6 +1445,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 			if rangeNV := len(newValues); rangeNV < r {
 				r = rangeNV
 			}
+
+			detachRemovedDisks(oldValues, newValues, diags, logger, vmID, client, vmr.Node())
 
 			// some of the existing disk parameters have changed
 			for i := 0; i < r; i++ { // loop through the interfaces
@@ -1476,8 +1481,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 			}
 		}
 	}
-
-	var diags diag.Diagnostics
 
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
 	// enabled. Attempt a graceful shutdown or if that fails, force poweroff.
@@ -2284,4 +2287,42 @@ func initConnInfo(ctx context.Context,
 		"port": sshPort,
 	})
 	return diags
+}
+
+// detachRemovedDisks is a function that diffs disk devices
+// between the old and the new updates for the VM and detaches
+// any disks that has been removed from the new configuration.
+// After detaching the disks, the disks are then deleted.
+func detachRemovedDisks(
+	oldValues []interface{},
+	newValues []interface{},
+	diags diag.Diagnostics,
+	logger zerolog.Logger,
+	vmID int,
+	client *pxapi.Client,
+	node string,
+) {
+	for _, diskToDelete := range FindDisksToDelete(oldValues, newValues) {
+		diskId := CreateDeviceIdentifier(diskToDelete)
+		logger.Debug().Int("vmId", vmID).Msgf("Detaching the following device: %s", diskId)
+
+		// Check if device is to be removed after detach
+		forceRemoveDetachedDisk := true
+		if forceRemoveDetachedDisk {
+			logger.Debug().Int("vmId", vmID).Msgf("Force-removal of disk enabled, disk will be deleted")
+		}
+
+		// Detach the disk and force remove it if configured to do so
+		exitStatus, err := client.Unlink(node, vmID, diskId, forceRemoveDetachedDisk)
+		if err != nil {
+			diags = append(diags, diag.Diagnostic{
+				Severity:      diag.Warning,
+				Summary:       "VM disk to be deleted was not removed",
+				Detail:        "Check that the disk have been detached from the VM",
+				AttributePath: cty.Path{},
+			})
+		} else {
+			logger.Debug().Int("vmId", vmID).Msgf("Exit status from disk detaching task: %s", exitStatus)
+		}
+	}
 }
