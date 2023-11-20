@@ -1385,6 +1385,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"searchdomain",
 		"nameserver",
 		"sshkeys",
+		"ipconfig",
 		"ipconfig0",
 		"ipconfig1",
 		"ipconfig2",
@@ -1651,6 +1652,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("searchdomain", config.Searchdomain)
 	d.Set("nameserver", config.Nameserver)
 	d.Set("sshkeys", config.Sshkeys)
+	d.Set("ipconfig", config.Ipconfig)
 	d.Set("ipconfig0", config.Ipconfig[0])
 	d.Set("ipconfig1", config.Ipconfig[1])
 	d.Set("ipconfig2", config.Ipconfig[2])
@@ -2259,8 +2261,8 @@ func initConnInfo(ctx context.Context,
 	if config.HasCloudInit() {
 		log.Print("[DEBUG][initConnInfo] vm has a cloud-init configuration")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
-		_, ipconfig0Set := d.GetOk("ipconfig0")
-		if ipconfig0Set {
+		_, ipconfigSet := d.GetOk("ipconfig")
+		if ipconfigSet {
 			vmState, err := client.GetVmState(vmr)
 			log.Printf("[DEBUG][initConnInfo] cloudinitcheck vm state %v", vmState)
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("cloudinitcheck vm state %v", vmState)
@@ -2270,16 +2272,17 @@ func initConnInfo(ctx context.Context,
 				return diag.FromErr(err)
 			}
 
-			if d.Get("ipconfig0").(string) != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
-				// parse IP address out of ipconfig0
-				ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
+			ipConfig := d.Get("ipconfig").(map[int]string)
+			if ipConfig[0] != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
+				// parse IP address out of ipconfig
+				ipMatch := rxIPconfig.FindStringSubmatch(ipConfig[0])
 				if sshHost == "" {
 					sshHost = ipMatch[1]
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
 				interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
-				log.Printf("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
-				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig0 interfaces %v", interfaces)
+				log.Printf("[DEBUG][initConnInfo] ipconfig[0] interfaces: %v", interfaces)
+				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig[0] interfaces %v", interfaces)
 				if err != nil {
 					return diag.FromErr(err)
 				} else {
