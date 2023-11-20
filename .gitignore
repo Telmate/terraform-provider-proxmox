@@ -7,3 +7,5 @@ bin
 .vscode
 *.log
 *env
+vendor/*
+

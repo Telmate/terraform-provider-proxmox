@@ -789,6 +789,19 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
+			"ipconfig": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"config": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "ipconfig string in format: [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]",
+						},
+					},
+				},
+			},
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -938,6 +951,19 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	qemuUsbs, _ := ExpandDevicesList(d.Get("usb").([]interface{}))
 
+	// Populate Ipconfig map from iterable variable
+	qemuIpconfig, _ := ExpandIpconfigList(d.Get("ipconfig").([]interface{}))
+	// keeping this for backwards compatibility
+	if len(qemuIpconfig) == 0 {
+		// Populate Ipconfig map from explicit vars
+		for i := 0; i < 16; i++ {
+			iface := fmt.Sprintf("ipconfig%d", i)
+			if v, ok := d.GetOk(iface); ok {
+				qemuIpconfig[i] = v.(string)
+			}
+		}
+	}
+
 	config := pxapi.ConfigQemu{
 		Name:           vmName,
 		Description:    d.Get("desc").(string),
@@ -978,15 +1004,9 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig:     pxapi.IpconfigMap{},
+		Ipconfig:     qemuIpconfig,
 	}
-	// Populate Ipconfig map
-	for i := 0; i < 16; i++ {
-		iface := fmt.Sprintf("ipconfig%d", i)
-		if v, ok := d.GetOk(iface); ok {
-			config.Ipconfig[i] = v.(string)
-		}
-	}
+
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
@@ -1243,6 +1263,22 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(fmt.Errorf("error while processing Usb configuration: %v", err))
 	}
 
+	// Populate Ipconfig map from iterable variable
+	qemuIpconfig, err := ExpandIpconfigList(d.Get("ipconfig").([]interface{}))
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("error while processing ipconfig configuration: %v", err))
+	}
+	// keeping this for backwards compatibility
+	if len(qemuIpconfig) == 0 {
+		// Populate Ipconfig map from explicit vars
+		for i := 0; i < 16; i++ {
+			iface := fmt.Sprintf("ipconfig%d", i)
+			if v, ok := d.GetOk(iface); ok {
+				qemuIpconfig[i] = v.(string)
+			}
+		}
+	}
+
 	d.Partial(true)
 	if d.HasChange("target_node") {
 		_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
@@ -1293,24 +1329,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig: pxapi.IpconfigMap{
-			0:  d.Get("ipconfig0").(string),
-			1:  d.Get("ipconfig1").(string),
-			2:  d.Get("ipconfig2").(string),
-			3:  d.Get("ipconfig3").(string),
-			4:  d.Get("ipconfig4").(string),
-			5:  d.Get("ipconfig5").(string),
-			6:  d.Get("ipconfig6").(string),
-			7:  d.Get("ipconfig7").(string),
-			8:  d.Get("ipconfig8").(string),
-			9:  d.Get("ipconfig9").(string),
-			10: d.Get("ipconfig10").(string),
-			11: d.Get("ipconfig11").(string),
-			12: d.Get("ipconfig12").(string),
-			13: d.Get("ipconfig13").(string),
-			14: d.Get("ipconfig14").(string),
-			15: d.Get("ipconfig15").(string),
-		},
+		Ipconfig:     qemuIpconfig,
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -2053,6 +2072,34 @@ func ExpandDevicesList(deviceList []interface{}) (pxapi.QemuDevices, error) {
 		}
 
 		expandedDevices[index] = thisExpandedDevice
+	}
+
+	return expandedDevices, nil
+}
+
+// Consumes a terraform TypeList of a Qemu Device (network, hard drive, etc) and returns the "Expanded"
+// version of the equivalent configuration that the API understands (the struct pxapi.IpconfigMap).
+func ExpandIpconfigList(ipconfigList []interface{}) (pxapi.IpconfigMap, error) {
+	expandedDevices := make(pxapi.IpconfigMap)
+
+	if len(ipconfigList) == 0 {
+		return expandedDevices, nil
+	}
+
+	ipconfigDevices, err := ExpandDevicesList(ipconfigList)
+	if err != nil {
+		return expandedDevices, err
+	}
+
+	for index, thisDeviceMap := range ipconfigDevices {
+		// thisDeviceMap := deviceInterface
+
+		// bail out if the device is empty, it is meaningless in this context
+		if thisDeviceMap == nil {
+			continue
+		}
+
+		expandedDevices[index] = thisDeviceMap["config"]
 	}
 
 	return expandedDevices, nil
