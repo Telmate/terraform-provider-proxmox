@@ -6,7 +6,7 @@ To install this provider, copy and paste this code into your Terraform configura
 terraform {
   required_providers {
     proxmox = {
-      source  = "telmate/proxmox"
+      source  = "thegameprofi/proxmox"
       version = "<version tag>"
     }
   }
@@ -42,7 +42,7 @@ repository and run the following commands inside the cloned repository.
 
 ```shell
 $ export GO111MODULE=on
-$ go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
+$ go install github.com/thegameprofi/terraform-provider-proxmox/cmd/terraform-provider-proxmox
 ```
 
 Then create the executables. They are placed in the `bin` folder inside the repository.
@@ -70,7 +70,7 @@ must [conform to a new filesystem layout](https://github.com/hashicorp/terraform
 
 > Terraform assumes that a provider without an explicit source address belongs to the "hashicorp" namespace on registry.terraform.io, which is not true for your in-house provider. Instead, you can use any domain name under your control to establish a virtual source registry to serve as a separate namespace for your local use.
 
-Use the format: [host.domain]/telmate/proxmox/[version]/[arch].
+Use the format: [host.domain]/thegameprofi/proxmox/[version]/[arch].
 
 In our case, we will use `registry.example.com` as our virtual source registry in the following examples.
 
@@ -81,7 +81,7 @@ In our case, we will use `registry.example.com` as our virtual source registry i
 $ PLUGIN_ARCH=linux_amd64
 
 # Create the directory holding the newly built Terraform plugins
-$ mkdir -p ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLUGIN_ARCH}
+$ mkdir -p ~/.terraform.d/plugins/registry.example.com/thegameprofi/proxmox/1.0.0/${PLUGIN_ARCH}
 ```
 
 Then, copy the executables to the directory you just created. You could also use the `make local-dev-install` target.
@@ -89,8 +89,8 @@ it's important to note that you aren't required to use a semver, and if you don'
 accordingly.
 
 ```shell
-$ cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLUGIN_ARCH}/
-$ ls -al ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLUGIN_ARCH}/
+$ cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/thegameprofi/proxmox/1.0.0/${PLUGIN_ARCH}/
+$ ls -al ~/.terraform.d/plugins/registry.example.com/thegameprofi/proxmox/1.0.0/${PLUGIN_ARCH}/
 -rwxrwxr-x 1 user user 20352759 Feb 22 21:51 terraform-provider-proxmox_v1.0.0*
 ```
 
@@ -101,7 +101,7 @@ $ cat main.tf
 terraform {
   required_providers {
     proxmox = {
-      source  = "telmate/proxmox"
+      source  = "thegameprofi/proxmox"
       version = ">=1.0.0"
     }
   }
@@ -124,9 +124,9 @@ You should see the following marking the successful plugin installation:
 ```shell
 [...]
 Initializing provider plugins...
-- Finding registry.example.com/telmate/proxmox versions matching ">= 1.0.0"...
-- Installing registry.example.com/telmate/proxmox v1.0.0...
-- Installed registry.example.com/telmate/proxmox v1.0.0 (unauthenticated)
+- Finding registry.example.com/thegameprofi/proxmox versions matching ">= 1.0.0"...
+- Installing registry.example.com/thegameprofi/proxmox v1.0.0...
+- Installed registry.example.com/thegameprofi/proxmox v1.0.0 (unauthenticated)
 
 Terraform has been successfully initialized!
 [...]

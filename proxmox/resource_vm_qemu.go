@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pxapi "github.com/TheGameProfi/proxmox-api-go/proxmox"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -1063,7 +1063,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			// update the current working state to use the appropriate file specification
 			// proxmox needs so we can correctly update the existing disks (post-clone)
 			// instead of accidentially causing the existing disk to be detached.
-			// see https://github.com/Telmate/terraform-provider-proxmox/issues/239
+			// see https://github.com/thegameprofi/terraform-provider-proxmox/issues/239
 			for slot, disk := range config_post_clone.QemuDisks {
 				// only update the desired configuration if it was not set by the user
 				// we do not want to overwrite the desired config with the results from

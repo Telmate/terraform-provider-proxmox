@@ -284,7 +284,6 @@ func TestAccProxmoxVmQemu_BasicCreateClone(t *testing.T) {
 					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
 					resource.TestCheckResourceAttr(clonePath, "name", cloneName),
 					// check for unused_disk.0.file existance as that means an extra disk popped up
-					// which would be a regression of https://github.com/Telmate/terraform-provider-proxmox/issues/239
 					resource.TestCheckNoResourceAttr(clonePath, "unused_disk.0.file"),
 				),
 			},
@@ -311,7 +310,6 @@ func TestAccProxmoxVmQemu_CreateCloneWithTwoDisks(t *testing.T) {
 					resource.TestCheckResourceAttr(resourcePath, "name", resourceName),
 					resource.TestCheckResourceAttr(clonePath, "name", cloneName),
 					// check for unused_disk.0.file existance as that means an extra disk popped up
-					// which would be a regression of https://github.com/Telmate/terraform-provider-proxmox/issues/239
 					resource.TestCheckNoResourceAttr(clonePath, "unused_disk.0.file"),
 					resource.TestCheckResourceAttr(clonePath, "disk.0.size", "2G"),
 					resource.TestCheckResourceAttr(clonePath, "disk.1.size", "3G"),
