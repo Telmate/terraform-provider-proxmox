@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/Telmate/terraform-provider-proxmox.svg?branch=master)](https://travis-ci.com/Telmate/terraform-provider-proxmox)
+[![Build Status](https://travis-ci.com/thegameprofi/terraform-provider-proxmox.svg?branch=master)]
 
 # Terraform provider plugin for Proxmox
 

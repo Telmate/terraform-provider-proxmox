@@ -84,9 +84,9 @@ install: build
 
 local-dev-install: build
 	@echo "Building this release $(CURRENT_VERSION_MICRO) on $(KERNEL)/$(ARCH)"
-	rm -rf ~/.terraform.d/plugins/localhost/telmate/proxmox
-	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
-	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
+	rm -rf ~/.terraform.d/plugins/localhost/thegameprofi/proxmox
+	mkdir -p ~/.terraform.d/plugins/localhost/thegameprofi/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
+	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/thegameprofi/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 
 
 clean:
