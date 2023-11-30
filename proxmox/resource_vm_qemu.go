@@ -234,6 +234,11 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  "host",
 			},
+			"flags": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:   "-ibpb;-virt-ssbd;-amd-ssbd;+aes",
+			},
 			"numa": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -448,6 +453,13 @@ func resourceVmQemu() *schema.Resource {
 							Optional: true,
 							Default:  "none",
 						},
+						"detect_zeroes": {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Default:      0,
+							ValidateFunc: validation.IntInSlice([]int{0, 1}),
+						},
+					
 						"backup": {
 							Type:     schema.TypeBool,
 							Optional: true,
@@ -1455,6 +1467,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 					d.Set("reboot_required", true)
 				}
 				if oldValues[i].(map[string]interface{})["cache"] != newValues[i].(map[string]interface{})["cache"] {
+					d.Set("reboot_required", true)
+				}
+				if oldValues[i].(map[string]interface{})["detect_zeroes"] != newValues[i].(map[string]interface{})["detect_zeroes"] {
 					d.Set("reboot_required", true)
 				}
 				if oldValues[i].(map[string]interface{})["size"] != newValues[i].(map[string]interface{})["size"] {
