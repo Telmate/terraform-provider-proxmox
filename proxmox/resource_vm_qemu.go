@@ -1816,7 +1816,7 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 	if vmState["status"] != "stopped" {
-		_, err := client.StopVm(vmr)
+		_, err := client.ShutdownVm(vmr)
 		if err != nil {
 			return diag.FromErr(err)
 		}
