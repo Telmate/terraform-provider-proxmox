@@ -203,7 +203,7 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
-								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
 									errs = append(errs, fmt.Errorf("disk size must end in T, G, M, or K, got %s", v))
 								}
 								return
@@ -359,7 +359,7 @@ func resourceLxc() *schema.Resource {
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
-								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
 									errs = append(errs, fmt.Errorf("disk size must end in T, G, M, or K, got %s", v))
 								}
 								return
