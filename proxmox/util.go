@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"testing"
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
@@ -14,7 +15,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const defaultTimeout = 300
+// const defaultTimeout = 300
 
 var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\d+)`)
 
@@ -23,6 +24,8 @@ var rxClusterRsId = regexp.MustCompile(`([^/]+)/([^/]+)`)
 var rxIPconfig = regexp.MustCompile(`ip6?=([0-9a-fA-F:\\.]+)`)
 
 var macAddressRegex = regexp.MustCompile(`([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}`)
+
+var machineModelsRegex = regexp.MustCompile(`(^pc|^q35|^virt)`)
 
 // given a string, return the appropriate zerolog level
 func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
@@ -57,23 +60,24 @@ var logLevels map[string]string
 // doesn't care about.
 //
 // logLevels can be specifed as follows:
-//   map[string]string
 //
-//   keys can be:
-//    * '_root' - to affect the root logger
-//    * '_capturelog' - (with any level set) to tell us to capture all message through the native log library
-//    * '_default' - sets the default log level (if this is not set, the default is INFO)
-//    (any other string) - the level to set that SubLogger to
+//	map[string]string
 //
-//   Eventually we'll have a list of all subloggers that can be displayed/generated but for now, unfortuantely,
-//   the code is the manual on that. I'll do my best to keep this doc string updated.
+//	keys can be:
+//	 * '_root' - to affect the root logger
+//	 * '_capturelog' - (with any level set) to tell us to capture all message through the native log library
+//	 * '_default' - sets the default log level (if this is not set, the default is INFO)
+//	 (any other string) - the level to set that SubLogger to
 //
-//   Known Subloggers:
-//    * resource_vm_create - logs from the create function
-//    * resource_vm_read  - logs from the read function
+//	Eventually we'll have a list of all subloggers that can be displayed/generated but for now, unfortuantely,
+//	the code is the manual on that. I'll do my best to keep this doc string updated.
 //
-//   values can be one of "panic", "fatal", "error", "warn", "info", "debug", "trace".
-//   these will be mapped out to the zerolog levels.  See the levelStringToZerologLevel function.
+//	Known Subloggers:
+//	 * resource_vm_create - logs from the create function
+//	 * resource_vm_read  - logs from the read function
+//
+//	values can be one of "panic", "fatal", "error", "warn", "info", "debug", "trace".
+//	these will be mapped out to the zerolog levels.  See the levelStringToZerologLevel function.
 //
 // logs will be written out to the logPath specified. An existing file at that path will be appended to.
 // note that there are some information (like our redirection of the built-in log library) which will not
@@ -454,3 +458,54 @@ func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource)
 // 	}
 // 	return activeDevicesMap
 // }
+
+func testOptionalArguments(t *testing.T, s *schema.Resource) {
+	for k := range s.Schema {
+		fmt.Println(k)
+		if s.Schema[k] == nil {
+			t.Fatalf("Error in Schema: Missing definition for \"%s\"", k)
+		}
+
+		if !s.Schema[k].Optional {
+			t.Fatalf("Error in Schema: Argument \"%s\" is not optional", k)
+		}
+	}
+}
+
+func BoolPointer(b bool) *bool {
+	return &b
+}
+
+func permissions_check(s1 []string, s2 []string) []string {
+
+	var diff []string
+
+	// loop through s2 and check if each element is in s1
+	for _, str2 := range s2 {
+		found := false
+		for _, str1 := range s1 {
+			if str2 == str1 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			diff = append(diff, str2)
+		}
+	}
+	return diff
+}
+
+func ByteCountIEC(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%dB", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%0.f%c",
+		float64(b)/float64(div), "KMGTPE"[exp])
+}

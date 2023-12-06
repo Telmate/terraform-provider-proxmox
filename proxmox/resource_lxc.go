@@ -15,10 +15,10 @@ var lxcResourceDef *schema.Resource
 
 func resourceLxc() *schema.Resource {
 	lxcResourceDef = &schema.Resource{
-		Create: resourceLxcCreate,
-		Read:   resourceLxcRead,
-		Update: resourceLxcUpdate,
-		Delete: resourceVmQemuDelete,
+		Create:        resourceLxcCreate,
+		Read:          resourceLxcRead,
+		Update:        resourceLxcUpdate,
+		DeleteContext: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -204,8 +204,8 @@ func resourceLxc() *schema.Resource {
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
-								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
+								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+									errs = append(errs, fmt.Errorf("disk size must end in T, G, M, or K, got %s", v))
 								}
 								return
 							},
@@ -232,6 +232,10 @@ func resourceLxc() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
@@ -356,8 +360,8 @@ func resourceLxc() *schema.Resource {
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
-								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-									errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
+								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+									errs = append(errs, fmt.Errorf("disk size must end in T, G, M, or K, got %s", v))
 								}
 								return
 							},
@@ -573,24 +577,24 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		if err != nil {
 			return err
 		}
-		
+
 		// Update all remaining stuff
 		err = config.UpdateConfig(vmr, client)
 		if err != nil {
 			return err
 		}
-		
+
 		//Start LXC if start parameter is set to true
 		if d.Get("start").(bool) {
-	  		log.Print("[DEBUG][LxcCreate] starting LXC")
-	  		_, err := client.StartVm(vmr)
+			log.Print("[DEBUG][LxcCreate] starting LXC")
+			_, err := client.StartVm(vmr)
 			if err != nil {
 				return err
 			}
 
 		} else {
 			log.Print("[DEBUG][LxcCreate] start = false, not starting LXC")
-    		}
+		}
 
 	} else {
 		err = config.CreateLxc(vmr, client)
@@ -667,10 +671,28 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Unprivileged = d.Get("unprivileged").(bool)
 
 	if d.HasChange("network") {
-		// TODO Delete extra networks
-		networks := d.Get("network").([]interface{})
-		if len(networks) > 0 {
-			lxcNetworks := DevicesListToDevices(networks, "")
+		oldSet, newSet := d.GetChange("network")
+		oldNetworks := make([]map[string]interface{}, 0)
+		newNetworks := make([]map[string]interface{}, 0)
+
+		// Convert from []interface{} to []map[string]interface{}
+		for _, network := range oldSet.([]interface{}) {
+			oldNetworks = append(oldNetworks, network.(map[string]interface{}))
+		}
+		for _, network := range newSet.([]interface{}) {
+			newNetworks = append(newNetworks, network.(map[string]interface{}))
+		}
+
+		processLxcNetworkChanges(oldNetworks, newNetworks, pconf, vmr)
+
+		if len(newNetworks) > 0 {
+			// Drop all the ids since they can't be sent to the API
+			newNetworks, _ = DropElementsFromMap([]string{"id"}, newNetworks)
+			// Convert from []map[string]interface{} to pxapi.QemuDevices
+			lxcNetworks := make(pxapi.QemuDevices, 0)
+			for index, network := range newNetworks {
+				lxcNetworks[index] = network
+			}
 			config.Networks = lxcNetworks
 		}
 	}
@@ -718,7 +740,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 	}
-	
+
 	if d.HasChange("start") {
 		vmState, err := client.GetVmState(vmr)
 		if err == nil && vmState["status"] == "stopped" && d.Get("start").(bool) {
@@ -816,7 +838,6 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 		flatNetworks, _ := FlattenDevicesList(config.Networks)
-		flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
 		if err = d.Set("network", flatNetworks); err != nil {
 			return err
 		}
@@ -1017,5 +1038,48 @@ func processDiskResize(
 			return err
 		}
 	}
+	return nil
+}
+
+func processLxcNetworkChanges(prevNetworks []map[string]interface{}, newNetworks []map[string]interface{}, pconf *providerConfiguration, vmr *pxapi.VmRef) error {
+	delNetworks := make([]map[string]interface{}, 0)
+
+	// Collect the IDs of networks that exist in `prevNetworks` but not in `newNetworks`.
+	for _, prevNet := range prevNetworks {
+		found := false
+		prevName := prevNet["id"].(int)
+		for _, newNet := range newNetworks {
+			newName := newNet["id"].(int)
+			if prevName == newName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			delNetworks = append(delNetworks, prevNet)
+		}
+	}
+
+	if len(delNetworks) > 0 {
+		deleteNetKeys := []string{}
+		for _, net := range delNetworks {
+			// Construct id that proxmox API expects (net+<number>)
+			deleteNetKeys = append(deleteNetKeys, "net"+strconv.Itoa(net["id"].(int)))
+		}
+
+		params := map[string]interface{}{
+			"delete": strings.Join(deleteNetKeys, ", "),
+		}
+		if vmr.GetVmType() == "lxc" {
+			if _, err := pconf.Client.SetLxcConfig(vmr, params); err != nil {
+				return err
+			}
+		} else {
+			if _, err := pconf.Client.SetVmConfig(vmr, params); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }

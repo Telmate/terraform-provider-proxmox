@@ -11,7 +11,7 @@ depend on that base "template" and clone it.
 When creating a VM Qemu resource, you create a `proxmox_vm_qemu` resource block. For ISO and clone
 modes, the name and target node of the VM are the only required parameters.
 
-For the PXE mode, the `boot` directive must contain a *Network* boot order first.  Generally, PXE
+For the PXE mode, the `boot` directive must contain a *Network* in its boot order.  Generally, PXE
 boot VMs should NOT contain the Agent config (`agent = 1`).  PXE boot mode also requires external
 infrastructure to support the Network PXE boot request by the VM.
 
@@ -26,64 +26,15 @@ resource "proxmox_vm_qemu" "resource-name" {
 
   ### or for a PXE boot VM operation
   # pxe = true
-  # boot = "net0;scsi0"
+  # boot = "scsi0;net0"
   # agent = 0
 }
 ```
 
-<del>
-## Preprovision
-
-With preprovision, you can provision a VM directly from the resource block. This provisioning method is therefore ran **
-before** provision blocks. When using preprovision, there are three `os_type` options: `ubuntu`, `centos`
-or `cloud-init`.
-
-```hcl
-resource "proxmox_vm_qemu" "preprovision-test" {
-  preprovision = true
-  os_type      = "ubuntu"
-}
-```
-
-### Preprovision for Linux (Ubuntu / CentOS)
-
-There is a pre-provision phase which is used to set a hostname, initialize eth0, and resize the VM disk to available
-space. This is done over SSH with the `ssh_forward_ip`, `ssh_user` and `ssh_private_key`. Disk resize is done if the
-file [/etc/auto_resize_vda.sh](https://github.com/Telmate/terraform-ubuntu-proxmox-iso/blob/master/auto_resize_vda.sh)
-exists.
-
-```hcl
-resource "proxmox_vm_qemu" "preprovision-test" {
-  preprovision      = true
-  os_type           = "ubuntu"
-  ssh_forward_ip    = "10.0.0.1"
-  ssh_user          = "terraform"
-  ssh_private_key   = <<EOF
------BEGIN RSA PRIVATE KEY-----
-private ssh key terraform
------END RSA PRIVATE KEY-----
-EOF
-  os_network_config = <<EOF
-auto eth0
-iface eth0 inet dhcp
-EOF
-
-  connection {
-    type        = "ssh"
-    user        = "${self.ssh_user}"
-    private_key = "${self.ssh_private_key}"
-    host        = "${self.ssh_host}"
-    port        = "${self.ssh_port}"
-  }
-}
-```
-
-</del>
-
 ## Provision through Cloud-Init
 
 Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When
-creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `ciconfig`
+creating a resource that is using Cloud-Init, there are multi configurations possible. You can use either the `cicustom`
 parameter to create based
 on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html) or use the Proxmox
 variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfig3`, `ipconfig4`, `ipconfig5`,
@@ -102,7 +53,7 @@ boot of the VM.  A minimal Resource stanza for a PXE boot VM might look like thi
 resource "proxmox_vm_qemu" "pxe-minimal-example" {
     name                      = "pxe-minimal-example"
     agent                     = 0
-    boot                      = "order=net0;scsi0"
+    boot                      = "order=scsi0;net0"
     pxe                       = true
     target_node               = "test"
     network {
@@ -116,7 +67,7 @@ resource "proxmox_vm_qemu" "pxe-minimal-example" {
 
 The primary options that effect the correct operation of Network PXE boot mode are:
 
-  * `boot`: a valid boot order must be specified with Network type first (eg `net0;scsi0` or `ncd`)
+  * `boot`: a valid boot order must be specified with Network type included (eg `order=scsi0;net0`)
   * a valid NIC attached to a network with a PXE boot server must be added to the VM
   * generally speaking, disable the Agent (`agent = 0`) unless the installed OS contains the Agent in OS install configurations
 
@@ -138,13 +89,14 @@ The following arguments are supported in the top level resource block.
 | `bios`                        | `str`  | `"seabios"`          | The BIOS to use, options are `seabios` or `ovmf` for UEFI.                                                                                                                                                                                                                                                                  |
 | `onboot`                      | `bool` | `false`               | Whether to have the VM startup after the PVE node starts.                                                                                                                                                                                                                                                                   |
 | `startup`                      | `string` | `""`               | The [startup and shutdown behaviour](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_startup_and_shutdown)                                                                                                                                                                                                        |
-| `oncreate`                    | `bool` | `true`               | Whether to have the VM startup after the VM is created.                                                                                                                                                                                                                                                                     |
+| `vm_state`                    | `string` | `"running"`         | The desired state of the VM, options are `running` or `stopped`.                                                                                                                                                                                                                                                            |
+| `oncreate`                    | `bool` | `true`               | Whether to have the VM startup after the VM is created (deprecated, use `vm_state` instead)                                                                                                                                                                                                                                |
 | `tablet`                      | `bool` | `true`               | Enable/disable the USB tablet device. This device is usually needed to allow absolute mouse positioning with VNC.                                                                                                                                                                                                           |
-| `boot`                        | `str`  | `"cdn"`              | The boot order for the VM. Ordered string of characters denoting boot order. Options: floppy (`a`), hard disk (`c`), CD-ROM (`d`), or network (`n`).                                                                                                                                                                        |
+| `boot`                        | `str`  |                      | The boot order for the VM. For example: `order=scsi0;ide2;net0`. The deprecated `legacy=` syntax is no longer supported. See the `boot` option in the [Proxmox manual](https://pve.proxmox.com/wiki/Manual:_qm.conf#_options) for more information.
 | `bootdisk`                    | `str`  |                      | Enable booting from specified disk. You shouldn't need to change it under most circumstances.                                                                                                                                                                                                                               |
 | `agent`                       | `int`  | `0`                  | Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the guest for this to have any effect.                                                                                                                                      |
-| `iso`                         | `str`  |                      | The name of the ISO image to mount to the VM. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.  Note that `iso` is mutually exclussive with `clone` and `pxe` modes.                                                                                                                          |
-| `pxe`                         | `bool` | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network first (eg `boot = "net0;scsi0"`).  Note that `pxe` is mutually exclussive with `iso` and `clone` modes.                                                                                                                      |
+| `iso`                         | `str`  |                      | The name of the ISO image to mount to the VM in the format: [storage pool]:iso/[name of iso file]. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.  Note that `iso` is mutually exclussive with `clone` and `pxe` modes.                                                                                                                          |
+| `pxe`                         | `bool` | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network included (eg `boot = "order=scsi0;net0"`).  Note that `pxe` is mutually exclusive with `iso` and `clone` modes.                                                                                                                      |
 | `clone`                       | `str`  |                      | The base VM from which to clone to create the new VM.  Note that `clone` is mutually exclussive with `pxe` and `iso` modes.                                                                                                                                                                                                 |
 | `full_clone`                  | `bool` | `true`               | Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.                                                                                                |
 | `hastate`                     | `str`  |                      | Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.                                                                                          |
@@ -204,7 +156,7 @@ details.
 | Argument    | Type   | Default Value | Description                                                                                                                                                                                                                                                                                                                                                     |
 |-------------|--------|---------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `model`     | `str`  |               | **Required** Network Card Model. The virtio model provides the best performance with very low CPU overhead. If your guest does not support this driver, it is usually best to use e1000. Options: `e1000`, `e1000-82540em`, `e1000-82544gc`, `e1000-82545em`, `i82551`, `i82557b`, `i82559er`, `ne2k_isa`, `ne2k_pci`, `pcnet`, `rtl8139`, `virtio`, `vmxnet3`. |
-| `macaddr`   | `str`  |               | Override the randomly generated MAC Address for the VM.                                                                                                                                                                                                                                                                                                         |
+| `macaddr`   | `str`  |               | Override the randomly generated MAC Address for the VM. Requires the MAC Address be Unicast.                                                                                                                                                                                                                                                        |
 | `bridge`    | `str`  | `"nat"`       | Bridge to which the network device should be attached. The Proxmox VE standard bridge is called `vmbr0`.                                                                                                                                                                                                                                                        |
 | `tag`       | `int`  | `-1`          | The VLAN tag to apply to packets on this device. `-1` disables VLAN tagging.                                                                                                                                                                                                                                                                                    |
 | `firewall`  | `bool` | `false`       | Whether to enable the Proxmox firewall on this network device.                                                                                                                                                                                                                                                                                                  |
@@ -306,6 +258,20 @@ details.
 |----------|--------|---------------|---------------------------------------------------------------------------------------------------------------------|
 | `host`   | `str`  |               | **Required** USB device host. This can either be done via the vendor- and product-id, or via the host bus and port. |
 | `usb3`   | `bool` | `false`       | Specifies whether if given host option is a USB3 device or port.                                                    |
+
+## SMBIOS Block
+
+The `smbios` block sets SMBIOS type 1 settings for the VM.
+
+| Argument       | Type     | Description               |
+|----------------|----------|---------------------------|
+| `family`       | `string` | The SMBIOS family.        |
+| `manufacturer` | `string` | The SMBIOS manufacturer.  |
+| `serial`       | `string` | The SMBIOS serial number. |
+| `product`      | `string` | The SMBIOS product.       |
+| `sku`          | `string` | The SMBIOS SKU.           |
+| `uuid`         | `string` | The SMBIOS UUID.          |
+| `version`      | `string` | The SMBIOS version.       |
 
 ## Attribute Reference
 

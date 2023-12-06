@@ -30,7 +30,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
 # boot order MUST include network, this is enforced in the Provider
 # Optinally, setting a disk first means that PXE will be used first boot
 # and future boots will run off the disk
-    boot                      = "order=net0;scsi0"
+    boot                      = "order=scsi0;net0"
     cores                     = 2
     cpu                       = "host"
     define_connection_info    = true
@@ -40,7 +40,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
     memory                    = 2048
     numa                      = false
     onboot                    = false
-    oncreate                  = true
+    vm_state                  = "running"
     os_type                   = "Linux 5.x - 2.6 Kernel"
     qemu_os                   = "l26"
     scsihw                    = "virtio-scsi-pci"
@@ -50,7 +50,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
     vcpus                     = 0
 
     disk {
-        backup       = 0
+        backup       = false
         cache        = "none"
         discard      = "on"
         iothread     = 1
@@ -71,5 +71,15 @@ resource "proxmox_vm_qemu" "pxe-example" {
         firewall  = false
         link_down = false
         model     = "e1000"
+    }
+
+    smbios {
+        family       = "VM"
+        manufacturer = "Hashibrown"
+        product      = "Terraform"
+        sku          = "dQw4w9WgXcQ"
+        uuid         = "5b710d2f-4ea2-4d49-9eaa-c18392fd734d"
+        version      = "v1.0"
+        serial       = "ABC123"
     }
 }

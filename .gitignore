@@ -6,3 +6,4 @@ examples/*_override.tf
 bin
 .vscode
 *.log
+*env

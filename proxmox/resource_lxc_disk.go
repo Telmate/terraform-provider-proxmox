@@ -67,8 +67,8 @@ func resourceLxcDisk() *schema.Resource {
 				Required: true,
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 					v := val.(string)
-					if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
-						errs = append(errs, fmt.Errorf("disk size must end in G, M, or K, got %s", v))
+					if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+						errs = append(errs, fmt.Errorf("disk size must end in T, G, M, or K, got %s", v))
 					}
 					return
 				},

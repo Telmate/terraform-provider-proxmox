@@ -3,7 +3,9 @@ package proxmox
 import (
 	"crypto/tls"
 	"fmt"
+	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,8 +60,25 @@ func Provider() *schema.Provider {
 			},
 			"pm_api_url": {
 				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_API_URL", nil),
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_API_URL", ""),
+				ValidateFunc: func(v interface{}, k string) (warns []string, errs []error) {
+					value := v.(string)
+
+					if value == "" {
+						errs = append(errs, fmt.Errorf("you must specify an endpoint for the Proxmox Virtual Environment API (valid: https://host:port)"))
+						return
+					}
+
+					_, err := url.ParseRequestURI(value)
+
+					if err != nil {
+						errs = append(errs, fmt.Errorf("you must specify an endpoint for the Proxmox Virtual Environment API (valid: https://host:port)"))
+						return
+					}
+
+					return
+				},
 				Description: "https://host.fqdn:8006/api2/json",
 			},
 			"pm_api_token_id": {
@@ -86,6 +105,12 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", true), //we assume it's a lab!
 				Description: "By default, every TLS connection is verified to be secure. This option allows terraform to proceed and operate on servers considered insecure. For example if you're connecting to a remote host and you do not have the CA cert that issued the proxmox api url's certificate.",
 			},
+			"pm_http_headers": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("PM_HTTP_HEADERS", nil),
+				Description: "Set custom http headers e.g. Key,Value,Key1,Value1",
+			},
 			"pm_log_enable": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -106,8 +131,8 @@ func Provider() *schema.Provider {
 			"pm_timeout": {
 				Type:        schema.TypeInt,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_TIMEOUT", defaultTimeout),
-				Description: "How many seconds to wait for operations for both provider and api-client, default is 300s",
+				DefaultFunc: schema.EnvDefaultFunc("PM_TIMEOUT", 1200),
+				Description: "How many seconds to wait for operations for both provider and api-client, default is 20m",
 			},
 			"pm_dangerously_ignore_unknown_attributes": {
 				Type:        schema.TypeBool,
@@ -131,10 +156,11 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"proxmox_vm_qemu":  resourceVmQemu(),
-			"proxmox_lxc":      resourceLxc(),
-			"proxmox_lxc_disk": resourceLxcDisk(),
-			"proxmox_pool":     resourcePool(),
+			"proxmox_vm_qemu":         resourceVmQemu(),
+			"proxmox_lxc":             resourceLxc(),
+			"proxmox_lxc_disk":        resourceLxcDisk(),
+			"proxmox_pool":            resourcePool(),
+			"proxmox_cloud_init_disk": resourceCloudInitDisk(),
 			// TODO - proxmox_storage_iso
 			// TODO - proxmox_bridge
 			// TODO - proxmox_vm_qemu_template
@@ -153,6 +179,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		d.Get("pm_api_token_secret").(string),
 		d.Get("pm_otp").(string),
 		d.Get("pm_tls_insecure").(bool),
+		d.Get("pm_http_headers").(string),
 		d.Get("pm_timeout").(int),
 		d.Get("pm_debug").(bool),
 		d.Get("pm_proxy_server").(string),
@@ -161,37 +188,83 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 
-	// look to see what logging we should be outputting according to the provider configuration
-	logLevels := make(map[string]string)
-	for logger, level := range d.Get("pm_log_levels").(map[string]interface{}) {
-		levelAsString, ok := level.(string)
-		if ok {
-			logLevels[logger] = levelAsString
-		} else {
-			return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
-		}
+	//permission check
+	minimum_permissions := []string{
+		"Datastore.AllocateSpace",
+		"Datastore.Audit",
+		"Pool.Allocate",
+		"Sys.Audit",
+		"Sys.Console",
+		"Sys.Modify",
+		"VM.Allocate",
+		"VM.Audit",
+		"VM.Clone",
+		"VM.Config.CDROM",
+		"VM.Config.Cloudinit",
+		"VM.Config.CPU",
+		"VM.Config.Disk",
+		"VM.Config.HWType",
+		"VM.Config.Memory",
+		"VM.Config.Network",
+		"VM.Config.Options",
+		"VM.Migrate",
+		"VM.Monitor",
+		"VM.PowerMgmt",
 	}
+	var id string
+	if result, getok := d.GetOk("pm_api_token_id"); getok {
+		id = result.(string)
+		id = strings.Split(id, "!")[0]
+	} else if result, getok := d.GetOk("pm_user"); getok {
+		id = result.(string)
+	}
+	userID, err := pxapi.NewUserID(id)
+	if err != nil {
+		return nil, err
+	}
+	permlist, err := client.GetUserPermissions(userID, "/")
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(permlist)
+	sort.Strings(minimum_permissions)
+	permDiff := permissions_check(permlist, minimum_permissions)
+	if len(permDiff) == 0 {
+		// look to see what logging we should be outputting according to the provider configuration
+		logLevels := make(map[string]string)
+		for logger, level := range d.Get("pm_log_levels").(map[string]interface{}) {
+			levelAsString, ok := level.(string)
+			if ok {
+				logLevels[logger] = levelAsString
+			} else {
+				return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
+			}
+		}
 
-	// actually configure logging
-	// note that if enable is false here, the configuration will squash all output
-	ConfigureLogger(
-		d.Get("pm_log_enable").(bool),
-		d.Get("pm_log_file").(string),
-		logLevels,
-	)
+		// actually configure logging
+		// note that if enable is false here, the configuration will squash all output
+		ConfigureLogger(
+			d.Get("pm_log_enable").(bool),
+			d.Get("pm_log_file").(string),
+			logLevels,
+		)
 
-	var mut sync.Mutex
-	return &providerConfiguration{
-		Client:                             client,
-		MaxParallel:                        d.Get("pm_parallel").(int),
-		CurrentParallel:                    0,
-		MaxVMID:                            -1,
-		Mutex:                              &mut,
-		Cond:                               sync.NewCond(&mut),
-		LogFile:                            d.Get("pm_log_file").(string),
-		LogLevels:                          logLevels,
-		DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
-	}, nil
+		var mut sync.Mutex
+		return &providerConfiguration{
+			Client:                             client,
+			MaxParallel:                        d.Get("pm_parallel").(int),
+			CurrentParallel:                    0,
+			MaxVMID:                            -1,
+			Mutex:                              &mut,
+			Cond:                               sync.NewCond(&mut),
+			LogFile:                            d.Get("pm_log_file").(string),
+			LogLevels:                          logLevels,
+			DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
+		}, nil
+	} else {
+		err = fmt.Errorf("permissions for user/token %s are not sufficient, please provide also the following permissions that are missing: %v", userID.ToString(), permDiff)
+		return nil, err
+	}
 }
 
 func getClient(pm_api_url string,
@@ -201,6 +274,7 @@ func getClient(pm_api_url string,
 	pm_api_token_secret string,
 	pm_otp string,
 	pm_tls_insecure bool,
+	pm_http_headers string,
 	pm_timeout int,
 	pm_debug bool,
 	pm_proxy_server string) (*pxapi.Client, error) {
@@ -228,7 +302,7 @@ func getClient(pm_api_url string,
 		err = fmt.Errorf("your API TokenID username should contain a !, check your API credentials")
 	}
 
-	client, _ := pxapi.NewClient(pm_api_url, nil, tlsconf, pm_proxy_server, pm_timeout)
+	client, _ := pxapi.NewClient(pm_api_url, nil, pm_http_headers, tlsconf, pm_proxy_server, pm_timeout)
 	*pxapi.Debug = pm_debug
 
 	// User+Pass authentication
@@ -305,7 +379,7 @@ func resourceId(targetNode string, resType string, vmId int) string {
 
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
 	if !rxRsId.MatchString(resId) {
-		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be node/type/vmId", resId)
+		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be <node>/<type>/<vmid>", resId)
 	}
 	idMatch := rxRsId.FindStringSubmatch(resId)
 	targetNode = idMatch[1]
@@ -320,7 +394,7 @@ func clusterResourceId(resType string, resId string) string {
 
 func parseClusterResourceId(resId string) (resType string, id string, err error) {
 	if !rxClusterRsId.MatchString(resId) {
-		return "", "", fmt.Errorf("invalid resource format: %s. Must be type/resId", resId)
+		return "", "", fmt.Errorf("invalid resource format: %s. Must be <type>/<resourceid>", resId)
 	}
 	idMatch := rxClusterRsId.FindStringSubmatch(resId)
 	return idMatch[1], idMatch[2], nil
