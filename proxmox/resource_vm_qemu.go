@@ -1549,12 +1549,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				AttributePath: cty.Path{},
 			})
 		}
-	} else if err == nil && vmState["status"] == "stopped" && d.Get("vm_state").(string) == "running" {
-		log.Print("[DEBUG][QemuVmUpdate] starting VM")
-		_, err = client.StartVm(vmr)
-		if err != nil {
-			return diag.FromErr(err)
-		}
 	} else if err != nil {
 		diags = append(diags, diag.FromErr(err)...)
 		return diags
