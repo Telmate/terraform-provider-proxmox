@@ -166,6 +166,10 @@ func Provider() *schema.Provider {
 			// TODO - proxmox_vm_qemu_template
 		},
 
+		DataSourcesMap: map[string]*schema.Resource{
+			"proxmox_ha_groups": DataHAGroup(),
+		},
+
 		ConfigureFunc: providerConfigure,
 	}
 }

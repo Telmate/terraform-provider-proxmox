@@ -363,8 +363,14 @@ func resourceDataToFlatValues(d *schema.ResourceData, resource *schema.Resource)
 			values, _ := schemaSetToFlatValues(d.Get(key).(*schema.Set), value.Elem.(*schema.Resource))
 			flatValues[key] = values
 		case schema.TypeList:
-			values, _ := schemaListToFlatValues(d.Get(key).([]interface{}), value.Elem.(*schema.Resource))
-			flatValues[key] = values
+			_, ok := value.Elem.(*schema.Schema)
+
+			if ok {
+				flatValues[key] = value.Elem.(*schema.Schema)
+			} else {
+				values, _ := schemaListToFlatValues(d.Get(key).([]interface{}), value.Elem.(*schema.Resource))
+				flatValues[key] = values
+			}
 		default:
 			flatValues[key] = "? Print Not Implemented ?"
 		}
