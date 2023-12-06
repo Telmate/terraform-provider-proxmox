@@ -39,7 +39,7 @@ parameter to create based
 on [a Cloud-init configuration file](https://cloudinit.readthedocs.io/en/latest/topics/examples.html) or use the Proxmox
 variable `ciuser`, `cipassword`, `ipconfig0`, `ipconfig1`, `ipconfig2`, `ipconfig3`, `ipconfig4`, `ipconfig5`,
 `ipconfig6`, `ipconfig7`, `ipconfig8`, `ipconfig9`, `ipconfig10`, `ipconfig11`, `ipconfig12`, `ipconfig13`,
-`ipconfig14`,`ipconfig15`, `searchdomain`, `nameserver` and `sshkeys`.
+`ipconfig14`,`ipconfig15`, `searchdomain`, `nameserver` and `sshkeys`. A variable amount of static IPs can be configured using the dynamic [`ipconfig` block](#ipconfig-block) to list multiple IP addresses.
 
 For more information, see the [Cloud-init guide](../guides/cloud_init.md).
 
@@ -163,6 +163,12 @@ details.
 | `rate`      | `int`  | `0`           | Network device rate limit in mbps (megabytes per second) as floating point number. Set to `0` to disable rate limiting.                                                                                                                                                                                                                                         |
 | `queues`    | `int`  | `1`           | Number of packet queues to be used on the device. Requires `virtio` model to have an effect.                                                                                                                                                                                                                                                                    |
 | `link_down` | `bool` | `false`       | Whether this interface should be disconnected (like pulling the plug).                                                                                                                                                                                                                                                                                          |
+
+### Ipconfig Block
+
+The `ipconfig` block is used to configure multiple static IP addresses. It may be specified multiple times.
+| Argument | Type  | Default Value | Description |
+| `config` | `str` |               | IP address to assign to the guest. Format: [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]. |
 
 ### Disk Block
 
