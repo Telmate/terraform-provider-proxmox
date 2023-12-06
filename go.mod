@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20230411210559-73bbbf4297e1
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
-	github.com/rs/zerolog v1.29.1
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
+	github.com/rs/zerolog v1.31.0
 
 )
 
@@ -41,9 +41,9 @@ require (
 	github.com/hashicorp/terraform-registry-address v0.2.2 // indirect
 	github.com/hashicorp/terraform-svchost v0.1.1 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
-	github.com/kdomanski/iso9660 v0.3.5
+	github.com/kdomanski/iso9660 v0.4.0
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
