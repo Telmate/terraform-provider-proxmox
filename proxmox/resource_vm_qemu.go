@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/url"
 	"path"
@@ -72,6 +73,17 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				// Default:     "",
 				Description: "The VM name",
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(string)
+					matched, err := regexp.Match("[^a-zA-Z0-9-]", []byte(v))
+					if err != nil {
+						warns = append(warns, fmt.Sprintf("%q, had an error running regexp.Match err=[%v]", key, err))
+					}
+					if matched {
+						errs = append(errs, fmt.Errorf("%q, must be contain only alphanumerics and hyphens", key, v))
+					}
+					return
+				},
 			},
 			"desc": {
 				Type:     schema.TypeString,
@@ -84,8 +96,16 @@ func resourceVmQemu() *schema.Resource {
 			},
 			"target_node": {
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				Description: "The node where VM goes to",
+			},
+			"target_nodes": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "A list of nodes where VM goes to",
 			},
 			"bios": {
 				Type:             schema.TypeString,
@@ -413,6 +433,29 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
+			"efidisk": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"storage": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+						"efitype": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "4m",
+							ValidateFunc: validation.StringInSlice([]string{
+								"2m",
+								"4m",
+							}, false),
+							ForceNew: true,
+						},
+					},
+				},
+			},
 			"disk": {
 				Type:          schema.TypeList,
 				Optional:      true,
@@ -560,6 +603,11 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeInt,
 							Optional: true,
 							Default:  0,
+						},
+						// Import disk
+						"import_from": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 						"serial": {
 							Type:         schema.TypeString,
@@ -930,6 +978,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	qemuNetworks, _ := ExpandDevicesList(d.Get("network").([]interface{}))
 	qemuDisks, _ := ExpandDevicesList(d.Get("disk").([]interface{}))
+	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	serials := d.Get("serial").(*schema.Set)
 	qemuSerials, _ := DevicesSetToMap(serials)
@@ -990,11 +1039,35 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
+
+	if len(qemuEfiDisks) > 0 {
+		config.EFIDisk = qemuEfiDisks[0]
+	}
+
 	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", vmName)
 	dupVmr, _ := client.GetVmRefByName(vmName)
 
 	forceCreate := d.Get("force_create").(bool)
-	targetNode := d.Get("target_node").(string)
+
+	var targetNodes []string
+	targetNodesRaw := d.Get("target_nodes").([]interface{})
+	targetNodes = make([]string, len(targetNodesRaw))
+	for i, raw := range targetNodesRaw {
+		targetNodes[i] = raw.(string)
+	}
+
+	var targetNode string
+
+	if targetNodes == nil || len(targetNodes) == 0 {
+		targetNode = d.Get("target_node").(string)
+	} else {
+		targetNode = targetNodes[rand.Intn(len(targetNodes))]
+	}
+
+	if targetNode == "" {
+		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use target_node or target_nodes to set a specific node! %v", vmName, targetNodes))
+	}
+
 	pool := d.Get("pool").(string)
 
 	if dupVmr != nil && forceCreate {
@@ -1245,10 +1318,15 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Partial(true)
 	if d.HasChange("target_node") {
-		_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
-		if err != nil {
-			return diag.FromErr(err)
+		// check if it must be migrated manually or it has been migrated by the promox high availability system
+		if vmr.Node() != d.Get("target_node").(string) {
+			_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
+
+		// update target node
 		vmr.SetNode(d.Get("target_node").(string))
 	}
 	d.Partial(false)
@@ -1526,12 +1604,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				AttributePath: cty.Path{},
 			})
 		}
-	} else if err == nil && vmState["status"] == "stopped" && d.Get("vm_state").(string) == "running" {
-		log.Print("[DEBUG][QemuVmUpdate] starting VM")
-		_, err = client.StartVm(vmr)
-		if err != nil {
-			return diag.FromErr(err)
-		}
 	} else if err != nil {
 		diags = append(diags, diag.FromErr(err)...)
 		return diags
@@ -1573,12 +1645,45 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// Try to get information on the vm. If this call err's out
 	// that indicates the VM does not exist. We indicate that to terraform
 	// by calling a SetId("")
-	_, err = client.GetVmInfo(vmr)
-	if err != nil {
+
+	// loop through all virtual servers...?
+	var targetNodeVMR string = ""
+	var targetNodes []string
+	targetNodesRaw := d.Get("target_nodes").([]interface{})
+	targetNodes = make([]string, len(targetNodesRaw))
+	for i, raw := range targetNodesRaw {
+		targetNodes[i] = raw.(string)
+	}
+
+	if targetNodes == nil || len(targetNodes) == 0 {
+		_, err = client.GetVmInfo(vmr)
+		if err != nil {
+			logger.Debug().Int("vmid", vmID).Err(err).Msg("failed to get vm info")
+			d.SetId("")
+			return nil
+		}
+		targetNodeVMR = vmr.Node()
+	} else {
+		for _, targetNode := range targetNodes {
+			vmr.SetNode(targetNode)
+			_, err = client.GetVmInfo(vmr)
+			if err != nil {
+				d.SetId("")
+			}
+
+			d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
+			logger.Debug().Any("Setting node id to", d.Get(vmr.Node()))
+			targetNodeVMR = targetNode
+			break
+		}
+	}
+
+	if targetNodeVMR == "" {
 		logger.Debug().Int("vmid", vmID).Err(err).Msg("failed to get vm info")
 		d.SetId("")
 		return nil
 	}
+
 	config, err := pxapi.NewConfigQemuFromApi(vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1608,7 +1713,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	logger.Debug().Int("vmid", vmID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
-	d.Set("target_node", vmr.Node())
 	d.Set("name", config.Name)
 	d.Set("desc", config.Description)
 	d.Set("bios", config.Bios)

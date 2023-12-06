@@ -40,10 +40,18 @@ CURRENT_TAG_MICRO  := "v$(CURRENT_VERSION_MICRO)"
 CURRENT_TAG_MINOR  := "v$(CURRENT_VERSION_MINOR)"
 CURRENT_TAG_MAJOR  := "v$(CURRENT_VERSION_MAJOR)"
 
-uname_s := $(shell uname -s)
-uname_m := $(shell uname -m)
-l_uname_s = $(shell echo $(uname_s) | tr A-Z a-z)
-l_uname_m = $(shell echo $(uname_m) | tr A-Z a-z)
+# Determine KERNEL and ARCH
+UNAME_S=$(shell uname -s)
+UNAME_M=$(shell uname -m)
+ifeq ($(UNAME_S),Linux)
+KERNEL=linux
+else ifeq ($(UNAME_S),Darwin)
+KERNEL=darwin
+endif
+
+ifeq ($(UNAME_M),x86_64)
+ARCH=amd64
+endif
 
 KERNEL=$(l_uname_s)
 ARCH=$(l_uname_m)

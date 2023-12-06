@@ -61,7 +61,6 @@ func resourceLxc() *schema.Resource {
 			"cores": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  1,
 			},
 			"cpulimit": {
 				Type:     schema.TypeInt,
@@ -166,13 +165,13 @@ func resourceLxc() *schema.Resource {
 							Type:     schema.TypeInt,
 							Required: true,
 						},
-						"storage": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
 						"mp": {
 							Type:     schema.TypeString,
 							Required: true,
+						},
+						"storage": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 						"acl": {
 							Type:     schema.TypeBool,
@@ -201,10 +200,10 @@ func resourceLxc() *schema.Resource {
 						},
 						"size": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
-								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
 									errs = append(errs, fmt.Errorf("disk size must end in T, G, M, or K, got %s", v))
 								}
 								return
@@ -360,7 +359,7 @@ func resourceLxc() *schema.Resource {
 							Required: true,
 							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
 								v := val.(string)
-								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "n")) {
+								if !(strings.Contains(v, "T") || strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
 									errs = append(errs, fmt.Errorf("disk size must end in T, G, M, or K, got %s", v))
 								}
 								return
