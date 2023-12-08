@@ -454,10 +454,10 @@ func resourceVmQemu() *schema.Resource {
 							Default:  "none",
 						},
 						"detect_zeroes": {
-							Type:         schema.TypeInt,
+							Type:     schema.TypeString,
 							Optional:     true,
-							Default:      0,
-							ValidateFunc: validation.IntInSlice([]int{0, 1}),
+							Default:      "",
+							
 						},
 					
 						"backup": {
