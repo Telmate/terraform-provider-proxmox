@@ -70,7 +70,13 @@ func resourceStorageIsoCreate(d *schema.ResourceData, meta interface{}) error {
 
 	client := pconf.Client
 	file, err := os.CreateTemp("/tmp", fileName)
+	if err != nil {
+		return err
+	}
 	err = _downloadFile(url, file)
+	if err != nil {
+		return err
+	}
 	file.Seek(0, 0)
 	defer file.Close()
 	err = client.Upload(node, storage, isoContentType, fileName, file)
@@ -96,7 +102,7 @@ func _downloadFile(url string, file *os.File) error {
 	}
 	defer resp.Body.Close()
 	_, err = io.Copy(file, resp.Body)
-	return nil
+	return err
 }
 
 func resourceStorageIsoRead(d *schema.ResourceData, meta interface{}) error {
