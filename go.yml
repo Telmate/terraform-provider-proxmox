@@ -1,0 +1,17 @@
+###
+# This is an ansible playbook that will install the bleeding edge version of
+# golang. This is needed because this project requires a newer version of go
+# than is available in any stable Debian release.
+#
+# To run this playbook:
+#   sudo apt install -y ansible
+#   ansible-galaxy install gantsign.ansible-role-golang
+#   ansible-playbook go.yml
+#
+# Then either restart your shell, or run `. /etc/profile.d/golang.sh` to
+# update your $PATH and you should be able to compile the provider with `make`
+###
+- name: Install and configure Golang
+  hosts: localhost
+  roles:
+    - role: gantsign.ansible-role-golang

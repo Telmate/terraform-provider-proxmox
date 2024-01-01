@@ -37,30 +37,23 @@ executables that have to be placed in the plugin directory.
 
 ## Compile the executables with Go
 
-In order to build the required executables, [install Go](https://golang.org/doc/install) first. Then clone this
-repository and run the following commands inside the cloned repository.
+First, clone this repo and cd into the repo's root.
 
 ```shell
-$ export GO111MODULE=on
-$ go install github.com/Telmate/terraform-provider-proxmox/cmd/terraform-provider-proxmox
+git clone https://github.com/Telmate/terraform-provider-proxmox
+cd terraform-provider-proxmox
 ```
 
-Then create the executables. They are placed in the `bin` folder inside the repository.
+In order to build the required executables, [install Go](https://golang.org/doc/install) first. If
+you want an automated way to do it, look at go.yml in the root of this repo.
+
+Then to compile the provider:
 
 ```shell
-$ cd terraform-provider-proxmox
-$ make
+make
 ```
 
-## Copy executables to plugin directory (Terraform <0.13)
-
-You need to copy these executables to the ~/.terraform.d directory which will also need to have a `plugins` directory
-created.
-
-```shell
-$ mkdir -p ~/.terraform.d/plugins
-$ cp -f bin/terraform-provider-proxmox_v2.0.0 ~/.terraform.d/plugins
-```
+The executable will be in the `./bin` directory.
 
 ## Copy executables to plugin directory (Terraform >=0.13)
 
@@ -109,6 +102,16 @@ terraform {
 }
 
 [...]
+```
+
+## Copy executables to plugin directory (Terraform <0.13)
+
+You need to copy these executables to the ~/.terraform.d directory which will also need to have a `plugins` directory
+created.
+
+```shell
+mkdir -p ~/.terraform.d/plugins
+cp -f bin/terraform-provider-proxmox ~/.terraform.d/plugins
 ```
 
 ## Initialize Terraform
