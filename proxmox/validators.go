@@ -93,3 +93,13 @@ func VMStateValidator() schema.SchemaValidateDiagFunc {
 		"stopped",
 	}, false))
 }
+
+func uint_Validator() schema.SchemaValidateDiagFunc {
+	return func(i interface{}, k cty.Path) diag.Diagnostics {
+		v, ok := i.(int)
+		if !ok || v < 0 {
+			return diag.Errorf("expected type of %s to be a positive number (uint)", k)
+		}
+		return nil
+	}
+}

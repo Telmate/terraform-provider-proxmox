@@ -172,42 +172,212 @@ The `ipconfig` block is used to configure multiple static IP addresses. It may b
 
 ### Disk Block
 
-The `disk` block is used to configure the disk devices. It may be specified multiple times. The order in which the
-blocks are specified and the disk device type determines the ID for each disk device. Take the following for example:
+The `disks` block is used to configure the disk devices. It may be specified once. There are four types of disk `ide`,`sata`,`scsi` and `virtio`. Configuration for these sub types can be found in their respective chapters:
+
+* `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `disk`: [Disks.x.Disk Block](#disksxdisk-block).
+* `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
 
 ```hcl
 resource "proxmox_vm_qemu" "resource-name" {
   //<arguments omitted for brevity...>
 
-  disk {
-    // This disk will become scsi0
-    type = "scsi"
-
-    //<arguments omitted for brevity...>
+  disks {
+    ide {
+      //<arguments omitted for brevity...>
+    }
+    sata {
+      //<arguments omitted for brevity...>
+    }
+    scsi {
+      //<arguments omitted for brevity...>
+    }
+    virtio {
+      //<arguments omitted for brevity...>
+    }
   }
+}
+```
 
-  disk {
-    // This disk will become ide0
-    type = "ide"
+### Disks.Ide Block
 
-    //<arguments omitted for brevity...>
-  }
+The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide1`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
-  disk {
-    // This disk will become scsi1
-    type = "scsi"
+* `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `disk`: [Disks.x.Disk Block](#disksxdisk-block).
+* `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
 
-    //<arguments omitted for brevity...>
-  }
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  //<arguments omitted for brevity...>
 
-  disk {
-    // This disk will become sata0
-    type = "sata"
-
+  disks {
+    ide {
+      ide0 {
+        disk {
+          //<arguments omitted for brevity...>
+        }
+      }
+      ide1 {
+        passthrough {
+          //<arguments omitted for brevity...>
+        }
+      }
+    }
     //<arguments omitted for brevity...>
   }
 }
 ```
+
+### Disks.Sata Block
+
+The `disks.sata` block is used to configure disks of type sata. It may only be specified once. It has the options `sata0` through `sata5`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+
+* `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `disk`: [Disks.x.Disk Block](#disksxdisk-block).
+* `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  //<arguments omitted for brevity...>
+
+  disks {
+    sata {
+      sata0 {
+        cdrom {
+          //<arguments omitted for brevity...>
+        }
+      }
+      sata1 {
+        disk {
+          //<arguments omitted for brevity...>
+        }
+      }
+      sata2 {
+        passthrough {
+          //<arguments omitted for brevity...>
+        }
+      }
+      //<arguments omitted for brevity...>
+    }
+    //<arguments omitted for brevity...>
+  }
+}
+```
+
+### Disks.Scsi Block
+
+The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `scsi0` through `scsi30`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+
+* `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `disk`: [Disks.x.Disk Block](#disksxdisk-block).
+* `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  //<arguments omitted for brevity...>
+
+  disks {
+    scsi {
+      scsi0 {
+        cdrom {
+          //<arguments omitted for brevity...>
+        }
+      }
+      scsi1 {
+        disk {
+          //<arguments omitted for brevity...>
+        }
+      }
+      scsi2 {
+        passthrough {
+          //<arguments omitted for brevity...>
+        }
+      }
+      //<arguments omitted for brevity...>
+    }
+    //<arguments omitted for brevity...>
+  }
+}
+```
+
+### Disks.Virtio Block
+
+The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `virtio0` through `virtio15`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+
+* `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `disk`: [Disks.x.Disk Block](#disksxdisk-block).
+* `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  //<arguments omitted for brevity...>
+
+  disks {
+    virtio {
+      virtio0 {
+        cdrom {
+          //<arguments omitted for brevity...>
+        }
+      }
+      virtio1 {
+        disk {
+          //<arguments omitted for brevity...>
+        }
+      }
+      virtio2 {
+        passthrough {
+          //<arguments omitted for brevity...>
+        }
+      }
+      //<arguments omitted for brevity...>
+    }
+    //<arguments omitted for brevity...>
+  }
+}
+```
+
+### Disks.x.Cdrom Block
+
+| Argument    | Type | Default Value | Description |
+|:------------|:-----|:-------------:|:------------|
+|`iso`        |`str` |               |The name of the ISO image to mount to the VM in the format: [storage pool]:iso/[name of iso file]. Note that `iso` is mutually exclusive with `passthrough`.|
+|`passthrough`|`bool`|`false`        |Wether the physical cdrom drive should be passed through.|
+
+When `iso` and `passthrough` are omitted an empty cdrom drive will be created.
+
+### Disks.x.Disk Block
+
+See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more details.
+
+| Argument             | Type  | Default Value | Disk Types          | Description |
+|:---------------------|:-----:|:-------------:|:-------------------:|:------------|
+|`asyncio`             |`str`  |               |`all`                |The drive's asyncio setting. Options: `io_uring`, `native`, `threads`|
+|`backup`              |`bool` |`true`         |`all`                |Whether the drive should be included when making backups.|
+|`cache`               |`str`  |               |`all`                |The drive’s cache mode. Options: `directsync`, `none`, `unsafe`, `writeback`, `writethrough`.|
+|`discard`             |`bool` |`false`        |`all`                |Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveats too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info.|
+|`emulatessd`          |`bool` |`false`        |`ide`, `sata`, `scsi`|Whether to expose this drive as an SSD, rather than a rotational hard disk.|
+|`format`              |`str`  |`raw`          |`all`                |The drive’s backing file’s data format.|
+|`id`                  |`int`  |               |`all`                |**Computed** Unique id of the disk.|
+|`iops_r_burst`        |`int`  |`0`            |`all`                |Maximum number of iops while reading in short bursts. `0` means unlimited.|
+|`iops_r_burst_length` |`int`  |`0`            |`all`                |Length of the read burst duration in seconds. `0` means the default duration dictated by proxmox.|
+|`iops_r_concurrent`   |`int`  |`0`            |`all`                |Maximum number of iops while reading concurrently. `0` means unlimited.|
+|`iops_wr_burst`       |`int`  |`0`            |`all`                |Maximum number of iops while writing in short bursts. `0` means unlimited.|
+|`iops_wr_burst_length`|`int`  |`0`            |`all`                |Length of the write burst duration in seconds. `0` means the default duration dictated by proxmox.|
+|`iops_wr_concurrent`  |`int`  |`0`            |`all`                |Maximum number of iops while writing concurrently. `0` means unlimited.|
+|`iothread`            |`bool` |`false`        |`scsi`, `virtio`    |Whether to use iothreads for this drive. Only effective when the the emulated controller type (`scsihw` top level block argument) is `virtio-scsi-single`.|
+|`linked_disk_id`      |`int`  |               |`all`                |**Computed** The `vmid` of the linked vm this disk was cloned from.|
+|`mbps_r_burst`        |`float`|`0.0`          |`all`                |Maximum read speed in megabytes per second. `0` means unlimited.|
+|`mbps_r_concurrent`   |`float`|`0.0`          |`all`                |Maximum read speed in megabytes per second. `0` means unlimited.|
+|`mbps_wr_burst`       |`float`|`0.0`          |`all`                |Maximum write speed in megabytes per second. `0` means unlimited.|
+|`mbps_wr_concurrent`  |`float`|`0.0`          |`all`                |Maximum throttled write pool in megabytes per second. `0` means unlimited.|
+|`readonly`            |`bool` |`false`        |`scsi`, `virtio`     |Whether the drive should be readonly.|
+|`replicate`           |`bool` |`false`        |`all`                |Whether the drive should considered for replication jobs.|
+|`serial`              |`str`  |               |`all`                |The serial number of the disk.|
+|`size`                |`int`  |               |`all`                |**Required** The size of the created disk in Gigabytes.|
+|`storage`             |`str`  |               |`all`                |**Required** The name of the storage pool on which to store the disk.|
+
+### Disks.x.Passthrough Block
 
 See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more details.
 
@@ -257,7 +427,6 @@ See the [docs about EFI disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#
 |----------------|-------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `efitype`      | `str` | `"4m"`        | The type of efi disk device to add. Options: `2m`, `4m`                                                                                                                                                                                                                                |
 | `storage`      | `str` |               | **Required** The name of the storage pool on which to store the disk.                                                                                                                                                                                                                  |
-
 ### Serial Block
 
 Create a serial device inside the VM (up to a maximum of 4 can be specified), and either pass through a host serial
@@ -316,6 +485,7 @@ In addition to the arguments above, the following attributes can be referenced f
 
 The following arguments are deprecated, and should no longer be used.
 
+- `disk` - (Optional; use disks instead)
 - `disk_gb` - (Optional; use disk.size instead)
 - `storage` - (Optional; use disk.storage instead)
 - `storage_type` - (Optional; use disk.type instead)
