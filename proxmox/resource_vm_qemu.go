@@ -3251,6 +3251,10 @@ func schema_CdRom(path string) *schema.Schema {
 	}
 }
 
+/*
+Commenting out this function because unused functions cause an error in the
+GitHub CI pipeline. Feel free to uncomment it and use it at any time.
+
 func schema_CloudInit() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeSet,
@@ -3270,6 +3274,7 @@ func schema_CloudInit() *schema.Schema {
 		},
 	}
 }
+*/
 
 func schema_Ide(setting string) *schema.Schema {
 	path := "disks.0.ide.0." + setting + ".0"
