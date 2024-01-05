@@ -412,6 +412,9 @@ func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource)
 	flatValues := make([]map[string]interface{}, 0, 1)
 
 	for _, item := range schemaList {
+		if item == nil {
+			continue
+		}
 		innerFlatValues := make(map[string]interface{})
 
 		itemAsMap := item.(map[string]interface{})
