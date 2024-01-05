@@ -654,7 +654,7 @@ func resourceVmQemu() *schema.Resource {
 			"disks": {
 				Type:          schema.TypeList,
 				Optional:      true,
-				ConflictsWith: []string{"disk_gb", "storage", "storage_type"},
+				ConflictsWith: []string{"disk", "disk_gb", "storage", "storage_type"},
 				MaxItems:      1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -1162,6 +1162,10 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Ipconfig:     qemuIpconfig,
 	}
 
+	config.Disks = mapToStruct_QemuStorages(d)
+	setIso(d, &config)
+	setCloudInitDisk(d, &config)
+
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
@@ -1220,6 +1224,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 		vmr = pxapi.NewVmRef(nextid)
 		vmr.SetNode(targetNode)
+		config.Node = targetNode
 		if pool != "" {
 			vmr.SetPool(pool)
 		}
@@ -1401,15 +1406,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Partial(true)
 	if d.HasChange("target_node") {
-		// check if it must be migrated manually or it has been migrated by the promox high availability system
-		if vmr.Node() != d.Get("target_node").(string) {
-			_, err := client.MigrateNode(vmr, d.Get("target_node").(string), true)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		}
-
-		// update target node
+		// Update target node when it must be migrated manually. Don't if it has been migrated by the promox high availability system.
 		vmr.SetNode(d.Get("target_node").(string))
 	}
 	d.Partial(false)
@@ -1465,14 +1462,13 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
 
-	var _/*rebootRequired*/ bool
-	// The weird variable name here is to workaround a go "feature" of compilation when the
-	// variable has a sane name. Change the name to an underscore and it compiles just fine
-	// don't let the update function hande the reboot as it can't deal with cloud init changes yet
-	_/*rebootRequired*/, err = config.Update(false, vmr, client)
+	var rebootRequired bool
+	// don't let the update function handel the reboot as it can't deal with cloud init changes yet
+	rebootRequired, err = config.Update(false, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	d.Set("reboot_required", rebootRequired)
 
 	// If any of the "critical" keys are changed then a reboot is required.
 	if d.HasChanges(
@@ -1591,8 +1587,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				if _, err := client.StartVm(vmr); err != nil {
 					return diag.FromErr(err)
 				}
-				// Set reboot_required to false if reboot was successfull
-				d.Set("reboot_required", false)
 			}
 		} else {
 			// Automatic reboots is not enabled, show the user a warning message that
@@ -1604,14 +1598,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				AttributePath: cty.Path{},
 			})
 		}
-	} else if err == nil && vmState["status"] == "stopped" && d.Get("vm_state").(string) == "running" {
-		log.Print("[DEBUG][QemuVmUpdate] starting VM")
-		_, err = client.StartVm(vmr)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		// Set reboot_required to false if vm was not running.
-		d.Set("reboot_required", false)
 	} else if err != nil {
 		diags = append(diags, diag.FromErr(err)...)
 		return diags
@@ -1793,6 +1779,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// Since "full_clone" has a default of true, it will always be in the configuration, so no need to verify.
 	d.Set("full_clone", d.Get("full_clone"))
 
+	// TODO remove this
 	// Disks.
 	// add an explicit check that the keys in the config.QemuDisks map are a strict subset of
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
@@ -2431,12 +2418,19 @@ func mapFromStruct_ConfigQemu(config *pxapi.QemuStorages) []interface{} {
 	if config == nil {
 		return nil
 	}
+	ide := mapFromStruct_QemuIdeDisks(config.Ide)
+	sata := mapFromStruct_QemuSataDisks(config.Sata)
+	scsi := mapFromStruct_QemuScsiDisks(config.Scsi)
+	virtio := mapFromStruct_QemuVirtIODisks(config.VirtIO)
+	if ide == nil && sata == nil && scsi == nil && virtio == nil {
+		return nil
+	}
 	return []interface{}{
 		map[string]interface{}{
-			"ide":    mapFromStruct_QemuIdeDisks(config.Ide),
-			"sata":   mapFromStruct_QemuSataDisks(config.Sata),
-			"scsi":   mapFromStruct_QemuScsiDisks(config.Scsi),
-			"virtio": mapFromStruct_QemuVirtIODisks(config.VirtIO),
+			"ide":    ide,
+			"sata":   sata,
+			"scsi":   scsi,
+			"virtio": virtio,
 		},
 	}
 }
@@ -2488,10 +2482,15 @@ func mapFromStruct_QemuIdeDisks(config *pxapi.QemuIdeDisks) []interface{} {
 	if config == nil {
 		return nil
 	}
+	ide_0 := mapFromStruct_QemuIdeStorage(config.Disk_0, "ide0")
+	ide_1 := mapFromStruct_QemuIdeStorage(config.Disk_1, "ide1")
+	if ide_0 == nil && ide_1 == nil {
+		return nil
+	}
 	return []interface{}{
 		map[string]interface{}{
-			"ide0": mapFromStruct_QemuIdeStorage(config.Disk_0, "ide0"),
-			"ide1": mapFromStruct_QemuIdeStorage(config.Disk_1, "ide1"),
+			"ide0": ide_0,
+			"ide1": ide_1,
 		},
 	}
 }
@@ -2778,6 +2777,7 @@ func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage, setting st
 	return mapFormStruct_QemuCdRom(config.CdRom)
 }
 
+// Map the terraform schema to sdk struct
 func mapToStruct_IsoFile(iso string) *pxapi.IsoFile {
 	if iso == "" {
 		return nil
@@ -3067,7 +3067,6 @@ func mapToStruct_QemuScsiStorage(scsi *pxapi.QemuScsiStorage, key string, schema
 	scsi.CdRom = mapToStruct_QemuCdRom(storageSchema)
 }
 
-// Map the terraform schema to struct
 func mapToStruct_QemuStorages(d *schema.ResourceData) *pxapi.QemuStorages {
 	storages := pxapi.QemuStorages{
 		Ide: &pxapi.QemuIdeDisks{
@@ -3138,11 +3137,13 @@ func mapToStruct_QemuStorages(d *schema.ResourceData) *pxapi.QemuStorages {
 	}
 	schemaItem := d.Get("disks").([]interface{})
 	if len(schemaItem) == 1 {
-		schemaStorages := schemaItem[0].(map[string]interface{})
-		mapToStruct_QemuIdeDisks(storages.Ide, schemaStorages)
-		mapToStruct_QemuSataDisks(storages.Sata, schemaStorages)
-		mapToStruct_QemuScsiDisks(storages.Scsi, schemaStorages)
-		mapToStruct_QemuVirtIODisks(storages.VirtIO, schemaStorages)
+		schemaStorages, ok := schemaItem[0].(map[string]interface{})
+		if ok {
+			mapToStruct_QemuIdeDisks(storages.Ide, schemaStorages)
+			mapToStruct_QemuSataDisks(storages.Sata, schemaStorages)
+			mapToStruct_QemuScsiDisks(storages.Scsi, schemaStorages)
+			mapToStruct_QemuVirtIODisks(storages.VirtIO, schemaStorages)
+		}
 	}
 	return &storages
 }
@@ -3228,6 +3229,7 @@ func mapToStruct_VirtIOStorage(virtio *pxapi.QemuVirtIOStorage, key string, sche
 	virtio.CdRom = mapToStruct_QemuCdRom(storageSchema)
 }
 
+// schema definition
 func schema_CdRom(path string) *schema.Schema {
 	return &schema.Schema{
 		Type:          schema.TypeList,
@@ -3250,31 +3252,6 @@ func schema_CdRom(path string) *schema.Schema {
 		},
 	}
 }
-
-/*
-Commenting out this function because unused functions cause an error in the
-GitHub CI pipeline. Feel free to uncomment it and use it at any time.
-
-func schema_CloudInit() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeSet,
-		Optional: true,
-		MaxItems: 1,
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"file": {
-					Type:     schema.TypeString,
-					Required: true,
-				},
-				"storage": {
-					Type:     schema.TypeString,
-					Required: true,
-				},
-			},
-		},
-	}
-}
-*/
 
 func schema_Ide(setting string) *schema.Schema {
 	path := "disks.0.ide.0." + setting + ".0"
@@ -3304,6 +3281,7 @@ func schema_Ide(setting string) *schema.Schema {
 							"serial":         schema_DiskSerial(),
 							"size":           schema_DiskSize(),
 							"storage":        schema_DiskStorage(),
+							"wwn":            schema_DiskWWN(),
 						}),
 					},
 				},
@@ -3323,6 +3301,7 @@ func schema_Ide(setting string) *schema.Schema {
 							"replicate":  {Type: schema.TypeBool, Optional: true},
 							"serial":     schema_DiskSerial(),
 							"size":       schema_PassthroughSize(),
+							"wwn":        schema_DiskWWN(),
 						}),
 					},
 				},
@@ -3359,6 +3338,7 @@ func schema_Sata(setting string) *schema.Schema {
 							"serial":         schema_DiskSerial(),
 							"size":           schema_DiskSize(),
 							"storage":        schema_DiskStorage(),
+							"wwn":            schema_DiskWWN(),
 						}),
 					},
 				},
@@ -3378,6 +3358,7 @@ func schema_Sata(setting string) *schema.Schema {
 							"replicate":  {Type: schema.TypeBool, Optional: true},
 							"serial":     schema_DiskSerial(),
 							"size":       schema_PassthroughSize(),
+							"wwn":        schema_DiskWWN(),
 						}),
 					},
 				},
@@ -3416,6 +3397,7 @@ func schema_Scsi(setting string) *schema.Schema {
 							"serial":         schema_DiskSerial(),
 							"size":           schema_DiskSize(),
 							"storage":        schema_DiskStorage(),
+							"wwn":            schema_DiskWWN(),
 						}),
 					},
 				},
@@ -3437,6 +3419,7 @@ func schema_Scsi(setting string) *schema.Schema {
 							"replicate":  {Type: schema.TypeBool, Optional: true},
 							"serial":     schema_DiskSerial(),
 							"size":       schema_PassthroughSize(),
+							"wwn":        schema_DiskWWN(),
 						}),
 					},
 				},
@@ -3474,6 +3457,7 @@ func schema_Virtio(setting string) *schema.Schema {
 							"serial":         schema_DiskSerial(),
 							"size":           schema_DiskSize(),
 							"storage":        schema_DiskStorage(),
+							"wwn":            schema_DiskWWN(),
 						}),
 					},
 				},
@@ -3494,6 +3478,7 @@ func schema_Virtio(setting string) *schema.Schema {
 							"replicate": {Type: schema.TypeBool, Optional: true},
 							"serial":    schema_DiskSerial(),
 							"size":      schema_PassthroughSize(),
+							"wwn":       schema_DiskWWN(),
 						},
 					)},
 				},
@@ -3506,16 +3491,15 @@ func schema_DiskAsyncIO() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeString,
 		Optional: true,
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(string)
 			if !ok {
-				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
-				return
+				return diag.Errorf(errorString, k)
 			}
 			if err := pxapi.QemuDiskAsyncIO(v).Validate(); err != nil {
-				errors = append(errors, err)
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3547,16 +3531,15 @@ func schema_DiskBandwidthIopsBurst() *schema.Schema {
 		Type:     schema.TypeInt,
 		Optional: true,
 		Default:  0,
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(int)
 			if !ok || v < 0 {
-				errors = append(errors, fmt.Errorf("expected type of %s to be a positive number (uint)", k))
-				return
+				return diag.Errorf(errorUint, k)
 			}
 			if err := pxapi.QemuDiskBandwidthIopsLimitBurst(v).Validate(); err != nil {
-				errors = append(errors, err)
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3574,16 +3557,15 @@ func schema_DiskBandwidthIopsConcurrent() *schema.Schema {
 		Type:     schema.TypeInt,
 		Optional: true,
 		Default:  0,
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(int)
 			if !ok || v < 0 {
-				errors = append(errors, fmt.Errorf("expected type of %s to be a positive number (uint)", k))
-				return
+				return diag.Errorf(errorUint, k)
 			}
 			if err := pxapi.QemuDiskBandwidthIopsLimitConcurrent(v).Validate(); err != nil {
-				errors = append(errors, err)
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3593,16 +3575,15 @@ func schema_DiskBandwidthMBpsBurst() *schema.Schema {
 		Type:     schema.TypeFloat,
 		Optional: true,
 		Default:  0.0,
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(float64)
 			if !ok {
-				errors = append(errors, fmt.Errorf("expected type of %s to be a float", k))
-				return
+				return diag.Errorf(errorFloat, k)
 			}
-			if err := pxapi.QemuDiskBandwidthMBpsLimitConcurrent(v).Validate(); err != nil {
-				errors = append(errors, err)
+			if err := pxapi.QemuDiskBandwidthMBpsLimitBurst(v).Validate(); err != nil {
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3612,17 +3593,15 @@ func schema_DiskBandwidthMBpsConcurrent() *schema.Schema {
 		Type:     schema.TypeFloat,
 		Optional: true,
 		Default:  0.0,
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(float64)
 			if !ok {
-				errors = append(errors, fmt.Errorf("expected type of %s to be a float", k))
-				return
+				return diag.Errorf(errorFloat, k)
 			}
-
 			if err := pxapi.QemuDiskBandwidthMBpsLimitConcurrent(v).Validate(); err != nil {
-				errors = append(errors, err)
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3632,16 +3611,15 @@ func schema_DiskCache() *schema.Schema {
 		Type:     schema.TypeString,
 		Optional: true,
 		Default:  "",
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(string)
 			if !ok {
-				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
-				return
+				return diag.Errorf(errorString, k)
 			}
 			if err := pxapi.QemuDiskCache(v).Validate(); err != nil {
-				errors = append(errors, err)
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3651,16 +3629,15 @@ func schema_DiskFormat() *schema.Schema {
 		Type:     schema.TypeString,
 		Optional: true,
 		Default:  "raw",
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(string)
 			if !ok {
-				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
-				return
+				return diag.Errorf(errorString, k)
 			}
 			if err := pxapi.QemuDiskFormat(v).Validate(); err != nil {
-				errors = append(errors, err)
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3677,16 +3654,15 @@ func schema_DiskSerial() *schema.Schema {
 		Type:     schema.TypeString,
 		Optional: true,
 		Default:  "",
-		ValidateFunc: func(i interface{}, k string) (warnings []string, errors []error) {
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 			v, ok := i.(string)
 			if !ok {
-				errors = append(errors, fmt.Errorf("expected type of %s to be string", k))
-				return
+				return diag.Errorf(errorString, k)
 			}
 			if err := pxapi.QemuDiskSerial(v).Validate(); err != nil {
-				errors = append(errors, err)
+				return diag.FromErr(err)
 			}
-			return
+			return nil
 		},
 	}
 }
@@ -3695,7 +3671,7 @@ func schema_DiskSize() *schema.Schema {
 	return &schema.Schema{
 		Type:             schema.TypeInt,
 		Required:         true,
-		ValidateDiagFunc: uint_Validator(),
+		ValidateDiagFunc: uintValidator(),
 	}
 }
 
@@ -3703,6 +3679,23 @@ func schema_DiskStorage() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeString,
 		Required: true,
+	}
+}
+
+func schema_DiskWWN() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+			v, ok := i.(string)
+			if !ok {
+				return diag.Errorf(errorString, k)
+			}
+			if err := pxapi.QemuWorldWideName(v).Validate(); err != nil {
+				return diag.FromErr(err)
+			}
+			return nil
+		},
 	}
 }
 
