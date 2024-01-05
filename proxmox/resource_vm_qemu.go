@@ -205,7 +205,7 @@ func resourceVmQemu() *schema.Resource {
 				// Default:  "l26",
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					// 	if new == "l26" {
-					// 		return len(d.Get("clone").(string)) > 0 // the cloned source may have a different os, which we shoud leave alone
+					// 		return len(d.Get("clone").(string)) > 0 // the cloned source may have a different os, which we should leave alone
 					// 	}
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
@@ -914,7 +914,7 @@ func resourceVmQemu() *schema.Resource {
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					return new == "**********"
 					// if new == "**********" {
-					// 	return true // api returns astericks instead of password so can't diff
+					// 	return true // api returns asterisks instead of password so can't diff
 					// }
 					// return false
 				},
@@ -1406,7 +1406,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Partial(true)
 	if d.HasChange("target_node") {
-		// Update target node when it must be migrated manually. Don't if it has been migrated by the promox high availability system.
+		// Update target node when it must be migrated manually. Don't if it has been migrated by the proxmox high availability system.
 		vmr.SetNode(d.Get("target_node").(string))
 	}
 	d.Partial(false)
@@ -1554,7 +1554,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	var diags diag.Diagnostics
 
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
-	// enabled. Attempt a graceful shutdown or if that fails, force poweroff.
+	// enabled. Attempt a graceful shutdown or if that fails, force power-off.
 	vmState, err := client.GetVmState(vmr)
 	if err == nil && vmState["status"] != "stopped" && d.Get("vm_state").(string) == "stopped" {
 		log.Print("[DEBUG][QemuVmUpdate] shutting down VM to match `vm_state`")
@@ -1687,10 +1687,10 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		d.Set("vm_state", vmState["status"])
 	}
 	if err == nil && vmState["status"] == "running" {
-		log.Printf("[DEBUG] VM is running, cheking the IP")
+		log.Printf("[DEBUG] VM is running, checking the IP")
 		diags = append(diags, initConnInfo(ctx, d, pconf, client, vmr, config, lock)...)
 	} else {
-		// Optional convience attributes for provisioners
+		// Optional convenience attributes for provisioners
 		err = d.Set("default_ipv4_address", nil)
 		diags = append(diags, diag.FromErr(err)...)
 		err = d.Set("ssh_host", nil)
@@ -1775,7 +1775,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 			d.Set(key, val.(bool))
 		}
 	}
-	// Check "full_clone" separately, as it causes issues in loop above due to how GetOk returns values on false bools.
+	// Check "full_clone" separately, as it causes issues in loop above due to how GetOk returns values on false booleans.
 	// Since "full_clone" has a default of true, it will always be in the configuration, so no need to verify.
 	d.Set("full_clone", d.Get("full_clone"))
 
@@ -2205,12 +2205,12 @@ func initConnInfo(ctx context.Context,
 	}
 	// allow user to opt-out of setting the connection info for the resource
 	if d.Get("agent") != 1 {
-		log.Printf("[INFO][initConnInfo] qemu agent is disabled from proxmox config, cant comunicate with vm.")
-		logger.Info().Int("vmid", vmr.VmId()).Msgf("qemu agent is disabled from proxmox config, cant comunicate with vm.")
+		log.Printf("[INFO][initConnInfo] qemu agent is disabled from proxmox config, cant communicate with vm.")
+		logger.Info().Int("vmid", vmr.VmId()).Msgf("qemu agent is disabled from proxmox config, cant communicate with vm.")
 		diags = append(diags, diag.Diagnostic{
 			Severity:      diag.Warning,
 			Summary:       "Qemu Guest Agent support is disabled from proxmox config.",
-			Detail:        "Qemu Guest Agent support is required to make comunications with the VM",
+			Detail:        "Qemu Guest Agent support is required to make communications with the VM",
 			AttributePath: cty.Path{},
 		})
 		return diags
@@ -2347,7 +2347,7 @@ func initConnInfo(ctx context.Context,
 
 		log.Print("[DEBUG][initConnInfo] found an ip configuration")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Found an ip configuration")
-		// Check if we got a speficied port
+		// Check if we got a specified port
 		if strings.Contains(sshHost, ":") {
 			sshParts := strings.Split(sshHost, ":")
 			sshHost = sshParts[0]
@@ -2363,7 +2363,7 @@ func initConnInfo(ctx context.Context,
 	log.Printf("[DEBUG][initConnInfo] this is the vm configuration: %s %s", sshHost, sshPort)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
-	// Optional convience attributes for provisioners
+	// Optional convenience attributes for provisioners
 	err = d.Set("default_ipv4_address", sshHost)
 	diags = append(diags, diag.FromErr(err)...)
 	err = d.Set("ssh_host", sshHost)
