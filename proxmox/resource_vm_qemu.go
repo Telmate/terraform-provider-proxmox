@@ -1259,6 +1259,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			// give sometime to proxmox to catchup
 			time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
 
+			log.Print("[DEBUG][QemuVmCreate] update VM after clone")
 			rebootRequired, err = config.Update(false, vmr, client)
 			if err != nil {
 				// Set the id because when update config fail the vm is still created
@@ -1268,6 +1269,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 		} else if d.Get("iso").(string) != "" {
 			config.QemuIso = d.Get("iso").(string)
+			log.Print("[DEBUG][QemuVmCreate] create with ISO")
 			err := config.Create(vmr, client)
 			if err != nil {
 				return diag.FromErr(err)
@@ -1294,7 +1296,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			if !found {
 				return diag.FromErr(fmt.Errorf("no network boot option matched in 'boot' config"))
 			}
-
+			log.Print("[DEBUG][QemuVmCreate] create with PXE")
 			err := config.Create(vmr, client)
 			if err != nil {
 				return diag.FromErr(err)
