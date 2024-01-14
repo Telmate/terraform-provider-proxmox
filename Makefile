@@ -102,7 +102,7 @@ local-dev-install: build
 
 container-build:
 	@echo "Building container"
-	podman build . -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION)
+	podman build . -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
 
 container-push:
 	@echo "Pushing container"
