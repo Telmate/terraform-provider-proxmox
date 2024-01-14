@@ -96,6 +96,13 @@ local-dev-install: build
 	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 
+container-build:
+	@echo "Building container"
+	podman build . -t docker.io/clincha/terraform-provider-proxmox:1.0.0
+
+container-push:
+	@echo "Pushing container"
+	podman push docker.io/clincha/terraform-provider-proxmox:1.0.0
 
 clean:
 	@git clean -f -d
