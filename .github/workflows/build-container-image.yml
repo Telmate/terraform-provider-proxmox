@@ -10,5 +10,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.0.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Build image
         run: make container-build
+
+      - name: Push image
+        run: make container-push
