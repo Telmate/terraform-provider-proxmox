@@ -56,6 +56,10 @@ endif
 KERNEL=$(l_uname_s)
 ARCH=$(l_uname_m)
 
+CONTAINER_REGISTRY = "docker.io"
+CONTAINER_NAMESPACE = "clincha"
+CONTAINER_NAME = "terraform-provider-proxmox"
+
 .PHONY: build info fmt vet test clean install acctest local-dev-install
 
 all: build
@@ -98,11 +102,11 @@ local-dev-install: build
 
 container-build:
 	@echo "Building container"
-	podman build . -t docker.io/clincha/terraform-provider-proxmox:$(VERSION)
+	podman build . -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION)
 
 container-push:
 	@echo "Pushing container"
-	podman push docker.io/clincha/terraform-provider-proxmox:$(VERSION)
+	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION)
 
 clean:
 	@git clean -f -d
