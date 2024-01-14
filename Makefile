@@ -98,11 +98,11 @@ local-dev-install: build
 
 container-build:
 	@echo "Building container"
-	podman build . -t docker.io/clincha/terraform-provider-proxmox:1.0.0
+	podman build . -t docker.io/clincha/terraform-provider-proxmox:$(VERSION)
 
 container-push:
 	@echo "Pushing container"
-	podman push docker.io/clincha/terraform-provider-proxmox:1.0.0
+	podman push docker.io/clincha/terraform-provider-proxmox:$(VERSION)
 
 clean:
 	@git clean -f -d
