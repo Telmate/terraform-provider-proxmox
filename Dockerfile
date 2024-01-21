@@ -1,10 +1,12 @@
 FROM docker.io/golang:1.21.6
 
+ARG COMMAND=build
+
 CMD mkdir /app
 COPY . /app
 WORKDIR /app
 CMD mkdir -p bin
-RUN make build
+RUN make $COMMAND
 
 FROM docker.io/hashicorp/terraform:1.6
 
