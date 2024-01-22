@@ -10,7 +10,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Log in to Docker Hub
+      - name: Log in to docker.io
         uses: redhat-actions/podman-login@v1.6
         with:
           username: "clincha"

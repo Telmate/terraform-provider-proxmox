@@ -17,8 +17,5 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           registry: docker.io
 
-      - name: Build image
-        run: make container-build
-
       - name: Push image
         run: make container-push
