@@ -23,6 +23,5 @@ jobs:
           registry: docker.io
 
       - name: ${{ matrix.container }} build and push
-        run: make push-terraform-provider-proxmox
-        env:
-          CONTAINER_NAME: ${{ matrix.container }}
+        run: make push-terraform-provider-proxmox \
+          CONTAINER_NAME=${{ matrix.container }}
