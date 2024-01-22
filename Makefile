@@ -59,6 +59,7 @@ ARCH=$(l_uname_m)
 CONTAINER_REGISTRY = "docker.io"
 CONTAINER_NAMESPACE = "clincha"
 CONTAINER_NAME = "terraform-provider-proxmox"
+DOCKERFILE = "$(CONTAINER_NAME).Dockerfile"
 
 .PHONY: build info fmt vet test clean install acctest local-dev-install
 
@@ -102,19 +103,11 @@ local-dev-install: build
 
 build-terraform-provider-proxmox:
 	@echo "Building container"
-	podman build . -f ./containers/$(CONTAINER_NAME).Dockerfile -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
+	podman build . -f ./containers/$(DOCKERFILE) -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
 
-terraform-provider-proxmox: build-terraform-provider-proxmox
+push-terraform-provider-proxmox: build-terraform-provider-proxmox
 	@echo "Pushing container"
 	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION)
-
-build-terraform-provider-proxmox-azrm:
-	@echo "Building container"
-	podman build . -f ./containers/$(CONTAINER_NAME)-azrm.Dockerfile -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME)-azrm:$(VERSION) --build-arg VERSION=$(VERSION)
-
-terraform-provider-proxmox-azrm: build-terraform-provider-proxmox-azrm
-	@echo "Pushing container"
-	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME)-azrm:$(VERSION)
 
 clean:
 	@git clean -f -d
