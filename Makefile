@@ -102,11 +102,19 @@ local-dev-install: build
 
 container-build:
 	@echo "Building container"
-	podman build . -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
+	podman build ./containers/$(CONTAINER_NAME).Dockerfile -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
 
-container-push:
+container-push: container-build
 	@echo "Pushing container"
 	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION)
+
+container-build-azrm:
+	@echo "Building container"
+	podman build ./containers/$(CONTAINER_NAME)-azrm.Dockerfile -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME)-azrm:$(VERSION) --build-arg VERSION=$(VERSION)
+
+container-push-azrm: container-build-azrm
+	@echo "Pushing container"
+	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME)-azrm:$(VERSION)
 
 clean:
 	@git clean -f -d
