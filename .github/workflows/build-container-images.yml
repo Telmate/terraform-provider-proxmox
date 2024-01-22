@@ -1,10 +1,15 @@
-name: Build container image
+name: Build container images
 on:
   push:
     tags:
       - 'v*'
 jobs:
   build:
+    strategy:
+      matrix:
+        container:
+          - terraform-provider-proxmox
+          - terraform-provider-proxmox-azrm
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,5 +22,5 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           registry: docker.io
 
-      - name: Push image
-        run: make container-push
+      - name: ${{ matrix.container }} build and push
+        run: make ${{ matrix.container }}

@@ -100,19 +100,19 @@ local-dev-install: build
 	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 
-container-build:
+build-terraform-provider-proxmox:
 	@echo "Building container"
 	podman build . -f ./containers/$(CONTAINER_NAME).Dockerfile -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
 
-container-push: container-build
+terraform-provider-proxmox: build-terraform-provider-proxmox
 	@echo "Pushing container"
 	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION)
 
-container-build-azrm:
+build-terraform-provider-proxmox-azrm:
 	@echo "Building container"
 	podman build . -f ./containers/$(CONTAINER_NAME)-azrm.Dockerfile -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME)-azrm:$(VERSION) --build-arg VERSION=$(VERSION)
 
-container-push-azrm: container-build-azrm
+terraform-provider-proxmox-azrm: build-terraform-provider-proxmox-azrm
 	@echo "Pushing container"
 	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME)-azrm:$(VERSION)
 
