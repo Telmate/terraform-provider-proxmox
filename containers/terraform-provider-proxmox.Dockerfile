@@ -15,7 +15,7 @@ ARG VERSION
 CMD mkdir -p /root/.terraform.d/plugins/registry.terraform.io/telmate/proxmox/$VERSION/linux_amd64
 COPY --from=0 /app/bin/terraform-provider-proxmox /root/.terraform.d/plugins/registry.terraform.io/telmate/proxmox/$VERSION/linux_amd64/terraform-provider-proxmox
 
-COPY entrypoint.sh ./entrypoint.sh
+COPY containers/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
