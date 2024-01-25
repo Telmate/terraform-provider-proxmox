@@ -22,7 +22,4 @@ RUN python3 -m venv .venv
 RUN .venv/bin/pip install --no-cache-dir -U pip setuptools azure-cli
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY containers/entrypoint.sh ./entrypoint.sh
-RUN chmod +x entrypoint.sh
-
 ENTRYPOINT ["terraform"]
