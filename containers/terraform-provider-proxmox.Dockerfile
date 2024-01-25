@@ -18,4 +18,4 @@ COPY --from=0 /app/bin/terraform-provider-proxmox /root/.terraform.d/plugins/reg
 COPY containers/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["terraform"]
