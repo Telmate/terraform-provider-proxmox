@@ -41,16 +41,18 @@ CURRENT_TAG_MINOR  := "v$(CURRENT_VERSION_MINOR)"
 CURRENT_TAG_MAJOR  := "v$(CURRENT_VERSION_MAJOR)"
 
 # Determine KERNEL and ARCH
-UNAME_S=$(shell uname -s)
-UNAME_M=$(shell uname -m)
+UNAME_S:=$(shell uname -s)
+UNAME_M:=$(shell uname -m)
 ifeq ($(UNAME_S),Linux)
-KERNEL=linux
+KERNEL:=linux
 else ifeq ($(UNAME_S),Darwin)
-KERNEL=darwin
+KERNEL:=darwin
 endif
 
 ifeq ($(UNAME_M),x86_64)
 ARCH=amd64
+else ifeq ($(UNAME_M),arm64)
+ARCH:=arm64
 endif
 
 KERNEL=$(l_uname_s)
@@ -68,7 +70,7 @@ all: build
 info:
 	@echo "Global info"
 	@echo "$(KERNEL)"
-	@echo "$(ARCH)"		
+	@echo "$(ARCH)"
 
 fmt:
 	@echo " -> checking code style"
