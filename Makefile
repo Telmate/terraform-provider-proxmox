@@ -101,7 +101,7 @@ local-dev-install: build
 	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 
 container_build:
-	@echo "Building container"
+	@echo "Building container at version $(VERSION)"
 	podman build . -f ./containers/$(DOCKERFILE) -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
 
 container_push: container_build
