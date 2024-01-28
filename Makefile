@@ -55,9 +55,6 @@ else ifeq ($(UNAME_M),arm64)
 ARCH:=arm64
 endif
 
-KERNEL=$(l_uname_s)
-ARCH=$(l_uname_m)
-
 CONTAINER_REGISTRY = "docker.io"
 CONTAINER_NAMESPACE = "clincha"
 CONTAINER_NAME = "terraform-provider-proxmox"
@@ -105,7 +102,7 @@ local-dev-install: build
 
 container_build:
 	@echo "Building container"
-	podman build . -f ./containers/$(DOCKERFILE) -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg TERRAFORM_PROVIDER_PROXMOX_VERSION=$(VERSION)
+	podman build . -f ./containers/$(DOCKERFILE) -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
 
 container_push: container_build
 	@echo "Pushing container"

@@ -10,10 +10,11 @@ jobs:
         container:
           - terraform-provider-proxmox
           - terraform-provider-proxmox-azrm
+          # This could be extended with other common backends (AWS, GCP, etc.)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4.1.1
 
       - name: Log in to Docker Hub
         uses: redhat-actions/podman-login@v1.6
