@@ -103,11 +103,11 @@ local-dev-install: build
 	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 
-build-terraform-provider-proxmox:
+container_build:
 	@echo "Building container"
-	podman build . -f ./containers/$(DOCKERFILE) -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg VERSION=$(VERSION)
+	podman build . -f ./containers/$(DOCKERFILE) -t $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION) --build-arg TERRAFORM_PROVIDER_PROXMOX_VERSION=$(VERSION)
 
-push-terraform-provider-proxmox: build-terraform-provider-proxmox
+container_push: container_build
 	@echo "Pushing container"
 	podman push $(CONTAINER_REGISTRY)/$(CONTAINER_NAMESPACE)/$(CONTAINER_NAME):$(VERSION)
 
