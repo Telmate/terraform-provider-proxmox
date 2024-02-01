@@ -295,7 +295,7 @@ func resourceVmQemu() *schema.Resource {
 			"network": {
 				Type:          schema.TypeList,
 				Optional:      true,
-				ConflictsWith: []string{"nic", "bridge", "vlan"},
+				ConflictsWith: []string{"nic", "bridge"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"model": {
@@ -786,12 +786,6 @@ func resourceVmQemu() *schema.Resource {
 				Type:       schema.TypeString,
 				Deprecated: "Use `network.bridge` instead",
 				Optional:   true,
-			},
-			"vlan": {
-				Type:       schema.TypeInt,
-				Deprecated: "Use `network.tag` instead",
-				Optional:   true,
-				Default:    -1,
 			},
 			// Other
 			"serial": {
