@@ -452,7 +452,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:          schema.TypeList,
 				Optional:      true,
 				Deprecated:    "Use `disks` instead",
-				ConflictsWith: []string{"disk_gb", "storage", "storage_type"},
+				ConflictsWith: []string{"disk_gb", "storage"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"type": {
@@ -646,7 +646,7 @@ func resourceVmQemu() *schema.Resource {
 			"disks": {
 				Type:          schema.TypeList,
 				Optional:      true,
-				ConflictsWith: []string{"disk", "disk_gb", "storage", "storage_type"},
+				ConflictsWith: []string{"disk", "disk_gb", "storage"},
 				MaxItems:      1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -762,18 +762,6 @@ func resourceVmQemu() *schema.Resource {
 				Type:       schema.TypeString,
 				Deprecated: "Use `disk.storage` instead",
 				Optional:   true,
-			},
-			"storage_type": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `disk.type` instead",
-				Optional:   true,
-				ForceNew:   false,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if new == "" {
-						return true // empty template ok
-					}
-					return strings.TrimSpace(old) == strings.TrimSpace(new)
-				},
 			},
 			// Other
 			"serial": {
