@@ -119,7 +119,6 @@ func resourceVmQemu() *schema.Resource {
 				Optional:         true,
 				Default:          "running",
 				Description:      "The state of the VM (running or stopped)",
-				ConflictsWith:    []string{"oncreate"},
 				ValidateDiagFunc: VMStateValidator(),
 			},
 			"onboot": {
@@ -133,13 +132,6 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				// Default:     "",
 				Description: "Startup order of the VM",
-			},
-			"oncreate": {
-				Type:          schema.TypeBool,
-				Optional:      true,
-				Default:       false,
-				Deprecated:    "Use `vm_state` instead",
-				ConflictsWith: []string{"vm_state"},
 			},
 			"tablet": {
 				Type:        schema.TypeBool,
@@ -1301,8 +1293,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	// TODO: remove "oncreate" handling in next major release.
-	if d.Get("vm_state").(string) == "running" || d.Get("oncreate").(bool) {
+	if d.Get("vm_state").(string) == "running" {
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
 		_, err := client.StartVm(vmr)
 		if err != nil {
@@ -1743,8 +1734,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("cloudinit_cdrom_storage", getCloudInitDisk(config.Disks))
 
 	// Some dirty hacks to populate undefined keys with default values.
-	// TODO: remove "oncreate" handling in next major release.
-	checkedKeys := []string{"force_create", "define_connection_info", "oncreate"}
+	checkedKeys := []string{"force_create", "define_connection_info"}
 	for _, key := range checkedKeys {
 		if val := d.Get(key); val == nil {
 			logger.Debug().Int("vmid", vmID).Msgf("key '%s' not found, setting to default", key)
