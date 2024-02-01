@@ -452,7 +452,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:          schema.TypeList,
 				Optional:      true,
 				Deprecated:    "Use `disks` instead",
-				ConflictsWith: []string{"disk_gb", "storage"},
+				ConflictsWith: []string{"disk_gb"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"type": {
@@ -646,7 +646,7 @@ func resourceVmQemu() *schema.Resource {
 			"disks": {
 				Type:          schema.TypeList,
 				Optional:      true,
-				ConflictsWith: []string{"disk", "disk_gb", "storage"},
+				ConflictsWith: []string{"disk", "disk_gb"},
 				MaxItems:      1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -757,11 +757,6 @@ func resourceVmQemu() *schema.Resource {
 					newf, _ := strconv.ParseFloat(new, 64)
 					return oldf >= newf
 				},
-			},
-			"storage": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `disk.storage` instead",
-				Optional:   true,
 			},
 			// Other
 			"serial": {
