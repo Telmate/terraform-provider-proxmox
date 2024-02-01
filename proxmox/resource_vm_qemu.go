@@ -998,12 +998,6 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"preprovision": {
-				Type:       schema.TypeBool,
-				Deprecated: "do not use anymore",
-				Optional:   true,
-				Default:    true,
-			},
 			"pool": {
 				Type:     schema.TypeString,
 				Optional: true,
