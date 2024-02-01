@@ -295,7 +295,7 @@ func resourceVmQemu() *schema.Resource {
 			"network": {
 				Type:          schema.TypeList,
 				Optional:      true,
-				ConflictsWith: []string{"nic", "bridge", "vlan", "mac"},
+				ConflictsWith: []string{"nic", "bridge", "vlan"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"model": {
@@ -792,17 +792,6 @@ func resourceVmQemu() *schema.Resource {
 				Deprecated: "Use `network.tag` instead",
 				Optional:   true,
 				Default:    -1,
-			},
-			"mac": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `network.macaddr` to access the auto generated MAC address",
-				Optional:   true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if new == "" {
-						return true // macaddr auto-generates and its ok
-					}
-					return strings.TrimSpace(old) == strings.TrimSpace(new)
-				},
 			},
 			// Other
 			"serial": {
