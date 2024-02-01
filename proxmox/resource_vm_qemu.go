@@ -495,6 +495,12 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeBool,
 							Optional: true,
 							Default:  true,
+							// Convert previous integer values of 0/1 to booleans
+							StateFunc: func(val interface{}) string {
+								if val.(string) == "0" {return "false"}
+								if val.(string) == "1" {return "true"}
+								return val.(string)
+							},
 						},
 						"iothread": {
 							Type:     schema.TypeInt,
