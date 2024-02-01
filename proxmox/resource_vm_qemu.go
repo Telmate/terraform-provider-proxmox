@@ -293,9 +293,8 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"network": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				ConflictsWith: []string{"nic"},
+				Type:     schema.TypeList,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"model": {
@@ -775,12 +774,6 @@ func resourceVmQemu() *schema.Resource {
 					}
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
-			},
-			// Deprecated single nic config.
-			"nic": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `network` instead",
-				Optional:   true,
 			},
 			// Other
 			"serial": {
