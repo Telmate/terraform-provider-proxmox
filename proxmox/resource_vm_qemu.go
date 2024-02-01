@@ -1178,9 +1178,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	if targetNode == "" {
 		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use target_node or target_nodes to set a specific node! %v", vmName, targetNodes))
 	}
-
-	pool := d.Get("pool").(string)
-
 	if dupVmr != nil && forceCreate {
 		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId()))
 	} else if dupVmr != nil && dupVmr.Node() != targetNode {
@@ -1207,9 +1204,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		vmr = pxapi.NewVmRef(nextid)
 		vmr.SetNode(targetNode)
 		config.Node = targetNode
-		if pool != "" {
-			vmr.SetPool(pool)
-		}
+
+		vmr.SetPool(d.Get("pool").(string))
 
 		// check if ISO, clone, or PXE boot
 		if d.Get("clone").(string) != "" {
@@ -1872,21 +1868,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
-
-	// Pool
-	pools, err := client.GetPoolList()
-	if err == nil {
-		for _, poolInfo := range pools["data"].([]interface{}) {
-			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
-			for _, member := range poolContent["members"].([]interface{}) {
-				if member.(map[string]interface{})["type"] != "storage" {
-					if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
-						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
-					}
-				}
-			}
-		}
-	}
 
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
