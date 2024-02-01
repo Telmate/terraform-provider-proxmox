@@ -1037,12 +1037,6 @@ func resourceVmQemu() *schema.Resource {
 				Default:     true,
 				Description: "By default define SSH for provisioner info",
 			},
-			"guest_agent_ready_timeout": {
-				Type:       schema.TypeInt,
-				Deprecated: "Use custom per-resource timeout instead. See https://www.terraform.io/docs/language/resources/syntax.html#operation-timeouts",
-				Optional:   true,
-				Default:    100,
-			},
 			"automatic_reboot": {
 				Type:        schema.TypeBool,
 				Optional:    true,
