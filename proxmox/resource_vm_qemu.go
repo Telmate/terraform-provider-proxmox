@@ -449,10 +449,9 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"disk": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				Deprecated:    "Use `disks` instead",
-				ConflictsWith: []string{"disk_gb"},
+				Type:       schema.TypeList,
+				Optional:   true,
+				Deprecated: "Use `disks` instead",
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"type": {
@@ -646,7 +645,7 @@ func resourceVmQemu() *schema.Resource {
 			"disks": {
 				Type:          schema.TypeList,
 				Optional:      true,
-				ConflictsWith: []string{"disk", "disk_gb"},
+				ConflictsWith: []string{"disk"},
 				MaxItems:      1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -744,18 +743,6 @@ func resourceVmQemu() *schema.Resource {
 							},
 						},
 					},
-				},
-			},
-			// Deprecated single disk config.
-			"disk_gb": {
-				Type:       schema.TypeFloat,
-				Deprecated: "Use `disk.size` instead",
-				Optional:   true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					// bigger ok
-					oldf, _ := strconv.ParseFloat(old, 64)
-					newf, _ := strconv.ParseFloat(new, 64)
-					return oldf >= newf
 				},
 			},
 			// Other
