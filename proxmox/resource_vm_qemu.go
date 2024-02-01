@@ -295,7 +295,7 @@ func resourceVmQemu() *schema.Resource {
 			"network": {
 				Type:          schema.TypeList,
 				Optional:      true,
-				ConflictsWith: []string{"nic", "bridge"},
+				ConflictsWith: []string{"nic"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"model": {
@@ -780,11 +780,6 @@ func resourceVmQemu() *schema.Resource {
 			"nic": {
 				Type:       schema.TypeString,
 				Deprecated: "Use `network` instead",
-				Optional:   true,
-			},
-			"bridge": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `network.bridge` instead",
 				Optional:   true,
 			},
 			// Other
