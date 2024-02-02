@@ -2445,7 +2445,7 @@ func mapFromStruct_QemuIdeStorage(config *pxapi.QemuIdeStorage, setting string) 
 			"linked_disk_id": mapFromStruct_LinkedCloneId(config.Disk.LinkedDiskId),
 			"replicate":      config.Disk.Replicate,
 			"serial":         string(config.Disk.Serial),
-			"size":           int(config.Disk.Size),
+			"size":           config.Disk.SizeInKibibytes,
 			"storage":        string(config.Disk.Storage),
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
@@ -2465,7 +2465,7 @@ func mapFromStruct_QemuIdeStorage(config *pxapi.QemuIdeStorage, setting string) 
 			"file":       config.Passthrough.File,
 			"replicate":  config.Passthrough.Replicate,
 			"serial":     string(config.Passthrough.Serial),
-			"size":       int(config.Passthrough.Size),
+			"size":       config.Passthrough.SizeInKibibytes,
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{
@@ -2509,7 +2509,7 @@ func mapFromStruct_QemuSataStorage(config *pxapi.QemuSataStorage, setting string
 			"linked_disk_id": mapFromStruct_LinkedCloneId(config.Disk.LinkedDiskId),
 			"replicate":      config.Disk.Replicate,
 			"serial":         string(config.Disk.Serial),
-			"size":           int(config.Disk.Size),
+			"size":           int(config.Disk.SizeInKibibytes),
 			"storage":        string(config.Disk.Storage),
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
@@ -2529,7 +2529,7 @@ func mapFromStruct_QemuSataStorage(config *pxapi.QemuSataStorage, setting string
 			"file":       config.Passthrough.File,
 			"replicate":  config.Passthrough.Replicate,
 			"serial":     string(config.Passthrough.Serial),
-			"size":       int(config.Passthrough.Size),
+			"size":       int(config.Passthrough.SizeInKibibytes),
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{
@@ -2600,7 +2600,7 @@ func mapFromStruct_QemuScsiStorage(config *pxapi.QemuScsiStorage, setting string
 			"readonly":       config.Disk.ReadOnly,
 			"replicate":      config.Disk.Replicate,
 			"serial":         string(config.Disk.Serial),
-			"size":           int(config.Disk.Size),
+			"size":           int(config.Disk.SizeInKibibytes),
 			"storage":        string(config.Disk.Storage),
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
@@ -2622,7 +2622,7 @@ func mapFromStruct_QemuScsiStorage(config *pxapi.QemuScsiStorage, setting string
 			"readonly":   config.Passthrough.ReadOnly,
 			"replicate":  config.Passthrough.Replicate,
 			"serial":     string(config.Passthrough.Serial),
-			"size":       int(config.Passthrough.Size),
+			"size":       int(config.Passthrough.SizeInKibibytes),
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{
@@ -2678,7 +2678,7 @@ func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage, setting st
 			"readonly":       config.Disk.ReadOnly,
 			"replicate":      config.Disk.Replicate,
 			"serial":         string(config.Disk.Serial),
-			"size":           int(config.Disk.Size),
+			"size":           int(config.Disk.SizeInKibibytes),
 			"storage":        string(config.Disk.Storage),
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
@@ -2699,7 +2699,7 @@ func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage, setting st
 			"readonly":  config.Passthrough.ReadOnly,
 			"replicate": config.Passthrough.Replicate,
 			"serial":    string(config.Passthrough.Serial),
-			"size":      int(config.Passthrough.Size),
+			"size":      int(config.Passthrough.SizeInKibibytes),
 		}
 		mapFormStruct_QemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{
@@ -2789,14 +2789,14 @@ func mapToStruct_QemuIdeStorage(ide *pxapi.QemuIdeStorage, key string, schema ma
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		ide.Disk = &pxapi.QemuIdeDisk{
-			Backup:     disk["backup"].(bool),
-			Bandwidth:  mapToStruct_QemuDiskBandwidth(disk),
-			Discard:    disk["discard"].(bool),
-			EmulateSSD: disk["emulatessd"].(bool),
-			Format:     pxapi.QemuDiskFormat(disk["format"].(string)),
-			Replicate:  disk["replicate"].(bool),
-			Size:       uint(disk["size"].(int)),
-			Storage:    disk["storage"].(string),
+			Backup:          disk["backup"].(bool),
+			Bandwidth:       mapToStruct_QemuDiskBandwidth(disk),
+			Discard:         disk["discard"].(bool),
+			EmulateSSD:      disk["emulatessd"].(bool),
+			Format:          pxapi.QemuDiskFormat(disk["format"].(string)),
+			Replicate:       disk["replicate"].(bool),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
 			ide.Disk.AsyncIO = pxapi.QemuDiskAsyncIO(asyncIO)
@@ -2858,14 +2858,14 @@ func mapToStruct_QemuSataStorage(sata *pxapi.QemuSataStorage, key string, schema
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		sata.Disk = &pxapi.QemuSataDisk{
-			Backup:     disk["backup"].(bool),
-			Bandwidth:  mapToStruct_QemuDiskBandwidth(disk),
-			Discard:    disk["discard"].(bool),
-			EmulateSSD: disk["emulatessd"].(bool),
-			Format:     pxapi.QemuDiskFormat(disk["format"].(string)),
-			Replicate:  disk["replicate"].(bool),
-			Size:       uint(disk["size"].(int)),
-			Storage:    disk["storage"].(string),
+			Backup:          disk["backup"].(bool),
+			Bandwidth:       mapToStruct_QemuDiskBandwidth(disk),
+			Discard:         disk["discard"].(bool),
+			EmulateSSD:      disk["emulatessd"].(bool),
+			Format:          pxapi.QemuDiskFormat(disk["format"].(string)),
+			Replicate:       disk["replicate"].(bool),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
 			sata.Disk.AsyncIO = pxapi.QemuDiskAsyncIO(asyncIO)
@@ -2952,16 +2952,16 @@ func mapToStruct_QemuScsiStorage(scsi *pxapi.QemuScsiStorage, key string, schema
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		scsi.Disk = &pxapi.QemuScsiDisk{
-			Backup:     disk["backup"].(bool),
-			Bandwidth:  mapToStruct_QemuDiskBandwidth(disk),
-			Discard:    disk["discard"].(bool),
-			EmulateSSD: disk["emulatessd"].(bool),
-			Format:     pxapi.QemuDiskFormat(disk["format"].(string)),
-			IOThread:   disk["iothread"].(bool),
-			ReadOnly:   disk["readonly"].(bool),
-			Replicate:  disk["replicate"].(bool),
-			Size:       uint(disk["size"].(int)),
-			Storage:    disk["storage"].(string),
+			Backup:          disk["backup"].(bool),
+			Bandwidth:       mapToStruct_QemuDiskBandwidth(disk),
+			Discard:         disk["discard"].(bool),
+			EmulateSSD:      disk["emulatessd"].(bool),
+			Format:          pxapi.QemuDiskFormat(disk["format"].(string)),
+			IOThread:        disk["iothread"].(bool),
+			ReadOnly:        disk["readonly"].(bool),
+			Replicate:       disk["replicate"].(bool),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
 			scsi.Disk.AsyncIO = pxapi.QemuDiskAsyncIO(asyncIO)
@@ -3116,15 +3116,15 @@ func mapToStruct_VirtIOStorage(virtio *pxapi.QemuVirtIOStorage, key string, sche
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		virtio.Disk = &pxapi.QemuVirtIODisk{
-			Backup:    disk["backup"].(bool),
-			Bandwidth: mapToStruct_QemuDiskBandwidth(disk),
-			Discard:   disk["discard"].(bool),
-			Format:    pxapi.QemuDiskFormat(disk["format"].(string)),
-			IOThread:  disk["iothread"].(bool),
-			ReadOnly:  disk["readonly"].(bool),
-			Replicate: disk["replicate"].(bool),
-			Size:      uint(disk["size"].(int)),
-			Storage:   disk["storage"].(string),
+			Backup:          disk["backup"].(bool),
+			Bandwidth:       mapToStruct_QemuDiskBandwidth(disk),
+			Discard:         disk["discard"].(bool),
+			Format:          pxapi.QemuDiskFormat(disk["format"].(string)),
+			IOThread:        disk["iothread"].(bool),
+			ReadOnly:        disk["readonly"].(bool),
+			Replicate:       disk["replicate"].(bool),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
 			virtio.Disk.AsyncIO = pxapi.QemuDiskAsyncIO(asyncIO)
