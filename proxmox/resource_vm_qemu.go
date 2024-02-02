@@ -2795,7 +2795,7 @@ func mapToStruct_QemuIdeStorage(ide *pxapi.QemuIdeStorage, key string, schema ma
 			EmulateSSD:      disk["emulatessd"].(bool),
 			Format:          pxapi.QemuDiskFormat(disk["format"].(string)),
 			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(int)),
 			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
@@ -2864,7 +2864,7 @@ func mapToStruct_QemuSataStorage(sata *pxapi.QemuSataStorage, key string, schema
 			EmulateSSD:      disk["emulatessd"].(bool),
 			Format:          pxapi.QemuDiskFormat(disk["format"].(string)),
 			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(int)),
 			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
@@ -2960,7 +2960,7 @@ func mapToStruct_QemuScsiStorage(scsi *pxapi.QemuScsiStorage, key string, schema
 			IOThread:        disk["iothread"].(bool),
 			ReadOnly:        disk["readonly"].(bool),
 			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(int)),
 			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
@@ -3123,7 +3123,7 @@ func mapToStruct_VirtIOStorage(virtio *pxapi.QemuVirtIOStorage, key string, sche
 			IOThread:        disk["iothread"].(bool),
 			ReadOnly:        disk["readonly"].(bool),
 			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(uint)),
+			SizeInKibibytes: pxapi.QemuDiskSize(disk["size"].(int)),
 			Storage:         disk["storage"].(string),
 		}
 		if asyncIO, ok := disk["asyncio"].(string); ok {
