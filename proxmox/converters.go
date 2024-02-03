@@ -19,7 +19,7 @@ func convert_KibibytesToString(kibibytes int64) string {
 		return strconv.FormatInt(kibibytes/gibibyte, 10) + "G"
 	}
 	if kibibytes%mebibyte == 0 {
-		return strconv.FormatInt(kibibytes/mebibyte, 10) + "K"
+		return strconv.FormatInt(kibibytes/mebibyte, 10) + "M"
 	}
 	return strconv.FormatInt(kibibytes, 10) + "K"
 }
