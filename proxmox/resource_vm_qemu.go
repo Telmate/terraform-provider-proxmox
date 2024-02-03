@@ -2316,7 +2316,7 @@ func initConnInfo(ctx context.Context,
 
 func setCloudInitDisk(d *schema.ResourceData, config *pxapi.ConfigQemu) {
 	storage := d.Get("cloudinit_cdrom_storage").(string)
-	if storage != "" && (config.CIpassword != "" || config.CIuser != "" || config.Searchdomain != "" || config.Nameserver != "" || config.Sshkeys != "" || (config.Ipconfig != nil && len(config.Ipconfig) > 0)) {
+	if storage != "" {
 		config.Disks.Ide.Disk_3 = &pxapi.QemuIdeStorage{CloudInit: &pxapi.QemuCloudInitDisk{
 			Format:  pxapi.QemuDiskFormat_Raw,
 			Storage: storage,
