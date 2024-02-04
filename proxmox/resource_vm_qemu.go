@@ -805,7 +805,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
-	// defer lock.unlock()
+	defer lock.unlock()
+
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
@@ -1054,6 +1055,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
 	lock := pmParallelBegin(pconf)
+	defer lock.unlock()
 
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_update")
@@ -1327,6 +1329,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
+
 	client := pconf.Client
 	// create a logger for this function
 	var diags diag.Diagnostics
