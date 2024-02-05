@@ -476,22 +476,6 @@ In addition to the arguments above, the following attributes can be referenced f
 | `ssh_port`             | `str` | Read-only attribute. Only applies when `define_connection_info` is true. The port to connect to the VM over SSH for preprovisioning. If using cloud-init and a port is not specified in `ssh_forward_ip`, then 22 is used. If not using cloud-init, a port on the `target_node` will be forwarded to port 22 in the guest, and this attribute will be set to the forwarded port. |
 | `default_ipv4_address` | `str` | Read-only attribute. Only applies when `agent` is `1` and Proxmox can actually read the ip the vm has.                                                                                                                                                                                                                                                                           |
 
-## Deprecated Arguments
-
-The following arguments are deprecated, and should no longer be used.
-
-- `disk` - (Optional; use disks instead)
-- `disk_gb` - (Optional; use disk.size instead)
-- `storage` - (Optional; use disk.storage instead)
-- `storage_type` - (Optional; use disk.type instead)
-- `nic` - (Optional; use network instead)
-- `bridge` - (Optional; use network.bridge instead)
-- `vlan` - (Optional; use network.tag instead)
-- `mac` - (Optional; use network.macaddr instead)
-- `clone_wait` - (do not use, api should manage timeouts)
-- `additional_wait` - (do not use, api should manage timeouts)
-- `preprovision` - (do not use, provider do not fully support preprovisioning anymore)
-
 ## Import
 
 A VM Qemu Resource can be imported using its node, type and VM ID i.e.:

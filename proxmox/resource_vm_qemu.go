@@ -119,7 +119,6 @@ func resourceVmQemu() *schema.Resource {
 				Optional:         true,
 				Default:          "running",
 				Description:      "The state of the VM (running or stopped)",
-				ConflictsWith:    []string{"oncreate"},
 				ValidateDiagFunc: VMStateValidator(),
 			},
 			"onboot": {
@@ -133,13 +132,6 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				// Default:     "",
 				Description: "Startup order of the VM",
-			},
-			"oncreate": {
-				Type:          schema.TypeBool,
-				Optional:      true,
-				Default:       false,
-				Deprecated:    "Use `vm_state` instead",
-				ConflictsWith: []string{"vm_state"},
 			},
 			"tablet": {
 				Type:        schema.TypeBool,
@@ -301,9 +293,8 @@ func resourceVmQemu() *schema.Resource {
 				},
 			},
 			"network": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				ConflictsWith: []string{"nic", "bridge", "vlan", "mac"},
+				Type:     schema.TypeList,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"model": {
@@ -457,206 +448,10 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
-			"disk": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				Deprecated:    "Use `disks` instead",
-				ConflictsWith: []string{"disk_gb", "storage", "storage_type"},
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"type": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"storage": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"size": {
-							Type:     schema.TypeString,
-							Required: true,
-							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-								v := val.(string)
-								if !(strings.Contains(v, "G") || strings.Contains(v, "M") || strings.Contains(v, "K")) {
-									errs = append(errs, fmt.Errorf("disk size must end with G, M, or K, got %s", v))
-								}
-								return
-							},
-						},
-						"format": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
-						},
-						"cache": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "none",
-						},
-						"backup": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  true,
-						},
-						"iothread": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"replicate": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						// SSD emulation
-						"ssd": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"discard": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-								v := val.(string)
-								if !strings.Contains(v, "ignore") && !strings.Contains(v, "on") {
-									errs = append(errs, fmt.Errorf("%q, must be 'ignore'(default) or 'on', got %s", key, v))
-								}
-								return
-							},
-						},
-						"aio": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"native",
-								"threads",
-								"io_uring",
-							}, false),
-						},
-						// Maximum r/w speed in megabytes per second
-						"mbps": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"mbps_rd": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"mbps_rd_max": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"mbps_wr": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"mbps_wr_max": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						// Maximum I/O operations per second
-						"iops": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_max": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_max_length": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_rd": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_rd_max": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_rd_max_length": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_wr": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_wr_max": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						"iops_wr_max_length": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Default:  0,
-						},
-						// Import disk
-						"import_from": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"serial": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Default:      "",
-							ValidateFunc: validation.StringLenBetween(0, 20),
-						},
-						"wwn": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Default:      "",
-							ValidateFunc: validation.StringMatch(regexp.MustCompile(`^0x[A-Fa-f0-9]+$`), "The drive’s worldwide name, encoded as 16 bytes hex string, prefixed by 0x."),
-						},
-						// Misc
-						"file": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
-						},
-						"media": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
-						},
-						"volume": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
-						},
-						"slot": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Computed: true,
-						},
-						"storage_type": {
-							Type:     schema.TypeString,
-							Required: false,
-							Computed: true,
-						},
-					},
-				},
-			},
 			"disks": {
-				Type:          schema.TypeList,
-				Optional:      true,
-				ConflictsWith: []string{"disk", "disk_gb", "storage", "storage_type"},
-				MaxItems:      1,
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"ide": {
@@ -753,63 +548,6 @@ func resourceVmQemu() *schema.Resource {
 							},
 						},
 					},
-				},
-			},
-			// Deprecated single disk config.
-			"disk_gb": {
-				Type:       schema.TypeFloat,
-				Deprecated: "Use `disk.size` instead",
-				Optional:   true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					// bigger ok
-					oldf, _ := strconv.ParseFloat(old, 64)
-					newf, _ := strconv.ParseFloat(new, 64)
-					return oldf >= newf
-				},
-			},
-			"storage": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `disk.storage` instead",
-				Optional:   true,
-			},
-			"storage_type": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `disk.type` instead",
-				Optional:   true,
-				ForceNew:   false,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if new == "" {
-						return true // empty template ok
-					}
-					return strings.TrimSpace(old) == strings.TrimSpace(new)
-				},
-			},
-			// Deprecated single nic config.
-			"nic": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `network` instead",
-				Optional:   true,
-			},
-			"bridge": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `network.bridge` instead",
-				Optional:   true,
-			},
-			"vlan": {
-				Type:       schema.TypeInt,
-				Deprecated: "Use `network.tag` instead",
-				Optional:   true,
-				Default:    -1,
-			},
-			"mac": {
-				Type:       schema.TypeString,
-				Deprecated: "Use `network.macaddr` to access the auto generated MAC address",
-				Optional:   true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if new == "" {
-						return true // macaddr auto-generates and its ok
-					}
-					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
 			// Other
@@ -1006,12 +744,6 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"preprovision": {
-				Type:       schema.TypeBool,
-				Deprecated: "do not use anymore",
-				Optional:   true,
-				Default:    true,
-			},
 			"pool": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -1044,12 +776,6 @@ func resourceVmQemu() *schema.Resource {
 				Optional:    true,
 				Default:     true,
 				Description: "By default define SSH for provisioner info",
-			},
-			"guest_agent_ready_timeout": {
-				Type:       schema.TypeInt,
-				Deprecated: "Use custom per-resource timeout instead. See https://www.terraform.io/docs/language/resources/syntax.html#operation-timeouts",
-				Optional:   true,
-				Default:    100,
 			},
 			"automatic_reboot": {
 				Type:        schema.TypeBool,
@@ -1178,9 +904,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	if targetNode == "" {
 		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use target_node or target_nodes to set a specific node! %v", vmName, targetNodes))
 	}
-
-	pool := d.Get("pool").(string)
-
 	if dupVmr != nil && forceCreate {
 		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId()))
 	} else if dupVmr != nil && dupVmr.Node() != targetNode {
@@ -1207,9 +930,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		vmr = pxapi.NewVmRef(nextid)
 		vmr.SetNode(targetNode)
 		config.Node = targetNode
-		if pool != "" {
-			vmr.SetPool(pool)
-		}
+
+		vmr.SetPool(d.Get("pool").(string))
 
 		// check if ISO, clone, or PXE boot
 		if d.Get("clone").(string) != "" {
@@ -1305,8 +1027,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	// TODO: remove "oncreate" handling in next major release.
-	if d.Get("vm_state").(string) == "running" || d.Get("oncreate").(bool) {
+	if d.Get("vm_state").(string) == "running" {
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
 		_, err := client.StartVm(vmr)
 		if err != nil {
@@ -1747,8 +1468,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("cloudinit_cdrom_storage", getCloudInitDisk(config.Disks))
 
 	// Some dirty hacks to populate undefined keys with default values.
-	// TODO: remove "oncreate" handling in next major release.
-	checkedKeys := []string{"force_create", "define_connection_info", "oncreate"}
+	checkedKeys := []string{"force_create", "define_connection_info"}
 	for _, key := range checkedKeys {
 		if val := d.Get(key); val == nil {
 			logger.Debug().Int("vmid", vmID).Msgf("key '%s' not found, setting to default", key)
@@ -1761,54 +1481,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// Check "full_clone" separately, as it causes issues in loop above due to how GetOk returns values on false booleans.
 	// Since "full_clone" has a default of true, it will always be in the configuration, so no need to verify.
 	d.Set("full_clone", d.Get("full_clone"))
-
-	// TODO remove this
-	// Disks.
-	// add an explicit check that the keys in the config.QemuDisks map are a strict subset of
-	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
-	for _, diskEntry := range config.QemuDisks {
-		for key := range diskEntry {
-			if _, ok := thisResource.Schema["disk"].Elem.(*schema.Resource).Schema[key]; !ok {
-				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
-					continue
-				}
-				if !pconf.DangerouslyIgnoreUnknownAttributes {
-					return diag.FromErr(fmt.Errorf("proxmox Provider Error: proxmox API returned new disk parameter '%v' we cannot process", key))
-				}
-			}
-		}
-	}
-
-	// need to set cache because proxmox-api-go requires a value for cache but doesn't return a value for
-	// it when it is empty. thus if cache is "" then we should insert "none" instead for consistency
-	var rxCloudInitDrive = regexp.MustCompile(`^vm-[0-9]+-cloudinit$`)
-	for id, qemuDisk := range config.QemuDisks {
-		logger.Debug().Int("vmid", vmID).Msgf("[READ] Disk Processed '%v'", qemuDisk)
-		// ugly hack to avoid cloudinit disk to be removed since they usually are not present in resource definition
-		// but are created from proxmox as ide2 so threated
-		if qemuDisk["file"] != nil {
-			if ciDisk := rxCloudInitDrive.FindStringSubmatch(qemuDisk["file"].(string)); len(ciDisk) > 0 {
-				config.QemuDisks[id] = nil
-				logger.Debug().Int("vmid", vmID).Msgf("[READ] Remove cloudinit disk")
-			}
-		}
-		// cache == "none" is required for disk creation/updates but proxmox-api-go returns cache == "" or cache == nil in reads
-		if qemuDisk["cache"] == "" || qemuDisk["cache"] == nil {
-			qemuDisk["cache"] = "none"
-		}
-		// backup is default true but state must be set!
-		if qemuDisk["backup"] == "" || qemuDisk["backup"] == nil {
-			qemuDisk["backup"] = true
-		} // else if qemuDisk["backup"] == true {
-		// 	qemuDisk["backup"] = 1
-		// }
-	}
-
-	flatDisks, _ := FlattenDevicesList(config.QemuDisks)
-	flatDisks, _ = DropElementsFromMap([]string{"id"}, flatDisks)
-	if d.Set("disk", flatDisks); err != nil {
-		return diag.FromErr(err)
-	}
 
 	// read in the qemu hostpci
 	qemuPCIDevices, _ := FlattenDevicesList(config.QemuPCIDevices)
@@ -1872,21 +1544,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
-
-	// Pool
-	pools, err := client.GetPoolList()
-	if err == nil {
-		for _, poolInfo := range pools["data"].([]interface{}) {
-			poolContent, _ := client.GetPoolInfo(poolInfo.(map[string]interface{})["poolid"].(string))
-			for _, member := range poolContent["members"].([]interface{}) {
-				if member.(map[string]interface{})["type"] != "storage" {
-					if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
-						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
-					}
-				}
-			}
-		}
-	}
 
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
@@ -2335,7 +1992,7 @@ func initConnInfo(ctx context.Context,
 
 func setCloudInitDisk(d *schema.ResourceData, config *pxapi.ConfigQemu) {
 	storage := d.Get("cloudinit_cdrom_storage").(string)
-	if storage != "" && (config.CIpassword != "" || config.CIuser != "" || config.Searchdomain != "" || config.Nameserver != "" || config.Sshkeys != "" || (config.Ipconfig != nil && len(config.Ipconfig) > 0)) {
+	if storage != "" {
 		config.Disks.Ide.Disk_3 = &pxapi.QemuIdeStorage{CloudInit: &pxapi.QemuCloudInitDisk{
 			Format:  pxapi.QemuDiskFormat_Raw,
 			Storage: storage,
