@@ -161,17 +161,11 @@ func resourceVmQemu() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{"clone"},
 			},
-			"iso": {
-				Type:          schema.TypeString,
-				Optional:      true,
-				ForceNew:      true,
-				ConflictsWith: []string{"clone"},
-			},
 			"clone": {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ForceNew:      true,
-				ConflictsWith: []string{"iso", "pxe"},
+				ConflictsWith: []string{"pxe"},
 			},
 			"cloudinit_cdrom_storage": {
 				Type:     schema.TypeString,
@@ -462,7 +456,7 @@ func resourceVmQemu() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"ide0": schema_Ide("ide0"),
 									"ide1": schema_Ide("ide1"),
-									// ide2 reserved for cdrom
+									"ide2": schema_Ide("ide2"),
 									// ide3 reserved for cloudinit
 								},
 							},
@@ -871,7 +865,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	config.Disks = mapToStruct_QemuStorages(d)
-	setIso(d, &config)
 	setCloudInitDisk(d, &config)
 
 	if len(qemuVgaList) > 0 {
@@ -933,7 +926,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 		vmr.SetPool(d.Get("pool").(string))
 
-		// check if ISO, clone, or PXE boot
+		// check if clone, or PXE boot
 		if d.Get("clone").(string) != "" {
 			fullClone := 1
 			if !d.Get("full_clone").(bool) {
@@ -971,13 +964,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 				return diag.FromErr(err)
 			}
 
-		} else if d.Get("iso").(string) != "" {
-			config.QemuIso = d.Get("iso").(string)
-			log.Print("[DEBUG][QemuVmCreate] create with ISO")
-			err := config.Create(vmr, client)
-			if err != nil {
-				return diag.FromErr(err)
-			}
 		} else if d.Get("pxe").(bool) {
 			var found bool
 			bs := d.Get("boot").(string)
@@ -1006,7 +992,11 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 				return diag.FromErr(err)
 			}
 		} else {
-			return diag.FromErr(fmt.Errorf("either 'clone', 'iso', or 'pxe' must be set"))
+			log.Print("[DEBUG][QemuVmCreate] create with ISO")
+			err := config.Create(vmr, client)
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
 	} else {
 		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
@@ -1163,7 +1153,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	config.Disks = mapToStruct_QemuStorages(d)
-	setIso(d, &config)
 	setCloudInitDisk(d, &config)
 
 	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
@@ -1464,7 +1453,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
 	d.Set("disks", mapFromStruct_ConfigQemu(config.Disks))
-	d.Set("iso", getIso(config.Disks))
 	d.Set("cloudinit_cdrom_storage", getCloudInitDisk(config.Disks))
 
 	// Some dirty hacks to populate undefined keys with default values.
@@ -2000,25 +1988,9 @@ func setCloudInitDisk(d *schema.ResourceData, config *pxapi.ConfigQemu) {
 	}
 }
 
-func setIso(d *schema.ResourceData, config *pxapi.ConfigQemu) {
-	iso := d.Get("iso").(string)
-	if iso == "" {
-		config.Disks.Ide.Disk_2 = &pxapi.QemuIdeStorage{CdRom: &pxapi.QemuCdRom{}}
-		return
-	}
-	config.Disks.Ide.Disk_2 = &pxapi.QemuIdeStorage{CdRom: &pxapi.QemuCdRom{Iso: mapToStruct_IsoFile(iso)}}
-}
-
 func getCloudInitDisk(config *pxapi.QemuStorages) string {
 	if config != nil && config.Ide != nil && config.Ide.Disk_3 != nil && config.Ide.Disk_3.CloudInit != nil {
 		return config.Ide.Disk_3.CloudInit.Storage
-	}
-	return ""
-}
-
-func getIso(config *pxapi.QemuStorages) string {
-	if config != nil && config.Ide != nil && config.Ide.Disk_2 != nil && config.Ide.Disk_2.CdRom != nil {
-		return mapFormStruct_IsoFile(config.Ide.Disk_2.CdRom.Iso)
 	}
 	return ""
 }
@@ -2094,13 +2066,15 @@ func mapFromStruct_QemuIdeDisks(config *pxapi.QemuIdeDisks) []interface{} {
 	}
 	ide_0 := mapFromStruct_QemuIdeStorage(config.Disk_0, "ide0")
 	ide_1 := mapFromStruct_QemuIdeStorage(config.Disk_1, "ide1")
-	if ide_0 == nil && ide_1 == nil {
+	ide_2 := mapFromStruct_QemuIdeStorage(config.Disk_2, "ide2")
+	if ide_0 == nil && ide_1 == nil && ide_2 == nil {
 		return nil
 	}
 	return []interface{}{
 		map[string]interface{}{
 			"ide0": ide_0,
 			"ide1": ide_1,
+			"ide2": ide_2,
 		},
 	}
 }
@@ -2453,6 +2427,7 @@ func mapToStruct_QemuIdeDisks(ide *pxapi.QemuIdeDisks, schema map[string]interfa
 	disks := schemaItem[0].(map[string]interface{})
 	mapToStruct_QemuIdeStorage(ide.Disk_0, "ide0", disks)
 	mapToStruct_QemuIdeStorage(ide.Disk_1, "ide1", disks)
+	mapToStruct_QemuIdeStorage(ide.Disk_2, "ide2", disks)
 }
 
 func mapToStruct_QemuIdeStorage(ide *pxapi.QemuIdeStorage, key string, schema map[string]interface{}) {
