@@ -49,21 +49,25 @@ resource "proxmox_vm_qemu" "pxe-example" {
     target_node               = "test"
     vcpus                     = 0
 
-    disk {
-        backup       = false
-        cache        = "none"
-        discard      = "on"
-        iothread     = 1
-        mbps         = 0
-        mbps_rd      = 0
-        mbps_rd_max  = 0
-        mbps_wr      = 0
-        mbps_wr_max  = 0
-        replicate    = 0
-        size         = "32G"
-        ssd          = 1
-        storage      = "local-lvm"
-        type         = "scsi"
+    disks {
+        scsi {
+            scsi0 {
+                disk {
+                    backup             = true
+                    cache              = "none"
+                    discard            = true
+                    emulatessd         = true
+                    iothread           = true
+                    mbps_r_burst       = 0.0
+                    mbps_r_concurrent  = 0.0
+                    mbps_wr_burst      = 0.0
+                    mbps_wr_concurrent = 0.0
+                    replicate          = true
+                    size               = 32
+                    storage            = "local-lvm"
+                }
+            }
+        }
     }
 
     network {

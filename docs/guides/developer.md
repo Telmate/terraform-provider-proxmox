@@ -64,12 +64,13 @@ github.com/Telmate/proxmox-api-go v0.0.0-20231207182448-31826f2fdc39/go.mod h1:x
 ```
 
 If you want to make changes to the library (e.g. to add debug print
-statements), you'll need to change those lines in go.sum.
+statements), you'll want to tell the Go compiler to look in a local directory
+for your modified library instead of getting it from github. To do this, you
+can add the following line to the end of go.mod:
 
-Until someone figures out how to point this to a local directory and
-documents that here, this means pointing to your own fork of the proxmox-api-go
-and updating the version/date/hash yourself.
+```
+replace "github.com/Telmate/proxmox-api-go" => "../proxmox-api-go"
+```
 
-If there is a way to get GoLang to fill update go.sum instead of having
-developers do it manually, please document that here or point to the official
-GoLang documentation on the topic.
+This will let you experiment locally without having to push things up to github
+and update hashes.

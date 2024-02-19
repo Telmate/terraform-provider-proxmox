@@ -102,7 +102,10 @@ func _downloadFile(url string, file *os.File) error {
 	}
 	defer resp.Body.Close()
 	_, err = io.Copy(file, resp.Body)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func resourceStorageIsoRead(d *schema.ResourceData, meta interface{}) error {
