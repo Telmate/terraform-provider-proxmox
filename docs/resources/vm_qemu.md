@@ -31,6 +31,55 @@ resource "proxmox_vm_qemu" "resource-name" {
 }
 ```
 
+<del>
+## Preprovision
+
+With preprovision, you can provision a VM directly from the resource block. This provisioning method is therefore ran **
+before** provision blocks. When using preprovision, there are three `os_type` options: `ubuntu`, `centos`
+or `cloud-init`.
+
+```hcl
+resource "proxmox_vm_qemu" "preprovision-test" {
+  preprovision = true
+  os_type      = "ubuntu"
+}
+```
+
+### Preprovision for Linux (Ubuntu / CentOS)
+
+There is a pre-provision phase which is used to set a hostname, initialize eth0, and resize the VM disk to available
+space. This is done over SSH with the `ssh_forward_ip`, `ssh_user` and `ssh_private_key`. Disk resize is done if the
+file [/etc/auto_resize_vda.sh](https://github.com/Telmate/terraform-ubuntu-proxmox-iso/blob/master/auto_resize_vda.sh)
+exists.
+
+```hcl
+resource "proxmox_vm_qemu" "preprovision-test" {
+  preprovision      = true
+  os_type           = "ubuntu"
+  ssh_forward_ip    = "10.0.0.1"
+  ssh_user          = "terraform"
+  ssh_private_key   = <<EOF
+-----BEGIN RSA PRIVATE KEY-----
+private ssh key terraform
+-----END RSA PRIVATE KEY-----
+EOF
+  os_network_config = <<EOF
+auto eth0
+iface eth0 inet dhcp
+EOF
+
+  connection {
+    type        = "ssh"
+    user        = "${self.ssh_user}"
+    private_key = "${self.ssh_private_key}"
+    host        = "${self.ssh_host}"
+    port        = "${self.ssh_port}"
+  }
+}
+```
+
+</del>
+
 ## Provision through Cloud-Init
 
 Cloud-init VMs must be cloned from a [cloud-init ready template](https://pve.proxmox.com/wiki/Cloud-Init_Support). When
@@ -53,7 +102,7 @@ boot of the VM.  A minimal Resource stanza for a PXE boot VM might look like thi
 resource "proxmox_vm_qemu" "pxe-minimal-example" {
     name                      = "pxe-minimal-example"
     agent                     = 0
-    boot                      = "order=scsi0;net0"
+    boot                      = "order=net0;scsi0"
     pxe                       = true
     target_node               = "test"
     network {
@@ -67,7 +116,7 @@ resource "proxmox_vm_qemu" "pxe-minimal-example" {
 
 The primary options that effect the correct operation of Network PXE boot mode are:
 
-  * `boot`: a valid boot order must be specified with Network type included (eg `order=scsi0;net0`)
+  * `boot`: a valid boot order must be specified with Network type included (eg `order=net0;scsi0`)
   * a valid NIC attached to a network with a PXE boot server must be added to the VM
   * generally speaking, disable the Agent (`agent = 0`) unless the installed OS contains the Agent in OS install configurations
 
@@ -89,14 +138,13 @@ The following arguments are supported in the top level resource block.
 | `bios`                        | `str`  | `"seabios"`          | The BIOS to use, options are `seabios` or `ovmf` for UEFI.                                                                                                                                                                                                                                                                  |
 | `onboot`                      | `bool` | `false`               | Whether to have the VM startup after the PVE node starts.                                                                                                                                                                                                                                                                   |
 | `startup`                      | `string` | `""`               | The [startup and shutdown behaviour](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_startup_and_shutdown)                                                                                                                                                                                                        |
-| `vm_state`                    | `string` | `"running"`         | The desired state of the VM, options are `running` or `stopped`.                                                                                                                                                                                                                                                            |
-| `oncreate`                    | `bool` | `true`               | Whether to have the VM startup after the VM is created (deprecated, use `vm_state` instead)                                                                                                                                                                                                                                |
+| `oncreate`                    | `bool` | `true`               | Whether to have the VM startup after the VM is created.                                                                                                                                                                                                                                                                     |
 | `tablet`                      | `bool` | `true`               | Enable/disable the USB tablet device. This device is usually needed to allow absolute mouse positioning with VNC.                                                                                                                                                                                                           |
 | `boot`                        | `str`  |                      | The boot order for the VM. For example: `order=scsi0;ide2;net0`. The deprecated `legacy=` syntax is no longer supported. See the `boot` option in the [Proxmox manual](https://pve.proxmox.com/wiki/Manual:_qm.conf#_options) for more information.
 | `bootdisk`                    | `str`  |                      | Enable booting from specified disk. You shouldn't need to change it under most circumstances.                                                                                                                                                                                                                               |
 | `agent`                       | `int`  | `0`                  | Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the guest for this to have any effect.                                                                                                                                      |
 | `iso`                         | `str`  |                      | The name of the ISO image to mount to the VM in the format: [storage pool]:iso/[name of iso file]. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.  Note that `iso` is mutually exclussive with `clone` and `pxe` modes.                                                                                                                          |
-| `pxe`                         | `bool` | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network included (eg `boot = "order=scsi0;net0"`).  Note that `pxe` is mutually exclusive with `iso` and `clone` modes.                                                                                                                      |
+| `pxe`                         | `bool` | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network included (eg `boot = "order=net0;scsi0"`).  Note that `pxe` is mutually exclusive with `iso` and `clone` modes.                                                                                                                      |
 | `clone`                       | `str`  |                      | The base VM from which to clone to create the new VM.  Note that `clone` is mutually exclussive with `pxe` and `iso` modes.                                                                                                                                                                                                 |
 | `full_clone`                  | `bool` | `true`               | Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.                                                                                                |
 | `hastate`                     | `str`  |                      | Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.                                                                                          |
@@ -207,38 +255,26 @@ See the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_h
 
 | Argument       | Type  | Default Value | Description                                                                                                                                                                                                                                                                            |
 |----------------|-------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `type`               | `str` |               | **Required** The type of disk device to add. Options: `ide`, `sata`, `scsi`, `virtio`. |
-| `storage`            | `str` |               | **Required** The name of the storage pool on which to store the disk. |
-| `size`               | `str` |               | **Required** The size of the created disk, format must match the regex `\d+[GMK]`, where G, M, and K represent Gigabytes, Megabytes, and Kilobytes respectively. |
-| `format`             | `str` | `"raw"`       | The drive’s backing file’s data format.  |
-| `cache`              | `str` | `"none"`      | The drive’s cache mode. Options: `directsync`, `none`, `unsafe`, `writeback`, `writethrough`  |
-| `backup`             | `bool` | `true`       | Whether the drive should be included when making backups. |
-| `iothread`           | `int` | `0`           | Whether to use iothreads for this drive. Only effective with a disk of type `virtio`, or `scsi` when the the emulated controller type (`scsihw` top level block argument) is `virtio-scsi-single`. |
-| `replicate`          | `int` | `0`           | Whether the drive should considered for replication jobs. |
-| `ssd`                | `int` | `0`           | Whether to expose this drive as an SSD, rather than a rotational hard disk. |
-| `discard`            | `str` |               | Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveats too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info. |
-| `aio`                | `str` |               | AIO type to use. Options: `io_uring`, `native`, `threads`. |
-| `mbps`               | `int` | `0`           | Maximum r/w speed in megabytes per second. `0` means unlimited.
-| `mbps_rd`            | `int` | `0`           | Maximum read speed in megabytes per second. `0` means unlimited. |
-| `mbps_rd_max`        | `int` | `0`           | Maximum read speed in megabytes per second. `0` means unlimited. |
-| `mbps_wr`            | `int` | `0`           | Maximum write speed in megabytes per second. `0` means unlimited.     |
-| `mbps_wr_max`        | `int` | `0`           | Maximum throttled write pool in megabytes per second. `0` means unlimited. |
-| `iops`               | `int` | `0`           | Maximum r/w I/O in operations per second. `0` means unlimited. |
-| `iops_max`           | `int` | `0`           | Maximum unthrottled r/w I/O pool in operations per second. `0` means unlimited. |
-| `iops_max_length`    | `int` | `0`           | Maximum length of I/O bursts in seconds. `0` means unlimited. |
-| `iops_rd`            | `int` | `0`           | Maximum read I/O in operations per second. `0` means unlimited. |
-| `iops_rd_max`        | `int` | `0`           | Maximum unthrottled read I/O pool in operations per second. `0` means unlimited. |
-| `iops_rd_max_length` | `int` | `0`           | Maximum length of read I/O bursts in seconds. `0` means unlimited. |
-| `iops_wr`            | `int` | `0`           | Maximum write I/O in operations per second. `0` means unlimited. |
-| `iops_wr_max`        | `int` | `0`           | Maximum unthrottled write I/O pool in operations per second. `0` means unlimited. |
-| `iops_wr_max_length` | `int` | `0`           | Maximum length of write I/O bursts in seconds. `0` means unlimited. |
-| `serial`             | `str` |               | The drive’s reported serial number, url-encoded, up to 20 bytes long. |
-| `wwn`                | `str` |               | The drive’s worldwide name, encoded as 16 bytes hex string, prefixed by 0x. |
-| `file`               | `str` |               | The filename portion of the path to the drive’s backing volume. You shouldn't need to specify this, use the `storage` parameter instead. |
-| `media`              | `str` | `"disk"`      | The drive’s media type. Options: `cdrom`, `disk`. |
-| `volume`             | `str` |               | The full path to the drive’s backing volume including the storage pool name. You shouldn't need to specify this, use the `storage` parameter instead. |
-| `slot`               | `int` |               | _(not sure what this is for, seems to be deprecated, do not use)_. |
-| `storage_type`       | `str` |               | The type of pool that `storage` is backed by. You shouldn't need to specify this, use the `storage` parameter instead. |
+| `type`         | `str` |               | **Required** The type of disk device to add. Options: `ide`, `sata`, `scsi`, `virtio`.                                                                                                                                                                                                 |
+| `storage`      | `str` |               | **Required** The name of the storage pool on which to store the disk.                                                                                                                                                                                                                  |
+| `size`         | `str` |               | **Required** The size of the created disk, format must match the regex `\d+[GMK]`, where G, M, and K represent Gigabytes, Megabytes, and Kilobytes respectively.                                                                                                                       |
+| `format`       | `str` | `"raw"`       | The drive’s backing file’s data format.                                                                                                                                                                                                                                                |
+| `cache`        | `str` | `"none"`      | The drive’s cache mode. Options: `directsync`, `none`, `unsafe`, `writeback`, `writethrough`                                                                                                                                                                                           |
+| `backup`       | `bool` | `true`       | Whether the drive should be included when making backups.                                                                                                                                                                                                                              |
+| `iothread`     | `int` | `0`           | Whether to use iothreads for this drive. Only effective with a disk of type `virtio`, or `scsi` when the the emulated controller type (`scsihw` top level block argument) is `virtio-scsi-single`.                                                                                     |
+| `replicate`    | `int` | `0`           | Whether the drive should considered for replication jobs.                                                                                                                                                                                                                              |
+| `ssd`          | `int` | `0`           | Whether to expose this drive as an SSD, rather than a rotational hard disk.                                                                                                                                                                                                            |
+| `discard`      | `str` |               | Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveats too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info. |
+| `mbps`         | `int` | `0`           | Maximum r/w speed in megabytes per second. `0` means unlimited.                                                                                                                                                                                                                        |
+| `mbps_rd`      | `int` | `0`           | Maximum read speed in megabytes per second. `0` means unlimited.                                                                                                                                                                                                                       |
+| `mbps_rd_max`  | `int` | `0`           | Maximum read speed in megabytes per second. `0` means unlimited.                                                                                                                                                                                                                       |
+| `mbps_wr`      | `int` | `0`           | Maximum write speed in megabytes per second. `0` means unlimited.                                                                                                                                                                                                                      |
+| `mbps_wr_max`  | `int` | `0`           | Maximum throttled write pool in megabytes per second. `0` means unlimited.                                                                                                                                                                                                             |
+| `file`         | `str` |               | The filename portion of the path to the drive’s backing volume. You shouldn't need to specify this, use the `storage` parameter instead.                                                                                                                                               |
+| `media`        | `str` | `"disk"`      | The drive’s media type. Options: `cdrom`, `disk`.                                                                                                                                                                                                                                      |
+| `volume`       | `str` |               | The full path to the drive’s backing volume including the storage pool name. You shouldn't need to specify this, use the `storage` parameter instead.                                                                                                                                  |
+| `slot`         | `int` |               | _(not sure what this is for, seems to be deprecated, do not use)_.                                                                                                                                                                                                                     |
+| `storage_type` | `str` |               | The type of pool that `storage` is backed by. You shouldn't need to specify this, use the `storage` parameter instead.                                                                                                                                                                 |
 
 ### Serial Block
 
@@ -269,20 +305,6 @@ details.
 |----------|--------|---------------|---------------------------------------------------------------------------------------------------------------------|
 | `host`   | `str`  |               | **Required** USB device host. This can either be done via the vendor- and product-id, or via the host bus and port. |
 | `usb3`   | `bool` | `false`       | Specifies whether if given host option is a USB3 device or port.                                                    |
-
-## SMBIOS Block
-
-The `smbios` block sets SMBIOS type 1 settings for the VM.
-
-| Argument       | Type     | Description               |
-|----------------|----------|---------------------------|
-| `family`       | `string` | The SMBIOS family.        |
-| `manufacturer` | `string` | The SMBIOS manufacturer.  |
-| `serial`       | `string` | The SMBIOS serial number. |
-| `product`      | `string` | The SMBIOS product.       |
-| `sku`          | `string` | The SMBIOS SKU.           |
-| `uuid`         | `string` | The SMBIOS UUID.          |
-| `version`      | `string` | The SMBIOS version.       |
 
 ## Attribute Reference
 

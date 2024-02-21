@@ -96,7 +96,7 @@ resource "proxmox_vm_qemu" "%s" {
   name = "%s"
   target_node = "%s"
 	pxe = true
-	boot = "order=scsi0;net0"
+	boot = "order=net0;scsi0"
 	network {
     bridge    = "vmbr0"
     firewall  = false

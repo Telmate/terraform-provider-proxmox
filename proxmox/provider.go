@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pxapi "github.com/frostyfab/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -156,11 +156,10 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"proxmox_vm_qemu":         resourceVmQemu(),
-			"proxmox_lxc":             resourceLxc(),
-			"proxmox_lxc_disk":        resourceLxcDisk(),
-			"proxmox_pool":            resourcePool(),
-			"proxmox_cloud_init_disk": resourceCloudInitDisk(),
+			"proxmox_vm_qemu":  resourceVmQemu(),
+			"proxmox_lxc":      resourceLxc(),
+			"proxmox_lxc_disk": resourceLxcDisk(),
+			"proxmox_pool":     resourcePool(),
 			// TODO - proxmox_storage_iso
 			// TODO - proxmox_bridge
 			// TODO - proxmox_vm_qemu_template

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pxapi "github.com/frostyfab/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/rs/zerolog"
 )
@@ -494,18 +494,4 @@ func permissions_check(s1 []string, s2 []string) []string {
 		}
 	}
 	return diff
-}
-
-func ByteCountIEC(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%dB", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%0.f%c",
-		float64(b)/float64(div), "KMGTPE"[exp])
 }
