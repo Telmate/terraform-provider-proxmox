@@ -19,7 +19,16 @@ infrastructure to support the Network PXE boot request by the VM.
 resource "proxmox_vm_qemu" "resource-name" {
   name        = "VM-name"
   target_node = "Node to create the VM on"
-  iso         = "ISO file name"
+
+  disks {
+    ide {
+      ide2 {
+        cdrom {
+          iso = "ISO file"
+        }
+      }
+    }
+  }
 
   ### or for a Clone VM operation
   # clone = "template to clone"
@@ -49,7 +58,7 @@ Specifying the `pxe = true` option will enable the Virtual Machine to perform a 
 In addition to enabling the PXE mode, a few other options should be specified to ensure successful
 boot of the VM.  A minimal Resource stanza for a PXE boot VM might look like this:
 
-```
+```hcl
 resource "proxmox_vm_qemu" "pxe-minimal-example" {
     name                      = "pxe-minimal-example"
     agent                     = 0
@@ -95,9 +104,8 @@ The following arguments are supported in the top level resource block.
 | `boot`                        | `str`    |                      | The boot order for the VM. For example: `order=scsi0;ide2;net0`. The deprecated `legacy=` syntax is no longer supported. See the `boot` option in the [Proxmox manual](https://pve.proxmox.com/wiki/Manual:_qm.conf#_options) for more information.                                                                         |
 | `bootdisk`                    | `str`    |                      | Enable booting from specified disk. You shouldn't need to change it under most circumstances.                                                                                                                                                                                                                               |
 | `agent`                       | `int`    | `0`                  | Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the guest for this to have any effect.                                                                                                                                      |
-| `iso`                         | `str`    |                      | The name of the ISO image to mount to the VM in the format: [storage pool]:iso/[name of iso file]. Only applies when `clone` is not set. Either `clone` or `iso` needs to be set.  Note that `iso` is mutually exclussive with `clone` and `pxe` modes.                                                                     |
-| `pxe`                         | `bool`   | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network included (eg `boot = "order=scsi0;net0"`).  Note that `pxe` is mutually exclusive with `iso` and `clone` modes.                                                                                                              |
-| `clone`                       | `str`    |                      | The base VM from which to clone to create the new VM.  Note that `clone` is mutually exclussive with `pxe` and `iso` modes.                                                                                                                                                                                                 |
+| `pxe`                         | `bool`   | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network included (eg `boot = "order=scsi0;net0"`).  Note that `pxe` is mutually exclusive with `clone` modes.|
+| `clone`                       | `str`    |                      | The base VM from which to clone to create the new VM.  Note that `clone` is mutually exclussive with `pxe` modes.|
 | `full_clone`                  | `bool`   | `true`               | Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set.                                                                                                |
 | `hastate`                     | `str`    |                      | Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.                                                                                          |
 | `hagroup`                     | `str`    |                      | The HA group identifier the resource belongs to (requires `hastate` to be set!). See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info.                                                                                                                |
@@ -196,7 +204,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Ide Block
 
-The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide1`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide2`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
@@ -213,7 +221,7 @@ resource "proxmox_vm_qemu" "resource-name" {
           //<arguments omitted for brevity...>
         }
       }
-      ide1 {
+      ide2 {
         passthrough {
           //<arguments omitted for brevity...>
         }
