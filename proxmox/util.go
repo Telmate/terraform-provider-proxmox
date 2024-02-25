@@ -27,6 +27,17 @@ var macAddressRegex = regexp.MustCompile(`([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}`)
 
 var machineModelsRegex = regexp.MustCompile(`(^pc|^q35|^virt)`)
 
+// a global variable (but package scoped) to allow us to log stuff happening with style
+// IMPORTANT:  this logger is created by the ConfigureLogger function.  Be sure that has run
+// before using this logger otherwise you'll probably crash stuff.
+var rootLogger zerolog.Logger
+
+// a supporting global to keep track of our configured logLevels
+// IMPORTANT:  this variable is set by the ConfigureLogger function.  Be sure that it has run.
+var logLevels map[string]string
+
+type KeyedDeviceMap map[interface{}]pxapi.QemuDevice
+
 // given a string, return the appropriate zerolog level
 func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
 	conversionMap := map[string]zerolog.Level{
@@ -45,15 +56,6 @@ func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
 	}
 	return foundResult, nil
 }
-
-// a global variable (but package scoped) to allow us to log stuff happening with style
-// IMPORTANT:  this logger is created by the ConfigureLogger function.  Be sure that has run
-// before using this logger otherwise you'll probably crash stuff.
-var rootLogger zerolog.Logger
-
-// a supporting global to keep track of our configured logLevels
-// IMPORTANT:  this variable is set by the ConfigureLogger function.  Be sure that it has run.
-var logLevels map[string]string
 
 // Configure the debug logger for this provider.  The goal here is to enable selective amounts
 // of output for targetted debugging without overwhelming with data from sources the user/developer
@@ -105,12 +107,12 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 
 	// using a multi-writer here so we can easily add additional log destination (like a json file)
 	// for now though using just the console writer because it makes pretty logs
-	consoleWriter := zerolog.ConsoleWriter{Out: f, TimeFormat: time.RFC1123Z}
+	consoleWriter := zerolog.ConsoleWriter{Out: f, TimeFormat: time.RFC3339, NoColor: true}
 	multi := zerolog.MultiLevelWriter(consoleWriter)
 
 	// create an init logger for logging just stuff before the root logger can get going
 	// this has a hard coded set of information to ensure we can log stuff before the root logger is live
-	initLogger := zerolog.New(multi).With().Timestamp().Caller().Logger().Level(zerolog.InfoLevel)
+	initLogger := zerolog.New(multi).With().Timestamp().Logger().Level(zerolog.InfoLevel)
 
 	// look to see if there is a default level we should be using
 	defaultLevelString, ok := logLevels["_default"]
@@ -134,7 +136,7 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 
 	// create the root logger
 	// note there is no initialization here. we WANT this to be set to the global logger
-	rootLogger = zerolog.New(multi).With().Timestamp().Caller().Logger().Level(rootLevel)
+	rootLogger = zerolog.New(multi).With().Timestamp().Logger().Level(rootLevel)
 
 	// mirror Stdout to the debug log file as well
 	// useful as we can debug the communication to/from the plugin and terraform
@@ -261,8 +263,6 @@ func DevicesSetToMapWithoutId(devicesSet *schema.Set) pxapi.QemuDevices {
 	}
 	return devicesMap
 }
-
-type KeyedDeviceMap map[interface{}]pxapi.QemuDevice
 
 func DevicesListToMapByKey(devicesList []interface{}, key string) KeyedDeviceMap {
 	devicesMap := KeyedDeviceMap{}
@@ -441,7 +441,6 @@ func schemaListToFlatValues(schemaList []interface{}, resource *schema.Resource)
 // func getIP(ifs pxapi.AgentNetworkInterface, macaddr string) string {
 // 	for _, iface := range ifs {
 // 		if strings.ToUpper(iface.MACAddress) == strings.ToUpper(macaddr) {
-
 // 		}
 // 	}
 // 	return ""
