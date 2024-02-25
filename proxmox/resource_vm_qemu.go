@@ -456,8 +456,8 @@ func resourceVmQemu() *schema.Resource {
 								Schema: map[string]*schema.Schema{
 									"ide0": schema_Ide("ide0"),
 									"ide1": schema_Ide("ide1"),
-									"ide2": schema_Ide("ide2"),
-									// ide3 reserved for cloudinit
+									//"ide2": schema_Ide("ide2"), //ide2 reserved for cloudinit
+									"ide3": schema_Ide("ide2"),
 								},
 							},
 						},
@@ -788,19 +788,21 @@ func resourceVmQemu() *schema.Resource {
 }
 
 func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_create")
 
 	// DEBUG print out the create request
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Info().Str("vmid", d.Id()).Msgf("VM creation")
-	logger.Debug().Str("vmid", d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
+	logger.Info().Str("vmid", d.Id()).Str("func", "resourceVmQemuCreate").Msgf("VM creation")
+	logger.Debug().Str("vmid", d.Id()).Str("func", "resourceVmQemuCreate").Msgf("VM creation resource data: '%+v'", string(jsonString))
 
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
+	defer lock.unlock()
 	client := pconf.Client
 	vmName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
@@ -1024,13 +1026,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		// // give sometime to proxmox to catchup
-		// time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
-
-		// err = initConnInfo(d, pconf, client, vmr, &config, lock)
-		// if err != nil {
-		// 	return diag.FromErr(err)
-		// }
 	} else {
 		log.Print("[DEBUG][QemuVmCreate] vm_state != running, not starting VM")
 	}
@@ -1038,15 +1033,16 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	d.Set("reboot_required", rebootRequired)
 	log.Print("[DEBUG][QemuVmCreate] vm creation done!")
 	lock.unlock()
-	return resourceVmQemuRead(ctx, d, meta)
+	diags = append(diags, resourceVmQemuRead(ctx, d, meta)...)
+	return diags
 }
 
 func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
 	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
-
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_update")
 
@@ -1247,8 +1243,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	var diags diag.Diagnostics
-
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
 	// enabled. Attempt a graceful shutdown or if that fails, force power-off.
 	vmState, err := client.GetVmState(vmr)
@@ -1298,20 +1292,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		diags = append(diags, diag.FromErr(err)...)
 		return diags
 	}
-
-	// if vmState["status"] == "running" && d.Get("vm_state").(string) == "running" {
-	// 	diags = append(diags, initConnInfo(ctx, d, pconf, client, vmr, &config, lock)...)
-	// }
 	lock.unlock()
-
-	// err = resourceVmQemuRead(ctx, d, meta)
-	// if err != nil {
-	// 	diags = append(diags, diag.FromErr(err)...)
-	// 	return diags
-	// }
 	diags = append(diags, resourceVmQemuRead(ctx, d, meta)...)
 	return diags
-	// return resourceVmQemuRead(ctx, d, meta)
 }
 
 func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1385,7 +1368,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 	if err == nil && vmState["status"] == "running" {
 		log.Printf("[DEBUG] VM is running, checking the IP")
-		diags = append(diags, initConnInfo(ctx, d, pconf, client, vmr, config, lock)...)
+		diags = append(diags, initConnInfo(ctx, d, pconf, client, vmr, config)...)
 	} else {
 		// Optional convenience attributes for provisioners
 		err = d.Set("default_ipv4_address", nil)
@@ -1543,7 +1526,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		logger.Debug().Int("vmid", vmID).Msgf("VM Net Config '%+v' from '%+v' set as '%+v' type of '%T'", config.QemuNetworks, flatNetworks, d.Get("network"), flatNetworks[0]["macaddr"])
 	}
 	logger.Debug().Int("vmid", vmID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
-
+	lock.unlock()
 	return diags
 }
 
@@ -1587,6 +1570,7 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	_, err = client.DeleteVm(vmr)
+	lock.unlock()
 	return diag.FromErr(err)
 }
 
@@ -1784,7 +1768,6 @@ func initConnInfo(ctx context.Context,
 	client *pxapi.Client,
 	vmr *pxapi.VmRef,
 	config *pxapi.ConfigQemu,
-	lock *pmApiLockHolder,
 ) diag.Diagnostics {
 
 	logger, _ := CreateSubLogger("initConnInfo")
@@ -1984,7 +1967,7 @@ func initConnInfo(ctx context.Context,
 func setCloudInitDisk(d *schema.ResourceData, config *pxapi.ConfigQemu) {
 	storage := d.Get("cloudinit_cdrom_storage").(string)
 	if storage != "" {
-		config.Disks.Ide.Disk_3 = &pxapi.QemuIdeStorage{CloudInit: &pxapi.QemuCloudInitDisk{
+		config.Disks.Ide.Disk_2 = &pxapi.QemuIdeStorage{CloudInit: &pxapi.QemuCloudInitDisk{
 			Format:  pxapi.QemuDiskFormat_Raw,
 			Storage: storage,
 		}}
@@ -1992,8 +1975,8 @@ func setCloudInitDisk(d *schema.ResourceData, config *pxapi.ConfigQemu) {
 }
 
 func getCloudInitDisk(config *pxapi.QemuStorages) string {
-	if config != nil && config.Ide != nil && config.Ide.Disk_3 != nil && config.Ide.Disk_3.CloudInit != nil {
-		return config.Ide.Disk_3.CloudInit.Storage
+	if config != nil && config.Ide != nil && config.Ide.Disk_2 != nil && config.Ide.Disk_2.CloudInit != nil {
+		return config.Ide.Disk_2.CloudInit.Storage
 	}
 	return ""
 }
@@ -2069,15 +2052,16 @@ func mapFromStruct_QemuIdeDisks(config *pxapi.QemuIdeDisks) []interface{} {
 	}
 	ide_0 := mapFromStruct_QemuIdeStorage(config.Disk_0, "ide0")
 	ide_1 := mapFromStruct_QemuIdeStorage(config.Disk_1, "ide1")
-	ide_2 := mapFromStruct_QemuIdeStorage(config.Disk_2, "ide2")
-	if ide_0 == nil && ide_1 == nil && ide_2 == nil {
+	//ide_2 := mapFromStruct_QemuIdeStorage(config.Disk_2, "ide2")
+	ide_3 := mapFromStruct_QemuIdeStorage(config.Disk_3, "ide3")
+	if ide_0 == nil && ide_1 == nil && ide_3 == nil {
 		return nil
 	}
 	return []interface{}{
 		map[string]interface{}{
 			"ide0": ide_0,
 			"ide1": ide_1,
-			"ide2": ide_2,
+			"ide2": ide_3,
 		},
 	}
 }
