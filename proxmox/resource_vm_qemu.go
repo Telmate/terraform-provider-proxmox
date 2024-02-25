@@ -457,7 +457,7 @@ func resourceVmQemu() *schema.Resource {
 									"ide0": schema_Ide("ide0"),
 									"ide1": schema_Ide("ide1"),
 									//"ide2": schema_Ide("ide2"), //ide2 reserved for cloudinit
-									"ide3": schema_Ide("ide2"),
+									"ide3": schema_Ide("ide3"),
 								},
 							},
 						},
@@ -2061,7 +2061,7 @@ func mapFromStruct_QemuIdeDisks(config *pxapi.QemuIdeDisks) []interface{} {
 		map[string]interface{}{
 			"ide0": ide_0,
 			"ide1": ide_1,
-			"ide2": ide_3,
+			"ide3": ide_3,
 		},
 	}
 }
@@ -2414,7 +2414,7 @@ func mapToStruct_QemuIdeDisks(ide *pxapi.QemuIdeDisks, schema map[string]interfa
 	disks := schemaItem[0].(map[string]interface{})
 	mapToStruct_QemuIdeStorage(ide.Disk_0, "ide0", disks)
 	mapToStruct_QemuIdeStorage(ide.Disk_1, "ide1", disks)
-	mapToStruct_QemuIdeStorage(ide.Disk_2, "ide2", disks)
+	mapToStruct_QemuIdeStorage(ide.Disk_3, "ide3", disks)
 }
 
 func mapToStruct_QemuIdeStorage(ide *pxapi.QemuIdeStorage, key string, schema map[string]interface{}) {
