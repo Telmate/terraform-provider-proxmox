@@ -38,6 +38,7 @@ When using the Terraform provider for Proxmox, you do not need to create a confi
 specify the settings that you want to pass into the guest. The most common one will be ipconfig0 to configure the first
 network interface, but there are
 [more listed in the Proxmox docs](https://pve.proxmox.com/wiki/Cloud-Init_Support#_cloud_init_specific_options).
+There is an example of this in [examples/cloudinit_example.tf](../../examples/cloudinit_example.tf).
 
 Now, there is one other way to get the configuration data into the guest without using this magical CloudInit CD-ROM and
 that's by using cicustom. This allows you to create a NoCloud (v1) or ConfigDrive (v2) configuration file instead of
