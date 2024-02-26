@@ -32,14 +32,19 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     scsihw = "lsi"
 
     # Setup the disk
-    disk {
-        size = 32
-        type = "virtio"
-        storage = "ceph-storage-pool"
-        storage_type = "rbd"
-        iothread = 1
-        ssd = 1
-        discard = "on"
+    disks {
+        virtio {
+            virtio0 {
+                disk {
+                    size            = 32
+                    cache           = "writeback"
+                    storage         = "ceph-storage-pool"
+                    storage_type    = "rbd"
+                    iothread        = true
+                    discard         = true
+                }
+            }
+        }
     }
 
     # Setup the network interface and assign a vlan tag: 256
