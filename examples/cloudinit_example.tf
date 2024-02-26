@@ -55,6 +55,8 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     }
 
     # Setup the ip address using cloud-init.
+    cloudinit_cdrom_storage = "local-lvm"
+    boot = "order=virtio0;ide3"
     # Keep in mind to use the CIDR notation for the ip.
     ipconfig0 = "ip=192.168.10.20/24,gw=192.168.10.1"
 
