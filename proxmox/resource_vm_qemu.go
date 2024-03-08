@@ -30,9 +30,9 @@ import (
 var thisResource *schema.Resource
 
 const (
-	stateStopped string = "stopped"
 	stateRunning string = "running"
 	stateStarted string = "started"
+	stateStopped string = "stopped"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -123,8 +123,8 @@ func resourceVmQemu() *schema.Resource {
 			"vm_state": {
 				Type:             schema.TypeString,
 				Optional:         true,
-				Default:          "running",
-				Description:      "The state of the VM (running, stopped, started)",
+				Default:          stateRunning,
+				Description:      "The state of the VM (" + stateRunning + ", " + stateStarted + ", " + stateStopped + ")",
 				ValidateDiagFunc: VMStateValidator(),
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					return new == stateStarted
