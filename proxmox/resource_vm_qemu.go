@@ -32,6 +32,7 @@ var thisResource *schema.Resource
 const (
 	stateStopped string = "stopped"
 	stateRunning string = "running"
+	stateStarted string = "started"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -123,8 +124,11 @@ func resourceVmQemu() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				Default:          "running",
-				Description:      "The state of the VM (running or stopped)",
+				Description:      "The state of the VM (running, stopped, started)",
 				ValidateDiagFunc: VMStateValidator(),
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return new == stateStarted
+				},
 			},
 			"onboot": {
 				Type:        schema.TypeBool,
@@ -1023,7 +1027,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 
-	if d.Get("vm_state").(string) == "running" {
+	if d.Get("vm_state").(string) == "running" || d.Get("vm_state").(string) == "started" {
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
 		_, err := client.StartVm(vmr)
 		if err != nil {
@@ -1262,6 +1266,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 	switch vmState["status"].(string) { // manage the VM state to match the `vm_state` attribute
+	// case stateStarted: does nothing during update as we don't enforce the VM state
 	case stateStopped:
 		if d.Get("vm_state").(string) == stateRunning { // start the VM
 			log.Print("[DEBUG][QemuVmUpdate] starting VM to match `vm_state`")
