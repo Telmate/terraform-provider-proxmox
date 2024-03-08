@@ -89,7 +89,7 @@ func BIOSValidator() schema.SchemaValidateDiagFunc {
 
 func VMStateValidator() schema.SchemaValidateDiagFunc {
 	return validation.ToDiagFunc(validation.StringInSlice([]string{
-		"running",
-		"stopped",
+		stateRunning,
+		stateStopped,
 	}, false))
 }
