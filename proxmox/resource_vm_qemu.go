@@ -674,6 +674,15 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
+			"ipconfig": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:        schema.TypeString,
+					Required:    true,
+					Description: "ipconfig string in format: [gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]",
+				},
+			},
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -816,6 +825,19 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	qemuUsbs, _ := ExpandDevicesList(d.Get("usb").([]interface{}))
 
+	// Populate Ipconfig map from iterable variable
+	qemuIpconfig, _ := ExpandIpconfigList(d.Get("ipconfig").([]interface{}))
+	// keeping this for backwards compatibility
+	if len(qemuIpconfig) == 0 {
+		// Populate Ipconfig map from explicit vars
+		for i := 0; i < 16; i++ {
+			iface := fmt.Sprintf("ipconfig%d", i)
+			if v, ok := d.GetOk(iface); ok {
+				qemuIpconfig[i] = v.(string)
+			}
+		}
+	}
+
 	config := pxapi.ConfigQemu{
 		Name:           vmName,
 		Description:    d.Get("desc").(string),
@@ -855,14 +877,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig:     pxapi.IpconfigMap{},
-	}
-	// Populate Ipconfig map
-	for i := 0; i < 16; i++ {
-		iface := fmt.Sprintf("ipconfig%d", i)
-		if v, ok := d.GetOk(iface); ok {
-			config.Ipconfig[i] = v.(string)
-		}
+		Ipconfig:     qemuIpconfig,
 	}
 
 	config.Disks = mapToStruct_QemuStorages(d)
@@ -1085,6 +1100,22 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(fmt.Errorf("error while processing Usb configuration: %v", err))
 	}
 
+	// Populate Ipconfig map from iterable variable
+	qemuIpconfig, err := ExpandIpconfigList(d.Get("ipconfig").([]interface{}))
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("error while processing ipconfig configuration: %v", err))
+	}
+	// keeping this for backwards compatibility
+	if len(qemuIpconfig) == 0 {
+		// Populate Ipconfig map from explicit vars
+		for i := 0; i < 16; i++ {
+			iface := fmt.Sprintf("ipconfig%d", i)
+			if v, ok := d.GetOk(iface); ok {
+				qemuIpconfig[i] = v.(string)
+			}
+		}
+	}
+
 	d.Partial(true)
 	if d.HasChange("target_node") {
 		// Update target node when it must be migrated manually. Don't if it has been migrated by the proxmox high availability system.
@@ -1131,24 +1162,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Searchdomain: d.Get("searchdomain").(string),
 		Nameserver:   d.Get("nameserver").(string),
 		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig: pxapi.IpconfigMap{
-			0:  d.Get("ipconfig0").(string),
-			1:  d.Get("ipconfig1").(string),
-			2:  d.Get("ipconfig2").(string),
-			3:  d.Get("ipconfig3").(string),
-			4:  d.Get("ipconfig4").(string),
-			5:  d.Get("ipconfig5").(string),
-			6:  d.Get("ipconfig6").(string),
-			7:  d.Get("ipconfig7").(string),
-			8:  d.Get("ipconfig8").(string),
-			9:  d.Get("ipconfig9").(string),
-			10: d.Get("ipconfig10").(string),
-			11: d.Get("ipconfig11").(string),
-			12: d.Get("ipconfig12").(string),
-			13: d.Get("ipconfig13").(string),
-			14: d.Get("ipconfig14").(string),
-			15: d.Get("ipconfig15").(string),
-		},
+		Ipconfig:     qemuIpconfig,
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1187,6 +1201,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"searchdomain",
 		"nameserver",
 		"sshkeys",
+		"ipconfig",
 		"ipconfig0",
 		"ipconfig1",
 		"ipconfig2",
@@ -1436,6 +1451,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("searchdomain", config.Searchdomain)
 	d.Set("nameserver", config.Nameserver)
 	d.Set("sshkeys", config.Sshkeys)
+	d.Set("ipconfig", config.Ipconfig)
 	d.Set("ipconfig0", config.Ipconfig[0])
 	d.Set("ipconfig1", config.Ipconfig[1])
 	d.Set("ipconfig2", config.Ipconfig[2])
@@ -1476,21 +1492,21 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// read in the qemu hostpci
 	qemuPCIDevices, _ := FlattenDevicesList(config.QemuPCIDevices)
 	logger.Debug().Int("vmid", vmID).Msgf("Hostpci Block Processed '%v'", config.QemuPCIDevices)
-	if d.Set("hostpci", qemuPCIDevices); err != nil {
+	if err = d.Set("hostpci", qemuPCIDevices); err != nil {
 		return diag.FromErr(err)
 	}
 
 	// read in the qemu hostpci
 	qemuUsbsDevices, _ := FlattenDevicesList(config.QemuUsbs)
 	logger.Debug().Int("vmid", vmID).Msgf("Usb Block Processed '%v'", config.QemuUsbs)
-	if d.Set("usb", qemuUsbsDevices); err != nil {
+	if err = d.Set("usb", qemuUsbsDevices); err != nil {
 		return diag.FromErr(err)
 	}
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
 	logger.Debug().Int("vmid", vmID).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
-	if d.Set("unused_disk", flatUnusedDisks); err != nil {
+	if err = d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -1754,6 +1770,34 @@ func ExpandDevicesList(deviceList []interface{}) (pxapi.QemuDevices, error) {
 	return expandedDevices, nil
 }
 
+// Consumes a terraform TypeList of a Qemu Device (network, hard drive, etc) and returns the "Expanded"
+// version of the equivalent configuration that the API understands (the struct pxapi.IpconfigMap).
+func ExpandIpconfigList(ipconfigList []interface{}) (pxapi.IpconfigMap, error) {
+	expandedDevices := make(pxapi.IpconfigMap)
+
+	if len(ipconfigList) == 0 {
+		return expandedDevices, nil
+	}
+
+	ipconfigDevices, err := ExpandDevicesList(ipconfigList)
+	if err != nil {
+		return expandedDevices, err
+	}
+
+	for index, thisDeviceMap := range ipconfigDevices {
+		// thisDeviceMap := deviceInterface
+
+		// bail out if the device is empty, it is meaningless in this context
+		if thisDeviceMap == nil {
+			continue
+		}
+
+		expandedDevices[index] = thisDeviceMap["config"]
+	}
+
+	return expandedDevices, nil
+}
+
 // Update schema.TypeSet with new values comes from Proxmox API.
 // TODO: remove these set functions and convert attributes using a set to a list instead.
 func UpdateDevicesSet(
@@ -1908,8 +1952,8 @@ func initConnInfo(ctx context.Context,
 	if config.HasCloudInit() {
 		log.Print("[DEBUG][initConnInfo] vm has a cloud-init configuration")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
-		_, ipconfig0Set := d.GetOk("ipconfig0")
-		if ipconfig0Set {
+		_, ipconfigSet := d.GetOk("ipconfig")
+		if ipconfigSet {
 			vmState, err := client.GetVmState(vmr)
 			log.Printf("[DEBUG][initConnInfo] cloudinitcheck vm state %v", vmState)
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("cloudinitcheck vm state %v", vmState)
@@ -1918,16 +1962,18 @@ func initConnInfo(ctx context.Context,
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("vmstate error %s", err.Error())
 				return diag.FromErr(err)
 			}
-			if d.Get("ipconfig0").(string) != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
-				// parse IP address out of ipconfig0
-				ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
+
+			ipConfig := d.Get("ipconfig").(map[int]string)
+			if ipConfig[0] != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
+				// parse IP address out of ipconfig
+				ipMatch := rxIPconfig.FindStringSubmatch(ipConfig[0])
 				if sshHost == "" {
 					sshHost = ipMatch[1]
 				}
 				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
 				interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
-				log.Printf("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
-				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig0 interfaces %v", interfaces)
+				log.Printf("[DEBUG][initConnInfo] ipconfig[0] interfaces: %v", interfaces)
+				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig[0] interfaces %v", interfaces)
 				if err != nil {
 					return diag.FromErr(err)
 				} else {

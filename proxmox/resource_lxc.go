@@ -573,10 +573,6 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 		config.RootFs["size"] = config_post_resize.RootFs["size"]
 		config.RootFs["volume"] = config_post_resize.RootFs["volume"]
 
-		if err != nil {
-			return err
-		}
-
 		// Update all remaining stuff
 		err = config.UpdateConfig(vmr, client)
 		if err != nil {
