@@ -261,7 +261,7 @@ The following arguments may be optionally defined when using this resource:
   The [startup and shutdown behaviour](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_startup_and_shutdown)
   of the container.
 * `swap` - A number that sets the amount of swap memory available to the container. Default is `512`.
-* `tags` - Tags of the container. This is only meta information.
+* `tags` - Tags of the container, semicolon-delimited (e.g. "terraform;test"). This is only meta information.
 * `template` - A boolean that determines if this container is a template.
 * `tty` - A number that specifies the TTYs available to the container. Default is `2`.
 * `unique` - A boolean that determines if a unique random ethernet address is assigned to the container.
