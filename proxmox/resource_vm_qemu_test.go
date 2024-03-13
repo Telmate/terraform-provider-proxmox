@@ -75,7 +75,7 @@ func testAccProxmoxProviderFactory() map[string]*schema.Provider {
 //}
 
 // testAccExampleQemuBasic generates the most simplistic VM we're able to make
-// this confirms we can spin up a vm using just default values
+// this confirms we can spin up a VM using just default values
 func testAccExampleQemuBasic(name string, targetNode string) string {
 	return fmt.Sprintf(`
 resource "proxmox_vm_qemu" "%s" {
@@ -127,7 +127,7 @@ resource "proxmox_vm_qemu" "%s" {
 
 // testAccExampleResource generates a configured VM with a 1G disk
 // the goal with this resource is to make a "basic" but "standard" virtual machine
-// using a configuration that would apply to a usable vm (but NOT a cloud config'd one)
+// using a configuration that would apply to a usable VM (but NOT a cloud config'd one)
 func testAccExampleQemuStandard(name string, targetNode string) string {
 	return fmt.Sprintf(`
 resource "proxmox_vm_qemu" "%s" {
@@ -243,7 +243,7 @@ func TestAccProxmoxVmQemu_StandardCreate(t *testing.T) {
 }
 
 // TODO:  this test FAILS - it looks like the api library isn't actually sending the slot request to proxmox? needs further investigation.
-// TestAccProxmoxVmQemu_DiskSlot tests we can correctly create a vm disk assigned to a particular disk slot
+// TestAccProxmoxVmQemu_DiskSlot tests we can correctly create a VM disk assigned to a particular disk slot
 //func TestAccProxmoxVmQemu_DiskSlot(t *testing.T) {
 //	resourceName := acctest.RandStringFromCharSet(10, acctest.CharSetAlpha)
 //	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
