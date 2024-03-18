@@ -55,11 +55,8 @@ resource "proxmox_vm_qemu" "vm" {
   disks {
     scsi {
       scsi0 {
-        disk {
-          media   = "cdrom"
-          storage = local.iso_storage_pool
-          volume  = proxmox_cloud_init_disk.ci.id
-          size    = proxmox_cloud_init_disk.ci.size
+        cd {
+          iso = "${local.iso_storage_pool}:${proxmox_cloud_init_disk.ci.id}"
         }
       }
     }
