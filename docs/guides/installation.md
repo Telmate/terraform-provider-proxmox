@@ -94,8 +94,8 @@ $ cat main.tf
 terraform {
   required_providers {
     proxmox = {
-      source  = "telmate/proxmox"
-      version = ">=1.0.0"
+      source  = "registry.example.com/telmate/proxmox"
+      version = "1.0.0"
     }
   }
   required_version = ">= 0.14"
@@ -119,7 +119,7 @@ cp -f bin/terraform-provider-proxmox ~/.terraform.d/plugins
 Initialize Terraform so that it installs the new plugins:
 
 ```
-$ terraform init
+$ terraform init --upgrade
 ```
 
 You should see the following marking the successful plugin installation:
