@@ -1880,8 +1880,8 @@ func initConnInfo(ctx context.Context,
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	log.Print("[INFO][initConnInfo] trying to find IP address of first network card")
-	logger.Info().Int("vmid", vmr.VmId()).Msgf("trying to find IP address of first network card")
+	log.Print("[INFO][initConnInfo] trying to find IP address of first network card by mac")
+	logger.Info().Int("vmid", vmr.VmId()).Msgf("trying to find IP address of first network card by mac")
 
 	// wait until we find a valid ipv4 address
 	log.Printf("[DEBUG][initConnInfo] checking network card...")
@@ -1893,14 +1893,15 @@ func initConnInfo(ctx context.Context,
 		if err != nil {
 			log.Printf("[DEBUG][initConnInfo] checking network card error %s", err.Error())
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card error %s", err.Error())
-			// return err
 		} else {
 			log.Printf("[DEBUG][initConnInfo] checking network card loop")
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card loop")
+
 			for _, iface := range interfaces {
 				if strings.EqualFold(strings.ToUpper(iface.MACAddress), strings.ToUpper(net0MacAddress)) {
 					for _, addr := range iface.IPAddresses {
 						if addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2 {
+							// found ip matching interface mac
 							log.Printf("[DEBUG][initConnInfo] Found IP address: %s", addr.String())
 							logger.Debug().Int("vmid", vmr.VmId()).Msgf("Found IP address: %s", addr.String())
 							sshHost = addr.String()
@@ -1908,16 +1909,20 @@ func initConnInfo(ctx context.Context,
 					}
 				}
 			}
+
 			if sshHost != "" {
 				log.Printf("[DEBUG][initConnInfo] sshHost not empty: %s", sshHost)
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("sshHost not empty: %s", sshHost)
-				break
+			} else {
+				logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card loop, could not find ip address by mac, falling back to ipconfig0")
 			}
+
+			break
 		}
-		// wait before next try
+
+		// qemu-guest-agent not available yet, wait before next try
 		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
 	}
-	// todo - log a warning if we couldn't get an IP
 
 	if config.HasCloudInit() {
 		log.Print("[DEBUG][initConnInfo] vm has a cloud-init configuration")
