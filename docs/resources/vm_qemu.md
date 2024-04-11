@@ -306,7 +306,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Virtio Block
 
-The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `virtio0` through `virtio15`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.virtio` block is used to configure disks of type virtio. It may only be specified once. It has the options `virtio0` through `virtio15`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
