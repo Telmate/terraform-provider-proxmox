@@ -32,14 +32,19 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     scsihw = "lsi"
 
     # Setup the disk
-    disk {
-        size = 32
-        type = "virtio"
-        storage = "ceph-storage-pool"
-        storage_type = "rbd"
-        iothread = 1
-        ssd = 1
-        discard = "on"
+    disks {
+        virtio {
+            virtio0 {
+                disk {
+                    size            = 32
+                    cache           = "writeback"
+                    storage         = "ceph-storage-pool"
+                    storage_type    = "rbd"
+                    iothread        = true
+                    discard         = true
+                }
+            }
+        }
     }
 
     # Setup the network interface and assign a vlan tag: 256
@@ -50,6 +55,8 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     }
 
     # Setup the ip address using cloud-init.
+    cloudinit_cdrom_storage = "local-lvm"
+    boot = "order=virtio0;ide3"
     # Keep in mind to use the CIDR notation for the ip.
     ipconfig0 = "ip=192.168.10.20/24,gw=192.168.10.1"
 
