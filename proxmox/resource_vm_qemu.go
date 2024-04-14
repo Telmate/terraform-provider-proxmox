@@ -451,10 +451,82 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
+			"disk": {
+				Type:          schema.TypeList,
+				Optional:      true,
+				ConflictsWith: []string{"disks"},
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"asyncio":              schema_DiskAsyncIO(),
+						"backup":               schema_DiskBackup(),
+						"cache":                schema_DiskCache(),
+						"discard":              {Type: schema.TypeBool, Optional: true},
+						"disk_file":            schema_PassthroughFile(schema.Schema{Optional: true}),
+						"emulatessd":           {Type: schema.TypeBool, Optional: true},
+						"format":               schema_DiskFormat(),
+						"id":                   schema_DiskId(),
+						"iops_r_burst":         schema_DiskBandwidthIopsBurst(),
+						"iops_r_burst_length":  schema_DiskBandwidthIopsBurstLength(),
+						"iops_r_concurrent":    schema_DiskBandwidthIopsConcurrent(),
+						"iops_wr_burst":        schema_DiskBandwidthIopsBurst(),
+						"iops_wr_burst_length": schema_DiskBandwidthIopsBurstLength(),
+						"iops_wr_concurrent":   schema_DiskBandwidthIopsConcurrent(),
+						"iothread":             {Type: schema.TypeBool, Optional: true},
+						"iso":                  schema_IsoPath(schema.Schema{}),
+						"linked_disk_id":       schema_LinkedDiskId(),
+						"mbps_r_burst":         schema_DiskBandwidthMBpsBurst(),
+						"mbps_r_concurrent":    schema_DiskBandwidthMBpsConcurrent(),
+						"mbps_wr_burst":        schema_DiskBandwidthMBpsBurst(),
+						"mbps_wr_concurrent":   schema_DiskBandwidthMBpsConcurrent(),
+						"passthrough":          {Type: schema.TypeBool, Default: false, Optional: true},
+						"readonly":             {Type: schema.TypeBool, Optional: true},
+						"replicate":            {Type: schema.TypeBool, Optional: true},
+						"serial":               schema_DiskSerial(),
+						"size":                 schema_DiskSize(schema.Schema{Computed: true, Optional: true}),
+						"slot": {
+							Type:     schema.TypeString,
+							Required: true,
+							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+								v, ok := i.(string)
+								if !ok {
+									return diag.Errorf(errorString, k)
+								}
+								switch v {
+								case "ide0", "ide1", "ide2",
+									"sata0", "sata1", "sata2", "sata3", "sata4", "sata5",
+									"scsi0", "scsi1", "scsi2", "scsi3", "scsi4", "scsi5", "scsi6", "scsi7", "scsi8", "scsi9", "scsi10", "scsi11", "scsi12", "scsi13", "scsi14", "scsi15", "scsi16", "scsi17", "scsi18", "scsi19", "scsi20", "scsi21", "scsi22", "scsi23", "scsi24", "scsi25", "scsi26", "scsi27", "scsi28", "scsi29", "scsi30",
+									"virtio0", "virtio1", "virtio2", "virtio3", "virtio4", "virtio5", "virtio6", "virtio7", "virtio8", "virtio9", "virtio10", "virtio11", "virtio12", "virtio13", "virtio14", "virtio15":
+									return nil
+								}
+								return diag.Errorf("slot must be one of 'ide0', 'ide1', 'ide2', 'sata0', 'sata1', 'sata2', 'sata3', 'sata4', 'sata5', 'scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'scsi7', 'scsi8', 'scsi9', 'scsi10', 'scsi11', 'scsi12', 'scsi13', 'scsi14', 'scsi15', 'scsi16', 'scsi17', 'scsi18', 'scsi19', 'scsi20', 'scsi21', 'scsi22', 'scsi23', 'scsi24', 'scsi25', 'scsi26', 'scsi27', 'scsi28', 'scsi29', 'scsi30', 'virtio0', 'virtio1', 'virtio2', 'virtio3', 'virtio4', 'virtio5', 'virtio6', 'virtio7', 'virtio8', 'virtio9', 'virtio10', 'virtio11', 'virtio12', 'virtio13', 'virtio14', 'virtio15'")
+							},
+						},
+						"storage": schema_DiskStorage(),
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "disk",
+							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+								v, ok := i.(string)
+								if !ok {
+									return diag.Errorf(errorString, k)
+								}
+								switch v {
+								case "disk", "cdrom":
+									return nil
+								}
+								return diag.Errorf("type must be one of 'disk' or 'cdrom'")
+							},
+						},
+						"wwn": schema_DiskWWN(),
+					},
+				},
+			},
 			"disks": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:          schema.TypeList,
+				Optional:      true,
+				MaxItems:      1,
+				ConflictsWith: []string{"disk"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"ide": {
@@ -2839,11 +2911,7 @@ func schema_CdRom(path string) *schema.Schema {
 		ConflictsWith: []string{path + ".disk", path + ".passthrough"},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"iso": {
-					Type:          schema.TypeString,
-					Optional:      true,
-					ConflictsWith: []string{path + ".cdrom.0.passthrough"},
-				},
+				"iso": schema_IsoPath(schema.Schema{ConflictsWith: []string{path + ".cdrom.0.passthrough"}}),
 				"passthrough": {
 					Type:          schema.TypeBool,
 					Optional:      true,
@@ -2880,7 +2948,7 @@ func schema_Ide(setting string) *schema.Schema {
 							"linked_disk_id": schema_LinkedDiskId(),
 							"replicate":      {Type: schema.TypeBool, Optional: true},
 							"serial":         schema_DiskSerial(),
-							"size":           schema_DiskSize(),
+							"size":           schema_DiskSize(schema.Schema{Required: true}),
 							"storage":        schema_DiskStorage(),
 							"wwn":            schema_DiskWWN(),
 						}),
@@ -2898,7 +2966,7 @@ func schema_Ide(setting string) *schema.Schema {
 							"cache":      schema_DiskCache(),
 							"discard":    {Type: schema.TypeBool, Optional: true},
 							"emulatessd": {Type: schema.TypeBool, Optional: true},
-							"file":       schema_PassthroughFile(),
+							"file":       schema_PassthroughFile(schema.Schema{Required: true}),
 							"replicate":  {Type: schema.TypeBool, Optional: true},
 							"serial":     schema_DiskSerial(),
 							"size":       schema_PassthroughSize(),
@@ -2937,7 +3005,7 @@ func schema_Sata(setting string) *schema.Schema {
 							"linked_disk_id": schema_LinkedDiskId(),
 							"replicate":      {Type: schema.TypeBool, Optional: true},
 							"serial":         schema_DiskSerial(),
-							"size":           schema_DiskSize(),
+							"size":           schema_DiskSize(schema.Schema{Required: true}),
 							"storage":        schema_DiskStorage(),
 							"wwn":            schema_DiskWWN(),
 						}),
@@ -2955,7 +3023,7 @@ func schema_Sata(setting string) *schema.Schema {
 							"cache":      schema_DiskCache(),
 							"discard":    {Type: schema.TypeBool, Optional: true},
 							"emulatessd": {Type: schema.TypeBool, Optional: true},
-							"file":       schema_PassthroughFile(),
+							"file":       schema_PassthroughFile(schema.Schema{Required: true}),
 							"replicate":  {Type: schema.TypeBool, Optional: true},
 							"serial":     schema_DiskSerial(),
 							"size":       schema_PassthroughSize(),
@@ -2996,7 +3064,7 @@ func schema_Scsi(setting string) *schema.Schema {
 							"readonly":       {Type: schema.TypeBool, Optional: true},
 							"replicate":      {Type: schema.TypeBool, Optional: true},
 							"serial":         schema_DiskSerial(),
-							"size":           schema_DiskSize(),
+							"size":           schema_DiskSize(schema.Schema{Required: true}),
 							"storage":        schema_DiskStorage(),
 							"wwn":            schema_DiskWWN(),
 						}),
@@ -3014,7 +3082,7 @@ func schema_Scsi(setting string) *schema.Schema {
 							"cache":      schema_DiskCache(),
 							"discard":    {Type: schema.TypeBool, Optional: true},
 							"emulatessd": {Type: schema.TypeBool, Optional: true},
-							"file":       schema_PassthroughFile(),
+							"file":       schema_PassthroughFile(schema.Schema{Required: true}),
 							"iothread":   {Type: schema.TypeBool, Optional: true},
 							"readonly":   {Type: schema.TypeBool, Optional: true},
 							"replicate":  {Type: schema.TypeBool, Optional: true},
@@ -3056,7 +3124,7 @@ func schema_Virtio(setting string) *schema.Schema {
 							"readonly":       {Type: schema.TypeBool, Optional: true},
 							"replicate":      {Type: schema.TypeBool, Optional: true},
 							"serial":         schema_DiskSerial(),
-							"size":           schema_DiskSize(),
+							"size":           schema_DiskSize(schema.Schema{Required: true}),
 							"storage":        schema_DiskStorage(),
 							"wwn":            schema_DiskWWN(),
 						}),
@@ -3073,7 +3141,7 @@ func schema_Virtio(setting string) *schema.Schema {
 							"backup":    schema_DiskBackup(),
 							"cache":     schema_DiskCache(),
 							"discard":   {Type: schema.TypeBool, Optional: true},
-							"file":      schema_PassthroughFile(),
+							"file":      schema_PassthroughFile(schema.Schema{Required: true}),
 							"iothread":  {Type: schema.TypeBool, Optional: true},
 							"readonly":  {Type: schema.TypeBool, Optional: true},
 							"replicate": {Type: schema.TypeBool, Optional: true},
@@ -3268,24 +3336,22 @@ func schema_DiskSerial() *schema.Schema {
 	}
 }
 
-func schema_DiskSize() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
-		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
-			v, ok := i.(string)
-			if !ok {
-				return diag.Errorf(errorString, k)
-			}
-			if !regexp.MustCompile(`^[123456789]\d*[KMGT]?$`).MatchString(v) {
-				return diag.Errorf("%s must match the following regex ^[123456789]\\d*[KMGT]?$", k)
-			}
-			return nil
-		},
-		DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-			return convert_SizeStringToKibibytes_Unsafe(old) == convert_SizeStringToKibibytes_Unsafe(new)
-		},
+func schema_DiskSize(s schema.Schema) *schema.Schema {
+	s.Type = schema.TypeString
+	s.ValidateDiagFunc = func(i interface{}, k cty.Path) diag.Diagnostics {
+		v, ok := i.(string)
+		if !ok {
+			return diag.Errorf(errorString, k)
+		}
+		if !regexp.MustCompile(`^[123456789]\d*[KMGT]?$`).MatchString(v) {
+			return diag.Errorf("%s must match the following regex ^[123456789]\\d*[KMGT]?$", k)
+		}
+		return nil
 	}
+	s.DiffSuppressFunc = func(k, old, new string, d *schema.ResourceData) bool {
+		return convert_SizeStringToKibibytes_Unsafe(old) == convert_SizeStringToKibibytes_Unsafe(new)
+	}
+	return &s
 }
 
 func schema_DiskStorage() *schema.Schema {
@@ -3312,6 +3378,12 @@ func schema_DiskWWN() *schema.Schema {
 	}
 }
 
+func schema_IsoPath(s schema.Schema) *schema.Schema {
+	s.Type = schema.TypeString
+	s.Optional = true
+	return &s
+}
+
 func schema_LinkedDiskId() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeInt,
@@ -3319,11 +3391,9 @@ func schema_LinkedDiskId() *schema.Schema {
 	}
 }
 
-func schema_PassthroughFile() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeString,
-		Required: true,
-	}
+func schema_PassthroughFile(s schema.Schema) *schema.Schema {
+	s.Type = schema.TypeString
+	return &s
 }
 
 func schema_PassthroughSize() *schema.Schema {
