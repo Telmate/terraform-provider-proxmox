@@ -2331,7 +2331,6 @@ func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage, setting st
 	if config == nil {
 		return nil
 	}
-	mapFormStruct_QemuCdRom(config.CdRom)
 	if config.Disk != nil {
 		mapParams := map[string]interface{}{
 			"asyncio":        string(config.Disk.AsyncIO),
