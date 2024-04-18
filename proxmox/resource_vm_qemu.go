@@ -66,6 +66,11 @@ func resourceVmQemu() *schema.Resource {
 		),
 
 		Schema: map[string]*schema.Schema{
+			"agent": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  0,
+			},
 			"vmid": {
 				Type:             schema.TypeInt,
 				Optional:         true,
@@ -158,11 +163,6 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 				Optional: true,
-			},
-			"agent": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				// Default:  0,
 			},
 			"pxe": {
 				Type:          schema.TypeBool,
@@ -835,7 +835,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tablet:         BoolPointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
-		Agent:          d.Get("agent").(int),
+		Agent:          mapToStruct_QemuGuestAgent(d),
 		Memory:         d.Get("memory").(int),
 		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
@@ -1111,7 +1111,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tablet:         BoolPointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
-		Agent:          d.Get("agent").(int),
+		Agent:          mapToStruct_QemuGuestAgent(d),
 		Memory:         d.Get("memory").(int),
 		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
@@ -1424,7 +1424,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("tablet", config.Tablet)
 	d.Set("boot", config.Boot)
 	d.Set("bootdisk", config.BootDisk)
-	d.Set("agent", config.Agent)
 	d.Set("memory", config.Memory)
 	d.Set("machine", config.Machine)
 	d.Set("balloon", config.Balloon)
@@ -1471,6 +1470,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("linked_vmid", config.LinkedVmId)
 	d.Set("disks", mapFromStruct_ConfigQemu(config.Disks))
 	d.Set("cloudinit_cdrom_storage", getCloudInitDisk(config.Disks))
+	mapFromStruct_QemuGuestAgent(d, config.Agent)
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"force_create", "define_connection_info"}
@@ -2077,6 +2077,19 @@ func mapFormStruct_QemuDiskBandwidth(params map[string]interface{}, config pxapi
 	params["iops_wr_concurrent"] = int(config.Iops.WriteLimit.Concurrent)
 }
 
+func mapFromStruct_QemuGuestAgent(d *schema.ResourceData, config *pxapi.QemuGuestAgent) {
+	if config == nil {
+		return
+	}
+	if config.Enable != nil {
+		if *config.Enable {
+			d.Set("agent", 1)
+		} else {
+			d.Set("agent", 0)
+		}
+	}
+}
+
 func mapFromStruct_QemuIdeDisks(config *pxapi.QemuIdeDisks) []interface{} {
 	if config == nil {
 		return nil
@@ -2433,6 +2446,16 @@ func mapToStruct_QemuDiskBandwidth(schema map[string]interface{}) pxapi.QemuDisk
 				Concurrent:    pxapi.QemuDiskBandwidthIopsLimitConcurrent(schema["iops_wr_concurrent"].(int)),
 			},
 		},
+	}
+}
+
+func mapToStruct_QemuGuestAgent(d *schema.ResourceData) *pxapi.QemuGuestAgent {
+	var tmpEnable bool
+	if d.Get("agent").(int) == 1 {
+		tmpEnable = true
+	}
+	return &pxapi.QemuGuestAgent{
+		Enable: &tmpEnable,
 	}
 }
 
