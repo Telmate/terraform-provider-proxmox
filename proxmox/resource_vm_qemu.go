@@ -219,6 +219,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional:         true,
 				Description:      "Specifies the Qemu machine type.",
 				ValidateDiagFunc: MachineTypeValidator(),
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old == new || (old != "" && new == "") {
+						return true
+					}
+					return false
+				},
 			},
 			"memory": {
 				Type:     schema.TypeInt,
