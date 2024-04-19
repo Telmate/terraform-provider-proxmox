@@ -382,6 +382,9 @@ func resourceId(targetNode string, resType string, vmId int) string {
 }
 
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
+	// create a logger for this function
+	logger, _ := CreateSubLogger("parseResourceId")
+
 	if !rxRsId.MatchString(resId) {
 		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be <node>/<type>/<vmid>", resId)
 	}
@@ -389,6 +392,9 @@ func parseResourceId(resId string) (targetNode string, resType string, vmId int,
 	targetNode = idMatch[1]
 	resType = idMatch[2]
 	vmId, err = strconv.Atoi(idMatch[3])
+	if err != nil {
+		logger.Info().Str("error", err.Error()).Msgf("failed to get vmId")
+	}
 	return
 }
 
