@@ -45,6 +45,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
     qemu_os                   = "l26"
     scsihw                    = "virtio-scsi-pci"
     sockets                   = 1
+    protection                = false
     tablet                    = true
     target_node               = "test"
     vcpus                     = 0

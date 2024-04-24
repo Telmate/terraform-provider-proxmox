@@ -147,6 +147,12 @@ func resourceVmQemu() *schema.Resource {
 				// Default:     "",
 				Description: "Startup order of the VM",
 			},
+			"protection": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Protect VM from being removed",
+			},
 			"tablet": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -838,6 +844,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Bios:           d.Get("bios").(string),
 		Onboot:         BoolPointer(d.Get("onboot").(bool)),
 		Startup:        d.Get("startup").(string),
+		Protection:     BoolPointer(d.Get("protection").(bool)),
 		Tablet:         BoolPointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
@@ -1114,6 +1121,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Bios:           d.Get("bios").(string),
 		Onboot:         BoolPointer(d.Get("onboot").(bool)),
 		Startup:        d.Get("startup").(string),
+		Protection:     BoolPointer(d.Get("protection").(bool)),
 		Tablet:         BoolPointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
@@ -1427,6 +1435,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
 	d.Set("startup", config.Startup)
+	d.Set("protection", config.Protection)
 	d.Set("tablet", config.Tablet)
 	d.Set("boot", config.Boot)
 	d.Set("bootdisk", config.BootDisk)
