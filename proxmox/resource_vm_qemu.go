@@ -225,6 +225,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional:         true,
 				Description:      "Specifies the Qemu machine type.",
 				ValidateDiagFunc: MachineTypeValidator(),
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old == new || (old != "" && new == "") {
+						return true
+					}
+					return false
+				},
 			},
 			"memory": {
 				Type:     schema.TypeInt,
@@ -1499,21 +1505,21 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// read in the qemu hostpci
 	qemuPCIDevices, _ := FlattenDevicesList(config.QemuPCIDevices)
 	logger.Debug().Int("vmid", vmID).Msgf("Hostpci Block Processed '%v'", config.QemuPCIDevices)
-	if d.Set("hostpci", qemuPCIDevices); err != nil {
+	if err = d.Set("hostpci", qemuPCIDevices); err != nil {
 		return diag.FromErr(err)
 	}
 
 	// read in the qemu hostpci
 	qemuUsbsDevices, _ := FlattenDevicesList(config.QemuUsbs)
 	logger.Debug().Int("vmid", vmID).Msgf("Usb Block Processed '%v'", config.QemuUsbs)
-	if d.Set("usb", qemuUsbsDevices); err != nil {
+	if err = d.Set("usb", qemuUsbsDevices); err != nil {
 		return diag.FromErr(err)
 	}
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
 	logger.Debug().Int("vmid", vmID).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
-	if d.Set("unused_disk", flatUnusedDisks); err != nil {
+	if err = d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return diag.FromErr(err)
 	}
 

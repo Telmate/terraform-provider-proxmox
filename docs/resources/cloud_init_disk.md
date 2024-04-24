@@ -1,7 +1,7 @@
 This documentation is about how to manually create a cloud-init CD-ROM image.
 This is only for unusual situations where the standard cloud-init support is
 not enough. For a simple cloud-init example, see
-[examples/cloudinit_example.tf](../examples/cloudinit_example.tf).
+[examples/cloudinit_example.tf](../../examples/cloudinit_example.tf).
 
 # Cloud Init Disk Resource
 

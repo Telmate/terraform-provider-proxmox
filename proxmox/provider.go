@@ -193,7 +193,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	}
 
 	//permission check
-	minimum_permissions := []string{
+	minimumPermissions := []string{
 		"Datastore.AllocateSpace",
 		"Datastore.Audit",
 		"Pool.Allocate",
@@ -231,8 +231,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 	sort.Strings(permlist)
-	sort.Strings(minimum_permissions)
-	permDiff := permissions_check(permlist, minimum_permissions)
+	sort.Strings(minimumPermissions)
+	permDiff := permissions_check(permlist, minimumPermissions)
 	if len(permDiff) == 0 {
 		// look to see what logging we should be outputting according to the provider configuration
 		logLevels := make(map[string]string)
@@ -265,10 +265,9 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			LogLevels:                          logLevels,
 			DangerouslyIgnoreUnknownAttributes: d.Get("pm_dangerously_ignore_unknown_attributes").(bool),
 		}, nil
-	} else {
-		err = fmt.Errorf("permissions for user/token %s are not sufficient, please provide also the following permissions that are missing: %v", userID.ToString(), permDiff)
-		return nil, err
 	}
+	err = fmt.Errorf("permissions for user/token %s are not sufficient, please provide also the following permissions that are missing: %v", userID.ToString(), permDiff)
+	return nil, err
 }
 
 func getClient(pm_api_url string,
@@ -382,6 +381,9 @@ func resourceId(targetNode string, resType string, vmId int) string {
 }
 
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
+	// create a logger for this function
+	logger, _ := CreateSubLogger("parseResourceId")
+
 	if !rxRsId.MatchString(resId) {
 		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be <node>/<type>/<vmid>", resId)
 	}
@@ -389,6 +391,9 @@ func parseResourceId(resId string) (targetNode string, resType string, vmId int,
 	targetNode = idMatch[1]
 	resType = idMatch[2]
 	vmId, err = strconv.Atoi(idMatch[3])
+	if err != nil {
+		logger.Info().Str("error", err.Error()).Msgf("failed to get vmId")
+	}
 	return
 }
 
