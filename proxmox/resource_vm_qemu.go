@@ -208,6 +208,9 @@ func resourceVmQemu() *schema.Resource {
 					// 	if new == "l26" {
 					// 		return len(d.Get("clone").(string)) > 0 // the cloned source may have a different os, which we should leave alone
 					// 	}
+					if new == "" {
+						return true
+					}
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
