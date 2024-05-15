@@ -8,11 +8,13 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 var lxcResourceDef *schema.Resource
 
+// TODO update tag schema
 func resourceLxc() *schema.Resource {
 	lxcResourceDef = &schema.Resource{
 		Create:        resourceLxcCreate,
@@ -142,10 +144,7 @@ func resourceLxc() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"tags": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
+			"tags": tags.Schema(),
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -488,7 +487,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
-	config.Tags = d.Get("tags").(string)
+	config.Tags = tags.String(tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))))
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -659,7 +658,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
-	config.Tags = d.Get("tags").(string)
+	config.Tags = tags.String(tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))))
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -884,7 +883,7 @@ func _resourceLxcRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("searchdomain", config.SearchDomain)
 	d.Set("startup", config.Startup)
 	d.Set("swap", config.Swap)
-	d.Set("tags", config.Tags)
+	d.Set("tags", tags.String(tags.Split(config.Tags)))
 	d.Set("template", config.Template)
 	d.Set("tty", config.Tty)
 	d.Set("unique", config.Unique)

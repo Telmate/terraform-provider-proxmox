@@ -16,6 +16,7 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -214,11 +215,7 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
-			"tags": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
+			"tags": tags.Schema(),
 			"args": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -866,7 +863,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		HaState:        d.Get("hastate").(string),
 		HaGroup:        d.Get("hagroup").(string),
 		QemuOs:         d.Get("qemu_os").(string),
-		Tags:           d.Get("tags").(string),
+		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
 		QemuNetworks:   qemuNetworks,
 		QemuSerials:    qemuSerials,
@@ -1143,7 +1140,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		HaState:        d.Get("hastate").(string),
 		HaGroup:        d.Get("hagroup").(string),
 		QemuOs:         d.Get("qemu_os").(string),
-		Tags:           d.Get("tags").(string),
+		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
 		QemuNetworks:   qemuNetworks,
 		QemuSerials:    qemuSerials,
@@ -1456,7 +1453,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("hastate", vmr.HaState())
 	d.Set("hagroup", vmr.HaGroup())
 	d.Set("qemu_os", config.QemuOs)
-	d.Set("tags", config.Tags)
+	d.Set("tags", tags.String(config.Tags))
 	d.Set("args", config.Args)
 	// Cloud-init.
 	d.Set("ciuser", config.CIuser)
