@@ -137,10 +137,11 @@ The following arguments are supported in the top level resource block.
 | `searchdomain`                | `str`    |                      | Sets default DNS search domain suffix. |
 | `nameserver`                  | `str`    |                      | Sets default DNS server for guest. |
 | `sshkeys`                     | `str`    |                      | Newline delimited list of SSH public keys to add to authorized keys file for the cloud-init user. |
-| `ipconfig0`                   | `str`    |                      | The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`. |
+| `ipconfig0`                   | `str`    | `''`                 | The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`. When `os_type` is `cloud-init` not setting `ip=` is equivalent to `skip_ipv4` == `true` and `ip6=` to `skip_ipv4` == `true` .|
 | `ipconfig1` to `ipconfig15`   | `str`    |                      | The second IP address to assign to the guest. Same format as `ipconfig0`. |
 | `automatic_reboot`            | `bool`   | `true`               | Automatically reboot the VM when parameter changes require this. If disabled the provider will emit a warning when the VM needs to be rebooted. |
-
+| `skip_ipv4`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv4 address from the qemu guest agent isn't required, it will still return an ipv4 address if it could obtain one. Useful for reducing retries in environments without ipv4.|
+| `skip_ipv6`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv6 address from the qemu guest agent isn't required, it will still return an ipv6 address if it could obtain one. Useful for reducing retries in environments without ipv6.|
 
 ### VGA Block
 
@@ -484,7 +485,8 @@ In addition to the arguments above, the following attributes can be referenced f
 | ---------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ssh_host`             | `str` | Read-only attribute. Only applies when `define_connection_info` is true. The hostname or IP to use to connect to the VM for preprovisioning. This can be overridden by defining `ssh_forward_ip`, but if you're using cloud-init and `ipconfig0=dhcp`, the IP reported by qemu-guest-agent is used, otherwise the IP defined in `ipconfig0` is used.                             |
 | `ssh_port`             | `str` | Read-only attribute. Only applies when `define_connection_info` is true. The port to connect to the VM over SSH for preprovisioning. If using cloud-init and a port is not specified in `ssh_forward_ip`, then 22 is used. If not using cloud-init, a port on the `target_node` will be forwarded to port 22 in the guest, and this attribute will be set to the forwarded port. |
-| `default_ipv4_address` | `str` | Read-only attribute. Only applies when `agent` is `1` and Proxmox can actually read the ip the vm has.                                                                                                                                                                                                                                                                           |
+| `default_ipv4_address` | `str` | Read-only attribute. Only applies when `agent` is `1` and Proxmox can actually read the ip the vm has. The settings `ipconfig0` and `skip_ipv4` have influence on this.|
+| `default_ipv6_address` | `str` | Read-only attribute. Only applies when `agent` is `1` and Proxmox can actually read the ip the vm has. The settings `ipconfig0` and `skip_ipv6` have influence on this.|
 
 ## Import
 
