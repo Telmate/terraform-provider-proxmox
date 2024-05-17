@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"net"
 	"net/url"
 	"path"
 	"regexp"
@@ -33,6 +32,8 @@ const (
 	stateRunning string = "running"
 	stateStarted string = "started"
 	stateStopped string = "stopped"
+
+	maxAgentTry uint = 5
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -767,8 +768,9 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 			},
 			"ssh_host": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The ip address used for the ssh connection, this will prefer ipv4 over ipv6 if both are available",
 			},
 			"ssh_port": {
 				Type:     schema.TypeString,
@@ -779,6 +781,24 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"skip_ipv4": {
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Default:       false,
+				ConflictsWith: []string{"skip_ipv6"},
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
+			},
+			"skip_ipv6": {
+				Type:          schema.TypeBool,
+				Optional:      true,
+				Default:       false,
+				ConflictsWith: []string{"skip_ipv4"},
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
+			},
 			"reboot_required": {
 				Type:        schema.TypeBool,
 				Computed:    true,
@@ -788,6 +808,11 @@ func resourceVmQemu() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "Use to track vm ipv4 address",
+			},
+			"default_ipv6_address": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Use to track vm ipv6 address",
 			},
 			"define_connection_info": { // by default define SSH for provisioner info
 				Type:        schema.TypeBool,
@@ -1818,45 +1843,39 @@ func initConnInfo(ctx context.Context,
 	config *pxapi.ConfigQemu,
 	lock *pmApiLockHolder,
 ) diag.Diagnostics {
-
 	logger, _ := CreateSubLogger("initConnInfo")
-
-	var err error
-	var lasterr error
-	var interfaces []pxapi.AgentNetworkInterface
 	var diags diag.Diagnostics
 	// allow user to opt-out of setting the connection info for the resource
 	if !d.Get("define_connection_info").(bool) {
 		log.Printf("[INFO][initConnInfo] define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
 		logger.Info().Int("vmid", vmr.VmId()).Msgf("define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
 
-		diags = append(diags, diag.Diagnostic{
+		return append(diags, diag.Diagnostic{
 			Severity:      diag.Warning,
 			Summary:       "define_connection_info is %t, no further action.",
 			Detail:        "define_connection_info is %t, no further action",
-			AttributePath: cty.Path{},
-		})
-		return diags
+			AttributePath: cty.Path{}})
 	}
-	// allow user to opt-out of setting the connection info for the resource
-	if d.Get("agent") != 1 {
-		log.Printf("[INFO][initConnInfo] qemu agent is disabled from proxmox config, cant communicate with vm.")
-		logger.Info().Int("vmid", vmr.VmId()).Msgf("qemu agent is disabled from proxmox config, cant communicate with vm.")
-		diags = append(diags, diag.Diagnostic{
-			Severity:      diag.Warning,
-			Summary:       "Qemu Guest Agent support is disabled from proxmox config.",
-			Detail:        "Qemu Guest Agent support is required to make communications with the VM",
-			AttributePath: cty.Path{},
-		})
-		return diags
+
+	var ciAgentEnabled bool
+
+	if config.Agent != nil && config.Agent.Enable != nil && *config.Agent.Enable {
+		if d.Get("agent") != 1 { // allow user to opt-out of setting the connection info for the resource
+			log.Printf("[INFO][initConnInfo] qemu agent is disabled from proxmox config, cant communicate with vm.")
+			logger.Info().Int("vmid", vmr.VmId()).Msgf("qemu agent is disabled from proxmox config, cant communicate with vm.")
+			return append(diags, diag.Diagnostic{
+				Severity:      diag.Warning,
+				Summary:       "Qemu Guest Agent support is disabled from proxmox config.",
+				Detail:        "Qemu Guest Agent support is required to make communications with the VM",
+				AttributePath: cty.Path{}})
+		}
+		ciAgentEnabled = true
 	}
 
 	log.Print("[INFO][initConnInfo] trying to get vm ip address for provisioner")
 	logger.Info().Int("vmid", vmr.VmId()).Msgf("trying to get vm ip address for provisioner")
 	sshPort := "22"
-	sshHost := ""
-	// assume guest agent not running yet or not enabled
-	guestAgentRunning := false
+	var sshHost string
 
 	// wait until the os has started the guest agent
 	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
@@ -1866,127 +1885,17 @@ func initConnInfo(ctx context.Context,
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
 
-	for time.Now().Before(guestAgentWaitEnd) {
-		interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
-		lasterr = err
-		if err != nil {
-			log.Printf("[DEBUG][initConnInfo] check ip result error %s", err.Error())
-			logger.Debug().Int("vmid", vmr.VmId()).Msgf("check ip result error %s", err.Error())
-		} else if err == nil {
-			lasterr = nil
-			log.Print("[INFO][initConnInfo] found working QEMU Agent")
-			log.Printf("[DEBUG][initConnInfo] interfaces found: %v", interfaces)
-			logger.Info().Int("vmid", vmr.VmId()).Msgf("found working QEMU Agent")
-			logger.Debug().Int("vmid", vmr.VmId()).Msgf("interfaces found: %v", interfaces)
+	IPs, agentDiags := getPrimaryIP(config, vmr, client, d, guestAgentWaitEnd, ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
+	if len(agentDiags) > 0 {
+		return append(diags, agentDiags...)
+	}
 
-			guestAgentRunning = true
-			break
-		} else if !strings.Contains(err.Error(), "500 QEMU guest agent is not running") {
-			// "not running" means either not installed or not started yet.
-			// any other error should not happen here
-			return diag.FromErr(err)
-		}
-		// wait before next try
-		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+	if IPs.IPv4 != "" {
+		sshHost = IPs.IPv4
+	} else if IPs.IPv6 != "" {
+		sshHost = IPs.IPv6
 	}
-	if lasterr != nil {
-		log.Printf("[INFO][initConnInfo] error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr)
-		logger.Info().Int("vmid", vmr.VmId()).Msgf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr)
-		return diag.FromErr(fmt.Errorf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", lasterr))
-	}
-	vmConfig, err := client.GetVmConfig(vmr)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	log.Print("[INFO][initConnInfo] trying to find IP address of first network card")
-	logger.Info().Int("vmid", vmr.VmId()).Msgf("trying to find IP address of first network card")
 
-	// wait until we find a valid ipv4 address
-	log.Printf("[DEBUG][initConnInfo] checking network card...")
-	logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card...")
-	for guestAgentRunning && time.Now().Before(guestAgentWaitEnd) {
-		log.Printf("[DEBUG][initConnInfo] checking network card...")
-		interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
-		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
-		if err != nil {
-			log.Printf("[DEBUG][initConnInfo] checking network card error %s", err.Error())
-			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card error %s", err.Error())
-			// return err
-		} else {
-			log.Printf("[DEBUG][initConnInfo] checking network card loop")
-			logger.Debug().Int("vmid", vmr.VmId()).Msgf("checking network card loop")
-			for _, iface := range interfaces {
-				if strings.EqualFold(strings.ToUpper(iface.MACAddress), strings.ToUpper(net0MacAddress)) {
-					for _, addr := range iface.IPAddresses {
-						if addr.IsGlobalUnicast() && strings.Count(addr.String(), ":") < 2 {
-							log.Printf("[DEBUG][initConnInfo] Found IP address: %s", addr.String())
-							logger.Debug().Int("vmid", vmr.VmId()).Msgf("Found IP address: %s", addr.String())
-							sshHost = addr.String()
-						}
-					}
-				}
-			}
-			if sshHost != "" {
-				log.Printf("[DEBUG][initConnInfo] sshHost not empty: %s", sshHost)
-				logger.Debug().Int("vmid", vmr.VmId()).Msgf("sshHost not empty: %s", sshHost)
-				break
-			}
-		}
-		// wait before next try
-		time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
-	}
-	// todo - log a warning if we couldn't get an IP
-
-	if config.HasCloudInit() {
-		log.Print("[DEBUG][initConnInfo] vm has a cloud-init configuration")
-		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
-		_, ipconfig0Set := d.GetOk("ipconfig0")
-		if ipconfig0Set {
-			vmState, err := client.GetVmState(vmr)
-			log.Printf("[DEBUG][initConnInfo] cloudinitcheck vm state %v", vmState)
-			logger.Debug().Int("vmid", vmr.VmId()).Msgf("cloudinitcheck vm state %v", vmState)
-			if err != nil {
-				log.Printf("[DEBUG][initConnInfo] vmstate error %s", err.Error())
-				logger.Debug().Int("vmid", vmr.VmId()).Msgf("vmstate error %s", err.Error())
-				return diag.FromErr(err)
-			}
-			if d.Get("ipconfig0").(string) != "ip=dhcp" || vmState["agent"] == nil || vmState["agent"].(float64) != 1 {
-				// parse IP address out of ipconfig0
-				ipMatch := rxIPconfig.FindStringSubmatch(d.Get("ipconfig0").(string))
-				if sshHost == "" {
-					sshHost = ipMatch[1]
-				}
-				ipconfig0 := net.ParseIP(strings.Split(ipMatch[1], ":")[0])
-				interfaces, err = client.GetVmAgentNetworkInterfaces(vmr)
-				log.Printf("[DEBUG][initConnInfo] ipconfig0 interfaces: %v", interfaces)
-				logger.Debug().Int("vmid", vmr.VmId()).Msgf("ipconfig0 interfaces %v", interfaces)
-				if err != nil {
-					return diag.FromErr(err)
-				} else {
-					for _, iface := range interfaces {
-						if sshHost == ipMatch[1] {
-							break
-						}
-						for _, addr := range iface.IPAddresses {
-							if addr.Equal(ipconfig0) {
-								sshHost = ipMatch[1]
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-
-		log.Print("[DEBUG][initConnInfo] found an ip configuration")
-		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Found an ip configuration")
-		// Check if we got a specified port
-		if strings.Contains(sshHost, ":") {
-			sshParts := strings.Split(sshHost, ":")
-			sshHost = sshParts[0]
-			sshPort = sshParts[1]
-		}
-	}
 	if sshHost == "" {
 		log.Print("[DEBUG][initConnInfo] Cannot find any IP address")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Cannot find any IP address")
@@ -1997,12 +1906,10 @@ func initConnInfo(ctx context.Context,
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
 	// Optional convenience attributes for provisioners
-	err = d.Set("default_ipv4_address", sshHost)
-	diags = append(diags, diag.FromErr(err)...)
-	err = d.Set("ssh_host", sshHost)
-	diags = append(diags, diag.FromErr(err)...)
-	err = d.Set("ssh_port", sshPort)
-	diags = append(diags, diag.FromErr(err)...)
+	_ = d.Set("default_ipv4_address", sshHost)
+	_ = d.Set("default_ipv6_address", sshHost)
+	_ = d.Set("ssh_host", sshHost)
+	_ = d.Set("ssh_port", sshPort)
 
 	// This connection INFO is longer shared up to the providers :-(
 	d.SetConnInfo(map[string]string{
@@ -2011,6 +1918,78 @@ func initConnInfo(ctx context.Context,
 		"port": sshPort,
 	})
 	return diags
+}
+
+func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, d *schema.ResourceData, endTime time.Time, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	logger, _ := CreateSubLogger("getPrimaryIP")
+	// TODO allow the primary interface to be a different one than the first
+
+	conn := connectionInfo{
+		SkipIPv4: skipIPv4,
+		SkipIPv6: skipIPv6,
+	}
+	// check if cloud init is enabled
+	if config.HasCloudInit() {
+		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
+		CiInterface := d.Get("ipconfig0")
+		conn = parseCloudInitInterface(CiInterface.(string), conn.SkipIPv4, conn.SkipIPv6)
+		// early return, we have all information we wanted
+		if conn.hasRequiredIP() {
+			if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
+				diags = append(diags, diag.Diagnostic{
+					Severity:      diag.Warning,
+					Summary:       "Cloud-init is enabled but no IP config is set",
+					Detail:        "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled",
+					AttributePath: cty.Path{}})
+			}
+			return conn.IPs, diags
+		}
+	}
+
+	var try uint
+	// get all information we can from qemu agent until the timer runs out
+	var err error
+	if ciAgentEnabled {
+		var vmConfig map[string]interface{}
+		vmConfig, err = client.GetVmConfig(vmr)
+		if err != nil {
+			return conn.IPs, append(diags, diag.FromErr(err)...)
+		}
+		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
+		for time.Now().Before(endTime) {
+			var interfaces []pxapi.AgentNetworkInterface
+			interfaces, err = vmr.GetAgentInformation(client, false)
+			if err != nil {
+				if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+					return conn.IPs, append(diags, diag.FromErr(err)...)
+				}
+				logger.Debug().Int("vmid", vmr.VmId()).Msgf("check ip result error %s", err.Error())
+			} else { // vm is running and reachable
+				if len(interfaces) > 0 { // agent returned some information
+					logger.Info().Int("vmid", vmr.VmId()).Msgf("found working QEMU Agent")
+					logger.Debug().Int("vmid", vmr.VmId()).Msgf("interfaces found: %v", interfaces)
+					conn := conn.parsePrimaryIPs(interfaces, net0MacAddress)
+					if conn.hasRequiredIP() {
+						return conn.IPs, diags
+					}
+				}
+				if try > maxAgentTry {
+					break
+				}
+				try += 1
+			}
+			time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+		}
+	}
+	if err != nil && strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+		diags = append(diags, diag.Diagnostic{
+			Severity:      diag.Warning,
+			Summary:       "Qemu Guest Agent is enabled but not working",
+			Detail:        fmt.Sprintf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", err),
+			AttributePath: cty.Path{}})
+	}
+	return conn.IPs, diags
 }
 
 func setCloudInitDisk(d *schema.ResourceData, config *pxapi.ConfigQemu) {
