@@ -184,10 +184,6 @@ func resourceVmQemu() *schema.Resource {
 				ForceNew:      true,
 				ConflictsWith: []string{"pxe"},
 			},
-			"cloudinit_cdrom_storage": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			"full_clone": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -479,7 +475,7 @@ func resourceVmQemu() *schema.Resource {
 									"ide0": schema_Ide("ide0"),
 									"ide1": schema_Ide("ide1"),
 									"ide2": schema_Ide("ide2"),
-									// ide3 reserved for cloudinit
+									"ide3": schema_Ide("ide3"),
 								},
 							},
 						},
@@ -913,7 +909,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	config.Disks = mapToStruct_QemuStorages(d)
-	setCloudInitDisk(d, &config)
 
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1203,17 +1198,16 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	config.Disks = mapToStruct_QemuStorages(d)
-	setCloudInitDisk(d, &config)
 
 	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
+	automaticReboot := d.Get("automatic_reboot").(bool)
 	// don't let the update function handel the reboot as it can't deal with cloud init changes yet
-	rebootRequired, err = config.Update(false, vmr, client)
+	rebootRequired, err = config.Update(automaticReboot, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.Set("reboot_required", rebootRequired)
 
 	// If any of the "critical" keys are changed then a reboot is required.
 	if d.HasChanges(
@@ -1258,17 +1252,17 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"hostpci",
 		"smbios",
 	) {
-		d.Set("reboot_required", true)
+		rebootRequired = true
 	}
 
 	// reboot is only required when memory hotplug is disabled
 	if d.HasChange("memory") && !strings.Contains(d.Get("hotplug").(string), "memory") {
-		d.Set("reboot_required", true)
+		rebootRequired = true
 	}
 
 	// reboot is only required when cpu hotplug is disabled
 	if d.HasChanges("sockets", "cores", "vcpus") && !strings.Contains(d.Get("hotplug").(string), "cpu") {
-		d.Set("reboot_required", true)
+		rebootRequired = true
 	}
 
 	// if network hot(un)plug is not enabled, then check if some of the "critical" parameters have changes
@@ -1278,18 +1272,18 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		newValues := newValuesRaw.([]interface{})
 		if len(oldValues) != len(newValues) {
 			// network interface added or removed
-			d.Set("reboot_required", true)
+			rebootRequired = true
 		} else {
 			// some of the existing interface parameters have changed
 			for i := range oldValues { // loop through the interfaces
 				if oldValues[i].(map[string]interface{})["model"] != newValues[i].(map[string]interface{})["model"] {
-					d.Set("reboot_required", true)
+					rebootRequired = true
 				}
 				if oldValues[i].(map[string]interface{})["macaddr"] != newValues[i].(map[string]interface{})["macaddr"] {
-					d.Set("reboot_required", true)
+					rebootRequired = true
 				}
 				if oldValues[i].(map[string]interface{})["queues"] != newValues[i].(map[string]interface{})["queues"] {
-					d.Set("reboot_required", true)
+					rebootRequired = true
 				}
 			}
 		}
@@ -1324,8 +1318,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 					return diag.FromErr(err)
 				}
 			}
-		} else if d.Get("reboot_required").(bool) { // reboot the VM
-			if d.Get("automatic_reboot").(bool) { // automatic reboots is enabled
+		} else if rebootRequired { // reboot the VM
+			if automaticReboot { // automatic reboots is enabled
 				log.Print("[DEBUG][QemuVmUpdate] rebooting the VM to match the configuration changes")
 				_, err = client.RebootVm(vmr)
 				// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
@@ -1357,14 +1351,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	lock.unlock()
 
-	// err = resourceVmQemuRead(ctx, d, meta)
-	// if err != nil {
-	// 	diags = append(diags, diag.FromErr(err)...)
-	// 	return diags
-	// }
-	diags = append(diags, resourceVmQemuRead(ctx, d, meta)...)
-	return diags
-	// return resourceVmQemuRead(ctx, d, meta)
+	d.Set("reboot_required", rebootRequired)
+	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
 }
 
 func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1509,7 +1497,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
 	d.Set("disks", mapFromStruct_ConfigQemu(config.Disks))
-	d.Set("cloudinit_cdrom_storage", getCloudInitDisk(config.Disks))
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
 
 	// Some dirty hacks to populate undefined keys with default values.
@@ -1989,23 +1976,6 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 	return conn.IPs, diags
 }
 
-func setCloudInitDisk(d *schema.ResourceData, config *pxapi.ConfigQemu) {
-	storage := d.Get("cloudinit_cdrom_storage").(string)
-	if storage != "" {
-		config.Disks.Ide.Disk_3 = &pxapi.QemuIdeStorage{CloudInit: &pxapi.QemuCloudInitDisk{
-			Format:  pxapi.QemuDiskFormat_Raw,
-			Storage: storage,
-		}}
-	}
-}
-
-func getCloudInitDisk(config *pxapi.QemuStorages) string {
-	if config != nil && config.Ide != nil && config.Ide.Disk_3 != nil && config.Ide.Disk_3.CloudInit != nil {
-		return config.Ide.Disk_3.CloudInit.Storage
-	}
-	return ""
-}
-
 // Map struct to the terraform schema
 func mapFromStruct_ConfigQemu(config *pxapi.QemuStorages) []interface{} {
 	if config == nil {
@@ -2058,6 +2028,15 @@ func mapFormStruct_QemuCdRom(config *pxapi.QemuCdRom) []interface{} {
 	}
 }
 
+// nil pointer check is done by the caller
+func mapFromStruct_QemuCloudInit_unsafe(config *pxapi.QemuCloudInitDisk) []interface{} {
+	return []interface{}{
+		map[string]interface{}{
+			"cloudinit": []interface{}{
+				map[string]interface{}{
+					"storage": string(config.Storage)}}}}
+}
+
 func mapFormStruct_QemuDiskBandwidth(params map[string]interface{}, config pxapi.QemuDiskBandwidth) {
 	params["mbps_r_burst"] = float64(config.MBps.ReadLimit.Burst)
 	params["mbps_r_concurrent"] = float64(config.MBps.ReadLimit.Concurrent)
@@ -2088,22 +2067,15 @@ func mapFromStruct_QemuIdeDisks(config *pxapi.QemuIdeDisks) []interface{} {
 	if config == nil {
 		return nil
 	}
-	ide_0 := mapFromStruct_QemuIdeStorage(config.Disk_0, "ide0")
-	ide_1 := mapFromStruct_QemuIdeStorage(config.Disk_1, "ide1")
-	ide_2 := mapFromStruct_QemuIdeStorage(config.Disk_2, "ide2")
-	if ide_0 == nil && ide_1 == nil && ide_2 == nil {
-		return nil
-	}
 	return []interface{}{
 		map[string]interface{}{
-			"ide0": ide_0,
-			"ide1": ide_1,
-			"ide2": ide_2,
-		},
-	}
+			"ide0": mapFromStruct_QemuIdeStorage(config.Disk_0),
+			"ide1": mapFromStruct_QemuIdeStorage(config.Disk_1),
+			"ide2": mapFromStruct_QemuIdeStorage(config.Disk_2),
+			"ide3": mapFromStruct_QemuIdeStorage(config.Disk_3)}}
 }
 
-func mapFromStruct_QemuIdeStorage(config *pxapi.QemuIdeStorage, setting string) []interface{} {
+func mapFromStruct_QemuIdeStorage(config *pxapi.QemuIdeStorage) []interface{} {
 	if config == nil {
 		return nil
 	}
@@ -2148,6 +2120,9 @@ func mapFromStruct_QemuIdeStorage(config *pxapi.QemuIdeStorage, setting string) 
 			},
 		}
 	}
+	if config.CloudInit != nil {
+		return mapFromStruct_QemuCloudInit_unsafe(config.CloudInit)
+	}
 	return mapFormStruct_QemuCdRom(config.CdRom)
 }
 
@@ -2157,17 +2132,17 @@ func mapFromStruct_QemuSataDisks(config *pxapi.QemuSataDisks) []interface{} {
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"sata0": mapFromStruct_QemuSataStorage(config.Disk_0, "sata0"),
-			"sata1": mapFromStruct_QemuSataStorage(config.Disk_1, "sata1"),
-			"sata2": mapFromStruct_QemuSataStorage(config.Disk_2, "sata2"),
-			"sata3": mapFromStruct_QemuSataStorage(config.Disk_3, "sata3"),
-			"sata4": mapFromStruct_QemuSataStorage(config.Disk_4, "sata4"),
-			"sata5": mapFromStruct_QemuSataStorage(config.Disk_5, "sata5"),
+			"sata0": mapFromStruct_QemuSataStorage(config.Disk_0),
+			"sata1": mapFromStruct_QemuSataStorage(config.Disk_1),
+			"sata2": mapFromStruct_QemuSataStorage(config.Disk_2),
+			"sata3": mapFromStruct_QemuSataStorage(config.Disk_3),
+			"sata4": mapFromStruct_QemuSataStorage(config.Disk_4),
+			"sata5": mapFromStruct_QemuSataStorage(config.Disk_5),
 		},
 	}
 }
 
-func mapFromStruct_QemuSataStorage(config *pxapi.QemuSataStorage, setting string) []interface{} {
+func mapFromStruct_QemuSataStorage(config *pxapi.QemuSataStorage) []interface{} {
 	if config == nil {
 		return nil
 	}
@@ -2212,6 +2187,9 @@ func mapFromStruct_QemuSataStorage(config *pxapi.QemuSataStorage, setting string
 			},
 		}
 	}
+	if config.CloudInit != nil {
+		return mapFromStruct_QemuCloudInit_unsafe(config.CloudInit)
+	}
 	return mapFormStruct_QemuCdRom(config.CdRom)
 }
 
@@ -2221,42 +2199,42 @@ func mapFromStruct_QemuScsiDisks(config *pxapi.QemuScsiDisks) []interface{} {
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"scsi0":  mapFromStruct_QemuScsiStorage(config.Disk_0, "scsi0"),
-			"scsi1":  mapFromStruct_QemuScsiStorage(config.Disk_1, "scsi1"),
-			"scsi2":  mapFromStruct_QemuScsiStorage(config.Disk_2, "scsi2"),
-			"scsi3":  mapFromStruct_QemuScsiStorage(config.Disk_3, "scsi3"),
-			"scsi4":  mapFromStruct_QemuScsiStorage(config.Disk_4, "scsi4"),
-			"scsi5":  mapFromStruct_QemuScsiStorage(config.Disk_5, "scsi5"),
-			"scsi6":  mapFromStruct_QemuScsiStorage(config.Disk_6, "scsi6"),
-			"scsi7":  mapFromStruct_QemuScsiStorage(config.Disk_7, "scsi7"),
-			"scsi8":  mapFromStruct_QemuScsiStorage(config.Disk_8, "scsi8"),
-			"scsi9":  mapFromStruct_QemuScsiStorage(config.Disk_9, "scsi9"),
-			"scsi10": mapFromStruct_QemuScsiStorage(config.Disk_10, "scsi10"),
-			"scsi11": mapFromStruct_QemuScsiStorage(config.Disk_11, "scsi11"),
-			"scsi12": mapFromStruct_QemuScsiStorage(config.Disk_12, "scsi12"),
-			"scsi13": mapFromStruct_QemuScsiStorage(config.Disk_13, "scsi13"),
-			"scsi14": mapFromStruct_QemuScsiStorage(config.Disk_14, "scsi14"),
-			"scsi15": mapFromStruct_QemuScsiStorage(config.Disk_15, "scsi15"),
-			"scsi16": mapFromStruct_QemuScsiStorage(config.Disk_16, "scsi16"),
-			"scsi17": mapFromStruct_QemuScsiStorage(config.Disk_17, "scsi17"),
-			"scsi18": mapFromStruct_QemuScsiStorage(config.Disk_18, "scsi18"),
-			"scsi19": mapFromStruct_QemuScsiStorage(config.Disk_19, "scsi19"),
-			"scsi20": mapFromStruct_QemuScsiStorage(config.Disk_20, "scsi20"),
-			"scsi21": mapFromStruct_QemuScsiStorage(config.Disk_21, "scsi21"),
-			"scsi22": mapFromStruct_QemuScsiStorage(config.Disk_22, "scsi22"),
-			"scsi23": mapFromStruct_QemuScsiStorage(config.Disk_23, "scsi23"),
-			"scsi24": mapFromStruct_QemuScsiStorage(config.Disk_24, "scsi24"),
-			"scsi25": mapFromStruct_QemuScsiStorage(config.Disk_25, "scsi25"),
-			"scsi26": mapFromStruct_QemuScsiStorage(config.Disk_26, "scsi26"),
-			"scsi27": mapFromStruct_QemuScsiStorage(config.Disk_27, "scsi27"),
-			"scsi28": mapFromStruct_QemuScsiStorage(config.Disk_28, "scsi28"),
-			"scsi29": mapFromStruct_QemuScsiStorage(config.Disk_29, "scsi29"),
-			"scsi30": mapFromStruct_QemuScsiStorage(config.Disk_30, "scsi30"),
+			"scsi0":  mapFromStruct_QemuScsiStorage(config.Disk_0),
+			"scsi1":  mapFromStruct_QemuScsiStorage(config.Disk_1),
+			"scsi2":  mapFromStruct_QemuScsiStorage(config.Disk_2),
+			"scsi3":  mapFromStruct_QemuScsiStorage(config.Disk_3),
+			"scsi4":  mapFromStruct_QemuScsiStorage(config.Disk_4),
+			"scsi5":  mapFromStruct_QemuScsiStorage(config.Disk_5),
+			"scsi6":  mapFromStruct_QemuScsiStorage(config.Disk_6),
+			"scsi7":  mapFromStruct_QemuScsiStorage(config.Disk_7),
+			"scsi8":  mapFromStruct_QemuScsiStorage(config.Disk_8),
+			"scsi9":  mapFromStruct_QemuScsiStorage(config.Disk_9),
+			"scsi10": mapFromStruct_QemuScsiStorage(config.Disk_10),
+			"scsi11": mapFromStruct_QemuScsiStorage(config.Disk_11),
+			"scsi12": mapFromStruct_QemuScsiStorage(config.Disk_12),
+			"scsi13": mapFromStruct_QemuScsiStorage(config.Disk_13),
+			"scsi14": mapFromStruct_QemuScsiStorage(config.Disk_14),
+			"scsi15": mapFromStruct_QemuScsiStorage(config.Disk_15),
+			"scsi16": mapFromStruct_QemuScsiStorage(config.Disk_16),
+			"scsi17": mapFromStruct_QemuScsiStorage(config.Disk_17),
+			"scsi18": mapFromStruct_QemuScsiStorage(config.Disk_18),
+			"scsi19": mapFromStruct_QemuScsiStorage(config.Disk_19),
+			"scsi20": mapFromStruct_QemuScsiStorage(config.Disk_20),
+			"scsi21": mapFromStruct_QemuScsiStorage(config.Disk_21),
+			"scsi22": mapFromStruct_QemuScsiStorage(config.Disk_22),
+			"scsi23": mapFromStruct_QemuScsiStorage(config.Disk_23),
+			"scsi24": mapFromStruct_QemuScsiStorage(config.Disk_24),
+			"scsi25": mapFromStruct_QemuScsiStorage(config.Disk_25),
+			"scsi26": mapFromStruct_QemuScsiStorage(config.Disk_26),
+			"scsi27": mapFromStruct_QemuScsiStorage(config.Disk_27),
+			"scsi28": mapFromStruct_QemuScsiStorage(config.Disk_28),
+			"scsi29": mapFromStruct_QemuScsiStorage(config.Disk_29),
+			"scsi30": mapFromStruct_QemuScsiStorage(config.Disk_30),
 		},
 	}
 }
 
-func mapFromStruct_QemuScsiStorage(config *pxapi.QemuScsiStorage, setting string) []interface{} {
+func mapFromStruct_QemuScsiStorage(config *pxapi.QemuScsiStorage) []interface{} {
 	if config == nil {
 		return nil
 	}
@@ -2305,6 +2283,9 @@ func mapFromStruct_QemuScsiStorage(config *pxapi.QemuScsiStorage, setting string
 			},
 		}
 	}
+	if config.CloudInit != nil {
+		return mapFromStruct_QemuCloudInit_unsafe(config.CloudInit)
+	}
 	return mapFormStruct_QemuCdRom(config.CdRom)
 }
 
@@ -2314,27 +2295,27 @@ func mapFromStruct_QemuVirtIODisks(config *pxapi.QemuVirtIODisks) []interface{} 
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"virtio0":  mapFromStruct_QemuVirtIOStorage(config.Disk_0, "virtio0"),
-			"virtio1":  mapFromStruct_QemuVirtIOStorage(config.Disk_1, "virtio1"),
-			"virtio2":  mapFromStruct_QemuVirtIOStorage(config.Disk_2, "virtio2"),
-			"virtio3":  mapFromStruct_QemuVirtIOStorage(config.Disk_3, "virtio3"),
-			"virtio4":  mapFromStruct_QemuVirtIOStorage(config.Disk_4, "virtio4"),
-			"virtio5":  mapFromStruct_QemuVirtIOStorage(config.Disk_5, "virtio5"),
-			"virtio6":  mapFromStruct_QemuVirtIOStorage(config.Disk_6, "virtio6"),
-			"virtio7":  mapFromStruct_QemuVirtIOStorage(config.Disk_7, "virtio7"),
-			"virtio8":  mapFromStruct_QemuVirtIOStorage(config.Disk_8, "virtio8"),
-			"virtio9":  mapFromStruct_QemuVirtIOStorage(config.Disk_9, "virtio9"),
-			"virtio10": mapFromStruct_QemuVirtIOStorage(config.Disk_10, "virtio10"),
-			"virtio11": mapFromStruct_QemuVirtIOStorage(config.Disk_11, "virtio11"),
-			"virtio12": mapFromStruct_QemuVirtIOStorage(config.Disk_12, "virtio12"),
-			"virtio13": mapFromStruct_QemuVirtIOStorage(config.Disk_13, "virtio13"),
-			"virtio14": mapFromStruct_QemuVirtIOStorage(config.Disk_14, "virtio14"),
-			"virtio15": mapFromStruct_QemuVirtIOStorage(config.Disk_15, "virtio15"),
+			"virtio0":  mapFromStruct_QemuVirtIOStorage(config.Disk_0),
+			"virtio1":  mapFromStruct_QemuVirtIOStorage(config.Disk_1),
+			"virtio2":  mapFromStruct_QemuVirtIOStorage(config.Disk_2),
+			"virtio3":  mapFromStruct_QemuVirtIOStorage(config.Disk_3),
+			"virtio4":  mapFromStruct_QemuVirtIOStorage(config.Disk_4),
+			"virtio5":  mapFromStruct_QemuVirtIOStorage(config.Disk_5),
+			"virtio6":  mapFromStruct_QemuVirtIOStorage(config.Disk_6),
+			"virtio7":  mapFromStruct_QemuVirtIOStorage(config.Disk_7),
+			"virtio8":  mapFromStruct_QemuVirtIOStorage(config.Disk_8),
+			"virtio9":  mapFromStruct_QemuVirtIOStorage(config.Disk_9),
+			"virtio10": mapFromStruct_QemuVirtIOStorage(config.Disk_10),
+			"virtio11": mapFromStruct_QemuVirtIOStorage(config.Disk_11),
+			"virtio12": mapFromStruct_QemuVirtIOStorage(config.Disk_12),
+			"virtio13": mapFromStruct_QemuVirtIOStorage(config.Disk_13),
+			"virtio14": mapFromStruct_QemuVirtIOStorage(config.Disk_14),
+			"virtio15": mapFromStruct_QemuVirtIOStorage(config.Disk_15),
 		},
 	}
 }
 
-func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage, setting string) []interface{} {
+func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage) []interface{} {
 	if config == nil {
 		return nil
 	}
@@ -2416,6 +2397,14 @@ func mapToStruct_QemuCdRom(schema map[string]interface{}) (cdRom *pxapi.QemuCdRo
 	}
 }
 
+func mapToStruct_QemuCloudInit(schemaItem []interface{}) (ci *pxapi.QemuCloudInitDisk) {
+	ciSchema := schemaItem[0].(map[string]interface{})
+	return &pxapi.QemuCloudInitDisk{
+		Format:  pxapi.QemuDiskFormat_Raw,
+		Storage: ciSchema["storage"].(string),
+	}
+}
+
 func mapToStruct_QemuDiskBandwidth(schema map[string]interface{}) pxapi.QemuDiskBandwidth {
 	return pxapi.QemuDiskBandwidth{
 		MBps: pxapi.QemuDiskBandwidthMBps{
@@ -2462,6 +2451,7 @@ func mapToStruct_QemuIdeDisks(ide *pxapi.QemuIdeDisks, schema map[string]interfa
 	mapToStruct_QemuIdeStorage(ide.Disk_0, "ide0", disks)
 	mapToStruct_QemuIdeStorage(ide.Disk_1, "ide1", disks)
 	mapToStruct_QemuIdeStorage(ide.Disk_2, "ide2", disks)
+	mapToStruct_QemuIdeStorage(ide.Disk_3, "ide3", disks)
 }
 
 func mapToStruct_QemuIdeStorage(ide *pxapi.QemuIdeStorage, key string, schema map[string]interface{}) {
@@ -2514,6 +2504,10 @@ func mapToStruct_QemuIdeStorage(ide *pxapi.QemuIdeStorage, key string, schema ma
 		if serial, ok := passthrough["serial"].(string); ok {
 			ide.Passthrough.Serial = pxapi.QemuDiskSerial(serial)
 		}
+		return
+	}
+	if v, ok := storageSchema["cloudinit"].([]interface{}); ok && len(v) == 1 && v[0] != nil {
+		ide.CloudInit = mapToStruct_QemuCloudInit(v)
 		return
 	}
 	ide.CdRom = mapToStruct_QemuCdRom(storageSchema)
@@ -2583,6 +2577,10 @@ func mapToStruct_QemuSataStorage(sata *pxapi.QemuSataStorage, key string, schema
 		if serial, ok := passthrough["serial"].(string); ok {
 			sata.Passthrough.Serial = pxapi.QemuDiskSerial(serial)
 		}
+		return
+	}
+	if v, ok := storageSchema["cloudinit"].([]interface{}); ok && len(v) == 1 && v[0] != nil {
+		sata.CloudInit = mapToStruct_QemuCloudInit(v)
 		return
 	}
 	sata.CdRom = mapToStruct_QemuCdRom(storageSchema)
@@ -2681,6 +2679,10 @@ func mapToStruct_QemuScsiStorage(scsi *pxapi.QemuScsiStorage, key string, schema
 		if serial, ok := passthrough["serial"].(string); ok {
 			scsi.Passthrough.Serial = pxapi.QemuDiskSerial(serial)
 		}
+		return
+	}
+	if v, ok := storageSchema["cloudinit"].([]interface{}); ok && len(v) == 1 && v[0] != nil {
+		scsi.CloudInit = mapToStruct_QemuCloudInit(v)
 		return
 	}
 	scsi.CdRom = mapToStruct_QemuCdRom(storageSchema)
@@ -2849,12 +2851,18 @@ func mapToStruct_VirtIOStorage(virtio *pxapi.QemuVirtIOStorage, key string, sche
 }
 
 // schema definition
-func schema_CdRom(path string) *schema.Schema {
+func schema_CdRom(path string, ci bool) *schema.Schema {
+	var conflicts []string
+	if ci {
+		conflicts = []string{path + ".cloudinit", path + ".disk", path + ".passthrough"}
+	} else {
+		conflicts = []string{path + ".disk", path + ".passthrough"}
+	}
 	return &schema.Schema{
 		Type:          schema.TypeList,
 		Optional:      true,
 		MaxItems:      1,
-		ConflictsWith: []string{path + ".disk", path + ".passthrough"},
+		ConflictsWith: conflicts,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"iso": {
@@ -2872,20 +2880,158 @@ func schema_CdRom(path string) *schema.Schema {
 	}
 }
 
-func schema_Ide(setting string) *schema.Schema {
-	path := "disks.0.ide.0." + setting + ".0"
+func schema_CloudInit(path, slot string) *schema.Schema {
+	// 41 is all the disk slots for cloudinit
+	// 3 are the conflicts within the same disk slot
+	c := append(make([]string, 0, 44), path+".cdrom", path+".disk", path+".passthrough")
+	if slot != "ide0" {
+		c = append(c, "disks.0.ide.0.ide0.0.cloudinit")
+	}
+	if slot != "ide1" {
+		c = append(c, "disks.0.ide.0.ide1.0.cloudinit")
+	}
+	if slot != "ide2" {
+		c = append(c, "disks.0.ide.0.ide2.0.cloudinit")
+	}
+	if slot != "ide3" {
+		c = append(c, "disks.0.ide.0.ide3.0.cloudinit")
+	}
+	if slot != "sata0" {
+		c = append(c, "disks.0.sata.0.sata0.0.cloudinit")
+	}
+	if slot != "sata1" {
+		c = append(c, "disks.0.sata.0.sata1.0.cloudinit")
+	}
+	if slot != "sata2" {
+		c = append(c, "disks.0.sata.0.sata2.0.cloudinit")
+	}
+	if slot != "sata3" {
+		c = append(c, "disks.0.sata.0.sata3.0.cloudinit")
+	}
+	if slot != "sata4" {
+		c = append(c, "disks.0.sata.0.sata4.0.cloudinit")
+	}
+	if slot != "sata5" {
+		c = append(c, "disks.0.sata.0.sata5.0.cloudinit")
+	}
+	if slot != "scsi0" {
+		c = append(c, "disks.0.scsi.0.scsi0.0.cloudinit")
+	}
+	if slot != "scsi1" {
+		c = append(c, "disks.0.scsi.0.scsi1.0.cloudinit")
+	}
+	if slot != "scsi2" {
+		c = append(c, "disks.0.scsi.0.scsi2.0.cloudinit")
+	}
+	if slot != "scsi3" {
+		c = append(c, "disks.0.scsi.0.scsi3.0.cloudinit")
+	}
+	if slot != "scsi4" {
+		c = append(c, "disks.0.scsi.0.scsi4.0.cloudinit")
+	}
+	if slot != "scsi5" {
+		c = append(c, "disks.0.scsi.0.scsi5.0.cloudinit")
+	}
+	if slot != "scsi6" {
+		c = append(c, "disks.0.scsi.0.scsi6.0.cloudinit")
+	}
+	if slot != "scsi7" {
+		c = append(c, "disks.0.scsi.0.scsi7.0.cloudinit")
+	}
+	if slot != "scsi8" {
+		c = append(c, "disks.0.scsi.0.scsi8.0.cloudinit")
+	}
+	if slot != "scsi9" {
+		c = append(c, "disks.0.scsi.0.scsi9.0.cloudinit")
+	}
+	if slot != "scsi10" {
+		c = append(c, "disks.0.scsi.0.scsi10.0.cloudinit")
+	}
+	if slot != "scsi11" {
+		c = append(c, "disks.0.scsi.0.scsi11.0.cloudinit")
+	}
+	if slot != "scsi12" {
+		c = append(c, "disks.0.scsi.0.scsi12.0.cloudinit")
+	}
+	if slot != "scsi13" {
+		c = append(c, "disks.0.scsi.0.scsi13.0.cloudinit")
+	}
+	if slot != "scsi14" {
+		c = append(c, "disks.0.scsi.0.scsi14.0.cloudinit")
+	}
+	if slot != "scsi15" {
+		c = append(c, "disks.0.scsi.0.scsi15.0.cloudinit")
+	}
+	if slot != "scsi16" {
+		c = append(c, "disks.0.scsi.0.scsi16.0.cloudinit")
+	}
+	if slot != "scsi17" {
+		c = append(c, "disks.0.scsi.0.scsi17.0.cloudinit")
+	}
+	if slot != "scsi18" {
+		c = append(c, "disks.0.scsi.0.scsi18.0.cloudinit")
+	}
+	if slot != "scsi19" {
+		c = append(c, "disks.0.scsi.0.scsi19.0.cloudinit")
+	}
+	if slot != "scsi20" {
+		c = append(c, "disks.0.scsi.0.scsi20.0.cloudinit")
+	}
+	if slot != "scsi21" {
+		c = append(c, "disks.0.scsi.0.scsi21.0.cloudinit")
+	}
+	if slot != "scsi22" {
+		c = append(c, "disks.0.scsi.0.scsi22.0.cloudinit")
+	}
+	if slot != "scsi23" {
+		c = append(c, "disks.0.scsi.0.scsi23.0.cloudinit")
+	}
+	if slot != "scsi24" {
+		c = append(c, "disks.0.scsi.0.scsi24.0.cloudinit")
+	}
+	if slot != "scsi25" {
+		c = append(c, "disks.0.scsi.0.scsi25.0.cloudinit")
+	}
+	if slot != "scsi26" {
+		c = append(c, "disks.0.scsi.0.scsi26.0.cloudinit")
+	}
+	if slot != "scsi27" {
+		c = append(c, "disks.0.scsi.0.scsi27.0.cloudinit")
+	}
+	if slot != "scsi28" {
+		c = append(c, "disks.0.scsi.0.scsi28.0.cloudinit")
+	}
+	if slot != "scsi29" {
+		c = append(c, "disks.0.scsi.0.scsi29.0.cloudinit")
+	}
+	if slot != "scsi30" {
+		c = append(c, "disks.0.scsi.0.scsi30.0.cloudinit")
+	}
+	return &schema.Schema{
+		Type:          schema.TypeList,
+		Optional:      true,
+		MaxItems:      1,
+		ConflictsWith: c,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"storage": schema_DiskStorage()}}}
+}
+
+func schema_Ide(slot string) *schema.Schema {
+	path := "disks.0.ide.0." + slot + ".0"
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom": schema_CdRom(path),
+				"cdrom":     schema_CdRom(path, true),
+				"cloudinit": schema_CloudInit(path, slot),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".passthrough"},
 					Elem: &schema.Resource{
 						Schema: schema_DiskBandwidth(map[string]*schema.Schema{
 							"asyncio":        schema_DiskAsyncIO(),
@@ -2908,7 +3054,7 @@ func schema_Ide(setting string) *schema.Schema {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".disk"},
 					Elem: &schema.Resource{
 						Schema: schema_DiskBandwidth(map[string]*schema.Schema{
 							"asyncio":    schema_DiskAsyncIO(),
@@ -2929,20 +3075,21 @@ func schema_Ide(setting string) *schema.Schema {
 	}
 }
 
-func schema_Sata(setting string) *schema.Schema {
-	path := "disks.0.sata.0." + setting + ".0"
+func schema_Sata(slot string) *schema.Schema {
+	path := "disks.0.sata.0." + slot + ".0"
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom": schema_CdRom(path),
+				"cdrom":     schema_CdRom(path, true),
+				"cloudinit": schema_CloudInit(path, slot),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".passthrough"},
 					Elem: &schema.Resource{
 						Schema: schema_DiskBandwidth(map[string]*schema.Schema{
 							"asyncio":        schema_DiskAsyncIO(),
@@ -2965,7 +3112,7 @@ func schema_Sata(setting string) *schema.Schema {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".disk"},
 					Elem: &schema.Resource{
 						Schema: schema_DiskBandwidth(map[string]*schema.Schema{
 							"asyncio":    schema_DiskAsyncIO(),
@@ -2986,20 +3133,21 @@ func schema_Sata(setting string) *schema.Schema {
 	}
 }
 
-func schema_Scsi(setting string) *schema.Schema {
-	path := "disks.0.scsi.0." + setting + ".0"
+func schema_Scsi(slot string) *schema.Schema {
+	path := "disks.0.scsi.0." + slot + ".0"
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom": schema_CdRom(path),
+				"cdrom":     schema_CdRom(path, true),
+				"cloudinit": schema_CloudInit(path, slot),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".passthrough"},
 					Elem: &schema.Resource{
 						Schema: schema_DiskBandwidth(map[string]*schema.Schema{
 							"asyncio":        schema_DiskAsyncIO(),
@@ -3024,7 +3172,7 @@ func schema_Scsi(setting string) *schema.Schema {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".disk"},
 					Elem: &schema.Resource{
 						Schema: schema_DiskBandwidth(map[string]*schema.Schema{
 							"asyncio":    schema_DiskAsyncIO(),
@@ -3055,7 +3203,7 @@ func schema_Virtio(setting string) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom": schema_CdRom(path),
+				"cdrom": schema_CdRom(path, false),
 				"disk": {
 					Type:          schema.TypeList,
 					Optional:      true,
