@@ -1208,7 +1208,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.Set("reboot_required", rebootRequired)
 
 	// If any of the "critical" keys are changed then a reboot is required.
 	if d.HasChanges(
@@ -1253,17 +1252,17 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"hostpci",
 		"smbios",
 	) {
-		d.Set("reboot_required", true)
+		rebootRequired = true
 	}
 
 	// reboot is only required when memory hotplug is disabled
 	if d.HasChange("memory") && !strings.Contains(d.Get("hotplug").(string), "memory") {
-		d.Set("reboot_required", true)
+		rebootRequired = true
 	}
 
 	// reboot is only required when cpu hotplug is disabled
 	if d.HasChanges("sockets", "cores", "vcpus") && !strings.Contains(d.Get("hotplug").(string), "cpu") {
-		d.Set("reboot_required", true)
+		rebootRequired = true
 	}
 
 	// if network hot(un)plug is not enabled, then check if some of the "critical" parameters have changes
@@ -1273,18 +1272,18 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		newValues := newValuesRaw.([]interface{})
 		if len(oldValues) != len(newValues) {
 			// network interface added or removed
-			d.Set("reboot_required", true)
+			rebootRequired = true
 		} else {
 			// some of the existing interface parameters have changed
 			for i := range oldValues { // loop through the interfaces
 				if oldValues[i].(map[string]interface{})["model"] != newValues[i].(map[string]interface{})["model"] {
-					d.Set("reboot_required", true)
+					rebootRequired = true
 				}
 				if oldValues[i].(map[string]interface{})["macaddr"] != newValues[i].(map[string]interface{})["macaddr"] {
-					d.Set("reboot_required", true)
+					rebootRequired = true
 				}
 				if oldValues[i].(map[string]interface{})["queues"] != newValues[i].(map[string]interface{})["queues"] {
-					d.Set("reboot_required", true)
+					rebootRequired = true
 				}
 			}
 		}
@@ -1319,7 +1318,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 					return diag.FromErr(err)
 				}
 			}
-		} else if d.Get("reboot_required").(bool) { // reboot the VM
+		} else if rebootRequired { // reboot the VM
 			if automaticReboot { // automatic reboots is enabled
 				log.Print("[DEBUG][QemuVmUpdate] rebooting the VM to match the configuration changes")
 				_, err = client.RebootVm(vmr)
@@ -1352,6 +1351,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	lock.unlock()
 
+	d.Set("reboot_required", rebootRequired)
 	// err = resourceVmQemuRead(ctx, d, meta)
 	// if err != nil {
 	// 	diags = append(diags, diag.FromErr(err)...)
