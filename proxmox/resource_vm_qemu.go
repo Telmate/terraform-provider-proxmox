@@ -1352,14 +1352,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	lock.unlock()
 
 	d.Set("reboot_required", rebootRequired)
-	// err = resourceVmQemuRead(ctx, d, meta)
-	// if err != nil {
-	// 	diags = append(diags, diag.FromErr(err)...)
-	// 	return diags
-	// }
-	diags = append(diags, resourceVmQemuRead(ctx, d, meta)...)
-	return diags
-	// return resourceVmQemuRead(ctx, d, meta)
+	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
 }
 
 func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
