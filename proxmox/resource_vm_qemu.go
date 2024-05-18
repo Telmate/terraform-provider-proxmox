@@ -1202,8 +1202,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
+	automaticReboot := d.Get("automatic_reboot").(bool)
 	// don't let the update function handel the reboot as it can't deal with cloud init changes yet
-	rebootRequired, err = config.Update(false, vmr, client)
+	rebootRequired, err = config.Update(automaticReboot, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -1319,7 +1320,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				}
 			}
 		} else if d.Get("reboot_required").(bool) { // reboot the VM
-			if d.Get("automatic_reboot").(bool) { // automatic reboots is enabled
+			if automaticReboot { // automatic reboots is enabled
 				log.Print("[DEBUG][QemuVmUpdate] rebooting the VM to match the configuration changes")
 				_, err = client.RebootVm(vmr)
 				// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
