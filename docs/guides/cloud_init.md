@@ -157,7 +157,15 @@ EOF
   */
   cicustom                = "user=local:snippets/user_data_vm-${count.index}.yml"
   /* Create the Cloud-Init drive on the "local-lvm" storage */
-  cloudinit_cdrom_storage = "local-lvm"
+  disks {
+    ide {
+      ide3 {
+        cloudinit {
+          storage = "local-lvm"
+        }
+      }
+    }
+  }
 
   provisioner "remote-exec" {
     inline = [

@@ -133,7 +133,6 @@ The following arguments are supported in the top level resource block.
 | `ciuser`                      | `str`    |                      | Override the default cloud-init user for provisioning. |
 | `cipassword`                  | `str`    |                      | Override the default cloud-init user's password. Sensitive. |
 | `cicustom`                    | `str`    |                      | Instead specifying ciuser, cipasword, etc... you can specify the path to a custom cloud-init config file here. Grants more flexibility in configuring cloud-init. |
-| `cloudinit_cdrom_storage`     | `str`    |                      | Set the storage location for the cloud-init drive. Required when using cloud-init. |
 | `searchdomain`                | `str`    |                      | Sets default DNS search domain suffix. |
 | `nameserver`                  | `str`    |                      | Sets default DNS server for guest. |
 | `sshkeys`                     | `str`    |                      | Newline delimited list of SSH public keys to add to authorized keys file for the cloud-init user. |
@@ -206,9 +205,10 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Ide Block
 
-The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide2`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide3`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `cloudinit`: [Disks.x.Cloudinit Block](#disksxcloudinit-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
 * `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
 
@@ -219,11 +219,21 @@ resource "proxmox_vm_qemu" "resource-name" {
   disks {
     ide {
       ide0 {
-        disk {
+        cdrom {
+          //<arguments omitted for brevity...>
+        }
+      }
+      ide1 {
+        cloudinit {
           //<arguments omitted for brevity...>
         }
       }
       ide2 {
+        disk {
+          //<arguments omitted for brevity...>
+        }
+      }
+      ide3 {
         passthrough {
           //<arguments omitted for brevity...>
         }
@@ -236,9 +246,10 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Sata Block
 
-The `disks.sata` block is used to configure disks of type sata. It may only be specified once. It has the options `sata0` through `sata5`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.sata` block is used to configure disks of type sata. It may only be specified once. It has the options `sata0` through `sata5`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `cloudinit`: [Disks.x.Cloudinit Block](#disksxcloudinit-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
 * `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
 
@@ -254,11 +265,16 @@ resource "proxmox_vm_qemu" "resource-name" {
         }
       }
       sata1 {
-        disk {
+        cloudinit {
           //<arguments omitted for brevity...>
         }
       }
       sata2 {
+        disk {
+          //<arguments omitted for brevity...>
+        }
+      }
+      sata3 {
         passthrough {
           //<arguments omitted for brevity...>
         }
@@ -272,9 +288,10 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Scsi Block
 
-The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `scsi0` through `scsi30`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `scsi0` through `scsi30`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
+* `cloudinit`: [Disks.x.Cloudinit Block](#disksxcloudinit-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
 * `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
 
@@ -290,11 +307,16 @@ resource "proxmox_vm_qemu" "resource-name" {
         }
       }
       scsi1 {
-        disk {
+        cloudinit {
           //<arguments omitted for brevity...>
         }
       }
       scsi2 {
+        disk {
+          //<arguments omitted for brevity...>
+        }
+      }
+      scsi3 {
         passthrough {
           //<arguments omitted for brevity...>
         }
@@ -350,6 +372,13 @@ resource "proxmox_vm_qemu" "resource-name" {
 | `passthrough` | `bool` |    `false`    | Wether the physical cdrom drive should be passed through.                                                                                                    |
 
 When `iso` and `passthrough` are omitted an empty cdrom drive will be created.
+
+### Disks.x.Cloudinit Block
+
+Only **one** `cloudinit` block can be specified globally. This block is used to configure the cloud-init drive.
+
+| Argument                  | Type  | Default Value | Description|
+| `cloudinit_cdrom_storage` | `str` |               | Set the storage location for the cloud-init drive. Required when using cloud-init.|
 
 ### Disks.x.Disk Block
 
