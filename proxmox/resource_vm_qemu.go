@@ -1858,8 +1858,6 @@ func initConnInfo(ctx context.Context,
 
 	log.Print("[INFO][initConnInfo] trying to get vm ip address for provisioner")
 	logger.Info().Int("vmid", vmr.VmId()).Msgf("trying to get vm ip address for provisioner")
-	sshPort := "22"
-	var sshHost string
 
 	// wait until the os has started the guest agent
 	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
@@ -1874,18 +1872,18 @@ func initConnInfo(ctx context.Context,
 		return append(diags, agentDiags...)
 	}
 
+	var sshHost string
 	if IPs.IPv4 != "" {
 		sshHost = IPs.IPv4
 	} else if IPs.IPv6 != "" {
 		sshHost = IPs.IPv6
-	}
-
-	if sshHost == "" {
+	} else {
 		log.Print("[DEBUG][initConnInfo] Cannot find any IP address")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Cannot find any IP address")
 		return diag.FromErr(fmt.Errorf("cannot find any IP address"))
 	}
 
+	sshPort := "22"
 	log.Printf("[DEBUG][initConnInfo] this is the vm configuration: %s %s", sshHost, sshPort)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
