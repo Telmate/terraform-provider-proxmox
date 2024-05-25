@@ -23,6 +23,11 @@ func Test_HasRequiredIP(t *testing.T) {
 				IPv4: "192.168.1.1"},
 				SkipIPv4: true},
 			output: false},
+		{name: `IPv4 SkipIPv6`,
+			input: connectionInfo{IPs: primaryIPs{
+				IPv4: "192.168.1.1"},
+				SkipIPv6: true},
+			output: true},
 		{name: `SkipIPv4`,
 			input:  connectionInfo{},
 			output: false},
@@ -30,6 +35,11 @@ func Test_HasRequiredIP(t *testing.T) {
 			input: connectionInfo{IPs: primaryIPs{
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}},
 			output: false},
+		{name: `IPv6 SkipIPv4`,
+			input: connectionInfo{IPs: primaryIPs{
+				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+				SkipIPv4: true},
+			output: true},
 		{name: `IPv6 SkipIPv6`,
 			input: connectionInfo{IPs: primaryIPs{
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
