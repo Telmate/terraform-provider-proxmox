@@ -1880,7 +1880,9 @@ func initConnInfo(ctx context.Context,
 	} else {
 		log.Print("[DEBUG][initConnInfo] Cannot find any IP address")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Cannot find any IP address")
-		return diag.FromErr(fmt.Errorf("cannot find any IP address"))
+		return append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Cannot find any IP address"})
 	}
 
 	sshPort := "22"
