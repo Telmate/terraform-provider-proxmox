@@ -1977,11 +1977,20 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 			}
 			time.Sleep(time.Duration(additionalWait) * time.Second)
 		}
-		if err != nil && strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+		if err != nil {
+			if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Qemu Guest Agent is enabled but not working",
+					Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
+			}
+			return primaryIPs{}, diag.FromErr(err)
+		}
+		if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
 			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
 				Severity: diag.Warning,
-				Summary:  "Qemu Guest Agent is enabled but not working",
-				Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", err)}}
+				Summary:  "Qemu Guest Agent is enabled but no IP config is found",
+				Detail:   "Qemu Guest Agent is enabled in your configuration but no static IP address is was found before the time ran out, increasing 'agent_timeout' could resolve this issue"}}
 		}
 	}
 	return conn.IPs, diag.Diagnostics{}
