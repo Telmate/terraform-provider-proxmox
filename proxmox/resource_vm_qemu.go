@@ -33,8 +33,6 @@ const (
 	stateRunning string = "running"
 	stateStarted string = "started"
 	stateStopped string = "stopped"
-
-	maxAgentTry uint = 5
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -72,6 +70,25 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  0,
+			},
+			"agent_timeout": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  60,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
+				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection.",
+				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+					v, ok := i.(int)
+					if !ok {
+						return diag.Errorf("expected an integer, got: %s", i)
+					}
+					if v > 0 {
+						return nil
+					}
+					return diag.Errorf("agent_timeout must be greater than 0")
+				},
 			},
 			"vmid": {
 				Type:             schema.TypeInt,
@@ -1866,8 +1883,7 @@ func initConnInfo(ctx context.Context,
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-
-	IPs, agentDiags := getPrimaryIP(config, vmr, client, d, guestAgentWaitEnd, ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
+	IPs, agentDiags := getPrimaryIP(config, vmr, client, d, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
 	if len(agentDiags) > 0 {
 		return append(diags, agentDiags...)
 	}
@@ -1904,7 +1920,7 @@ func initConnInfo(ctx context.Context,
 	return diags
 }
 
-func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, d *schema.ResourceData, endTime time.Time, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, d *schema.ResourceData, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
@@ -1931,10 +1947,10 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 		}
 	}
 
-	var try uint
 	// get all information we can from qemu agent until the timer runs out
 	var err error
 	if ciAgentEnabled {
+		var waitedTime int
 		var vmConfig map[string]interface{}
 		vmConfig, err = client.GetVmConfig(vmr)
 		if err != nil {
@@ -1958,12 +1974,12 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 						return conn.IPs, diags
 					}
 				}
-				if try > maxAgentTry {
+				if waitedTime > agentTimeout {
 					break
 				}
-				try += 1
+				waitedTime += additionalWait
 			}
-			time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+			time.Sleep(time.Duration(additionalWait) * time.Second)
 		}
 	}
 	if err != nil && strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
