@@ -1921,7 +1921,6 @@ func initConnInfo(ctx context.Context,
 }
 
 func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, d *schema.ResourceData, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
-	var diags diag.Diagnostics
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1937,24 +1936,21 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 		// early return, we have all information we wanted
 		if conn.hasRequiredIP() {
 			if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
-				diags = append(diags, diag.Diagnostic{
-					Severity:      diag.Warning,
-					Summary:       "Cloud-init is enabled but no IP config is set",
-					Detail:        "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled",
-					AttributePath: cty.Path{}})
+				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Cloud-init is enabled but no IP config is set",
+					Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled"}}
 			}
-			return conn.IPs, diags
+			return conn.IPs, diag.Diagnostics{}
 		}
 	}
 
 	// get all information we can from qemu agent until the timer runs out
-	var err error
 	if ciAgentEnabled {
 		var waitedTime int
-		var vmConfig map[string]interface{}
-		vmConfig, err = client.GetVmConfig(vmr)
+		vmConfig, err := client.GetVmConfig(vmr)
 		if err != nil {
-			return conn.IPs, append(diags, diag.FromErr(err)...)
+			return primaryIPs{}, diag.FromErr(err)
 		}
 		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
 		for time.Now().Before(endTime) {
@@ -1962,7 +1958,7 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 			interfaces, err = vmr.GetAgentInformation(client, false)
 			if err != nil {
 				if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-					return conn.IPs, append(diags, diag.FromErr(err)...)
+					return primaryIPs{}, diag.FromErr(err)
 				}
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("check ip result error %s", err.Error())
 			} else { // vm is running and reachable
@@ -1971,7 +1967,7 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 					logger.Debug().Int("vmid", vmr.VmId()).Msgf("interfaces found: %v", interfaces)
 					conn := conn.parsePrimaryIPs(interfaces, net0MacAddress)
 					if conn.hasRequiredIP() {
-						return conn.IPs, diags
+						return conn.IPs, diag.Diagnostics{}
 					}
 				}
 				if waitedTime > agentTimeout {
@@ -1981,15 +1977,14 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 			}
 			time.Sleep(time.Duration(additionalWait) * time.Second)
 		}
+		if err != nil && strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Qemu Guest Agent is enabled but not working",
+				Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", err)}}
+		}
 	}
-	if err != nil && strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-		diags = append(diags, diag.Diagnostic{
-			Severity:      diag.Warning,
-			Summary:       "Qemu Guest Agent is enabled but not working",
-			Detail:        fmt.Sprintf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", err),
-			AttributePath: cty.Path{}})
-	}
-	return conn.IPs, diags
+	return conn.IPs, diag.Diagnostics{}
 }
 
 // Map struct to the terraform schema
