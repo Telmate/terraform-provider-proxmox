@@ -1885,7 +1885,7 @@ func initConnInfo(ctx context.Context,
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
 	IPs, agentDiags := getPrimaryIP(config, vmr, client, d, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
 	if len(agentDiags) > 0 {
-		return append(diags, agentDiags...)
+		diags = append(diags, agentDiags...)
 	}
 
 	var sshHost string
@@ -1893,12 +1893,6 @@ func initConnInfo(ctx context.Context,
 		sshHost = IPs.IPv4
 	} else if IPs.IPv6 != "" {
 		sshHost = IPs.IPv6
-	} else {
-		log.Print("[DEBUG][initConnInfo] Cannot find any IP address")
-		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Cannot find any IP address")
-		return append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  "Cannot find any IP address"})
 	}
 
 	sshPort := "22"
@@ -1986,11 +1980,23 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 			}
 			return primaryIPs{}, diag.FromErr(err)
 		}
-		if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
-			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+		if conn.IPs.IPv4 == "" {
+			if conn.IPs.IPv6 == "" {
+				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Qemu Guest Agent is enabled but no IP config is found",
+					Detail:   "Qemu Guest Agent is enabled in your configuration but no IP address was found before the time ran out, increasing 'agent_timeout' could resolve this issue."}}
+			}
+			return conn.IPs, diag.Diagnostics{diag.Diagnostic{
 				Severity: diag.Warning,
-				Summary:  "Qemu Guest Agent is enabled but no IP config is found",
-				Detail:   "Qemu Guest Agent is enabled in your configuration but no static IP address is was found before the time ran out, increasing 'agent_timeout' could resolve this issue"}}
+				Summary:  "Qemu Guest Agent is enabled but no IPv4 address is found",
+				Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv4 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv4' to true."}}
+		}
+		if conn.IPs.IPv6 == "" {
+			return conn.IPs, diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Qemu Guest Agent is enabled but no IPv6 address is found",
+				Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv6' to true."}}
 		}
 	}
 	return conn.IPs, diag.Diagnostics{}
