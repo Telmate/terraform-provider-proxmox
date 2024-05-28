@@ -1965,7 +1965,7 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 				if len(interfaces) > 0 { // agent returned some information
 					logger.Info().Int("vmid", vmr.VmId()).Msgf("found working QEMU Agent")
 					logger.Debug().Int("vmid", vmr.VmId()).Msgf("interfaces found: %v", interfaces)
-					conn := conn.parsePrimaryIPs(interfaces, net0MacAddress)
+					conn = conn.parsePrimaryIPs(interfaces, net0MacAddress)
 					if conn.hasRequiredIP() {
 						return conn.IPs, diag.Diagnostics{}
 					}
