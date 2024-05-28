@@ -76,9 +76,9 @@ resource "proxmox_vm_qemu" "pxe-minimal-example" {
 
 The primary options that effect the correct operation of Network PXE boot mode are:
 
-  * `boot`: a valid boot order must be specified with Network type included (eg `order=scsi0;net0`)
-  * a valid NIC attached to a network with a PXE boot server must be added to the VM
-  * generally speaking, disable the Agent (`agent = 0`) unless the installed OS contains the Agent in OS install configurations
+* `boot`: a valid boot order must be specified with Network type included (eg `order=scsi0;net0`)
+* a valid NIC attached to a network with a PXE boot server must be added to the VM
+* generally speaking, disable the Agent (`agent = 0`) unless the installed OS contains the Agent in OS install configurations
 
 ## Argument reference
 
@@ -377,8 +377,9 @@ When `iso` and `passthrough` are omitted an empty cdrom drive will be created.
 
 Only **one** `cloudinit` block can be specified globally. This block is used to configure the cloud-init drive.
 
-| Argument                  | Type  | Default Value | Description|
-| `cloudinit_cdrom_storage` | `str` |               | Set the storage location for the cloud-init drive. Required when using cloud-init.|
+| Argument  | Type  | Default Value | Description                                                                                              |
+| :-------- | :---- | :------------ | :------------------------------------------------------------------------------------------------------- |
+| `storage` | `str` |               | The name of the storage pool on which to store the cloud-init drive. **Required** when using cloud-init. |
 
 ### Disks.x.Disk Block
 
@@ -521,6 +522,6 @@ In addition to the arguments above, the following attributes can be referenced f
 
 A VM Qemu Resource can be imported using its node, type and VM ID i.e.:
 
-```
-$ terraform import [options] [node]/[type]/[vmId]
+```bash
+terraform import [options] [node]/[type]/[vmId]
 ```
