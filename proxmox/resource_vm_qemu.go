@@ -796,18 +796,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional:      true,
 				Default:       false,
 				ConflictsWith: []string{"skip_ipv6"},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
-				},
 			},
 			"skip_ipv6": {
 				Type:          schema.TypeBool,
 				Optional:      true,
 				Default:       false,
 				ConflictsWith: []string{"skip_ipv4"},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
-				},
 			},
 			"reboot_required": {
 				Type:        schema.TypeBool,
