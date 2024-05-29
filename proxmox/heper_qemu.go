@@ -4,10 +4,14 @@ import (
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
 const (
-	ErrorGuestAgentNotRunning string = "500 QEMU guest agent is not running"
+	ErrorGuestAgentNotRunning    string = "500 QEMU guest agent is not running"
+	errorGuestAgentNoIPSummary   string = "Qemu Guest Agent is enabled but no IP config is found"
+	errorGuestAgentNoIPv4Summary string = "Qemu Guest Agent is enabled but no IPv4 address is found"
+	errorGuestAgentNoIPv6Summary string = "Qemu Guest Agent is enabled but no IPv6 address is found"
 )
 
 func parseCloudInitInterface(ipConfig string, skipIPv4, skipIPv6 bool) (conn connectionInfo) {
@@ -51,6 +55,31 @@ type connectionInfo struct {
 	IPs      primaryIPs
 	SkipIPv4 bool
 	SkipIPv6 bool
+}
+
+func (conn connectionInfo) agentDiagnostics() diag.Diagnostics {
+	if conn.IPs.IPv4 == "" {
+		if conn.IPs.IPv6 == "" {
+			return diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  errorGuestAgentNoIPSummary,
+				Detail:   "Qemu Guest Agent is enabled in your configuration but no IP address was found before the time ran out, increasing 'agent_timeout' could resolve this issue."}}
+		}
+		if !conn.SkipIPv4 {
+			return diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  errorGuestAgentNoIPv4Summary,
+				Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv4 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv4' to true."}}
+		}
+		return diag.Diagnostics{}
+	}
+	if conn.IPs.IPv6 == "" && !conn.SkipIPv6 {
+		return diag.Diagnostics{diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  errorGuestAgentNoIPv6Summary,
+			Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv6' to true."}}
+	}
+	return diag.Diagnostics{}
 }
 
 func (conn connectionInfo) hasRequiredIP() bool {

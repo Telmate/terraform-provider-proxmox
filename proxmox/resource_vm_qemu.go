@@ -1974,27 +1974,7 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 			}
 			return primaryIPs{}, diag.FromErr(err)
 		}
-		if conn.IPs.IPv4 == "" {
-			if conn.IPs.IPv6 == "" {
-				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Qemu Guest Agent is enabled but no IP config is found",
-					Detail:   "Qemu Guest Agent is enabled in your configuration but no IP address was found before the time ran out, increasing 'agent_timeout' could resolve this issue."}}
-			}
-			if !conn.SkipIPv4 {
-				return conn.IPs, diag.Diagnostics{diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Qemu Guest Agent is enabled but no IPv4 address is found",
-					Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv4 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv4' to true."}}
-			}
-			return conn.IPs, diag.Diagnostics{}
-		}
-		if conn.IPs.IPv6 == "" && !conn.SkipIPv6 {
-			return conn.IPs, diag.Diagnostics{diag.Diagnostic{
-				Severity: diag.Warning,
-				Summary:  "Qemu Guest Agent is enabled but no IPv6 address is found",
-				Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv6' to true."}}
-		}
+		return conn.IPs, conn.agentDiagnostics()
 	}
 	return conn.IPs, diag.Diagnostics{}
 }
