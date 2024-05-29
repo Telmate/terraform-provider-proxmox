@@ -1894,8 +1894,8 @@ func initConnInfo(ctx context.Context,
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
 	// Optional convenience attributes for provisioners
-	_ = d.Set("default_ipv4_address", sshHost)
-	_ = d.Set("default_ipv6_address", sshHost)
+	_ = d.Set("default_ipv4_address", IPs.IPv4)
+	_ = d.Set("default_ipv6_address", IPs.IPv6)
 	_ = d.Set("ssh_host", sshHost)
 	_ = d.Set("ssh_port", sshPort)
 
