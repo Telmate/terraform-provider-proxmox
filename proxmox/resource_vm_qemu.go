@@ -1918,6 +1918,7 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 	}
 	// check if cloud init is enabled
 	if config.HasCloudInit() {
+		log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
 		CiInterface := d.Get("ipconfig0")
 		conn = parseCloudInitInterface(CiInterface.(string), conn.SkipIPv4, conn.SkipIPv6)
@@ -1948,11 +1949,13 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 				if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
 					return primaryIPs{}, diag.FromErr(err)
 				}
+				log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("check ip result error %s", err.Error())
 			} else { // vm is running and reachable
 				if len(interfaces) > 0 { // agent returned some information
 					logger.Info().Int("vmid", vmr.VmId()).Msgf("found working QEMU Agent")
-					logger.Debug().Int("vmid", vmr.VmId()).Msgf("interfaces found: %v", interfaces)
+					log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
+					logger.Debug().Int("vmid", vmr.VmId()).Msgf("QEMU Agent interfaces found: %v", interfaces)
 					conn = conn.parsePrimaryIPs(interfaces, net0MacAddress)
 					if conn.hasRequiredIP() {
 						return conn.IPs, diag.Diagnostics{}
