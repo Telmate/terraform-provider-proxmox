@@ -1844,12 +1844,7 @@ func initConnInfo(ctx context.Context,
 	if !d.Get("define_connection_info").(bool) {
 		log.Printf("[INFO][initConnInfo] define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
 		logger.Info().Int("vmid", vmr.VmId()).Msgf("define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
-
-		return append(diags, diag.Diagnostic{
-			Severity:      diag.Warning,
-			Summary:       "define_connection_info is %t, no further action.",
-			Detail:        "define_connection_info is %t, no further action",
-			AttributePath: cty.Path{}})
+		return diags
 	}
 
 	var ciAgentEnabled bool
