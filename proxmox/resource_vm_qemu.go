@@ -33,8 +33,6 @@ const (
 	stateRunning string = "running"
 	stateStarted string = "started"
 	stateStopped string = "stopped"
-
-	maxAgentTry uint = 5
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -72,6 +70,25 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  0,
+			},
+			"agent_timeout": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  60,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
+				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection.",
+				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+					v, ok := i.(int)
+					if !ok {
+						return diag.Errorf("expected an integer, got: %s", i)
+					}
+					if v > 0 {
+						return nil
+					}
+					return diag.Errorf("agent_timeout must be greater than 0")
+				},
 			},
 			"vmid": {
 				Type:             schema.TypeInt,
@@ -779,18 +796,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional:      true,
 				Default:       false,
 				ConflictsWith: []string{"skip_ipv6"},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
-				},
 			},
 			"skip_ipv6": {
 				Type:          schema.TypeBool,
 				Optional:      true,
 				Default:       false,
 				ConflictsWith: []string{"skip_ipv4"},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
-				},
 			},
 			"reboot_required": {
 				Type:        schema.TypeBool,
@@ -1858,8 +1869,6 @@ func initConnInfo(ctx context.Context,
 
 	log.Print("[INFO][initConnInfo] trying to get vm ip address for provisioner")
 	logger.Info().Int("vmid", vmr.VmId()).Msgf("trying to get vm ip address for provisioner")
-	sshPort := "22"
-	var sshHost string
 
 	// wait until the os has started the guest agent
 	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
@@ -1868,30 +1877,25 @@ func initConnInfo(ctx context.Context,
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-
-	IPs, agentDiags := getPrimaryIP(config, vmr, client, d, guestAgentWaitEnd, ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
+	IPs, agentDiags := getPrimaryIP(config, vmr, client, d, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
 	if len(agentDiags) > 0 {
-		return append(diags, agentDiags...)
+		diags = append(diags, agentDiags...)
 	}
 
+	var sshHost string
 	if IPs.IPv4 != "" {
 		sshHost = IPs.IPv4
 	} else if IPs.IPv6 != "" {
 		sshHost = IPs.IPv6
 	}
 
-	if sshHost == "" {
-		log.Print("[DEBUG][initConnInfo] Cannot find any IP address")
-		logger.Debug().Int("vmid", vmr.VmId()).Msgf("Cannot find any IP address")
-		return diag.FromErr(fmt.Errorf("cannot find any IP address"))
-	}
-
+	sshPort := "22"
 	log.Printf("[DEBUG][initConnInfo] this is the vm configuration: %s %s", sshHost, sshPort)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
 	// Optional convenience attributes for provisioners
-	_ = d.Set("default_ipv4_address", sshHost)
-	_ = d.Set("default_ipv6_address", sshHost)
+	_ = d.Set("default_ipv4_address", IPs.IPv4)
+	_ = d.Set("default_ipv6_address", IPs.IPv6)
 	_ = d.Set("ssh_host", sshHost)
 	_ = d.Set("ssh_port", sshPort)
 
@@ -1904,8 +1908,7 @@ func initConnInfo(ctx context.Context,
 	return diags
 }
 
-func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, d *schema.ResourceData, endTime time.Time, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
-	var diags diag.Diagnostics
+func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, d *schema.ResourceData, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1915,30 +1918,28 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 	}
 	// check if cloud init is enabled
 	if config.HasCloudInit() {
+		log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
 		CiInterface := d.Get("ipconfig0")
 		conn = parseCloudInitInterface(CiInterface.(string), conn.SkipIPv4, conn.SkipIPv6)
 		// early return, we have all information we wanted
 		if conn.hasRequiredIP() {
 			if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
-				diags = append(diags, diag.Diagnostic{
-					Severity:      diag.Warning,
-					Summary:       "Cloud-init is enabled but no IP config is set",
-					Detail:        "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled",
-					AttributePath: cty.Path{}})
+				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Cloud-init is enabled but no IP config is set",
+					Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled"}}
 			}
-			return conn.IPs, diags
+			return conn.IPs, diag.Diagnostics{}
 		}
 	}
 
-	var try uint
 	// get all information we can from qemu agent until the timer runs out
-	var err error
 	if ciAgentEnabled {
-		var vmConfig map[string]interface{}
-		vmConfig, err = client.GetVmConfig(vmr)
+		var waitedTime int
+		vmConfig, err := client.GetVmConfig(vmr)
 		if err != nil {
-			return conn.IPs, append(diags, diag.FromErr(err)...)
+			return primaryIPs{}, diag.FromErr(err)
 		}
 		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
 		for time.Now().Before(endTime) {
@@ -1946,34 +1947,38 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 			interfaces, err = vmr.GetAgentInformation(client, false)
 			if err != nil {
 				if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-					return conn.IPs, append(diags, diag.FromErr(err)...)
+					return primaryIPs{}, diag.FromErr(err)
 				}
+				log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
 				logger.Debug().Int("vmid", vmr.VmId()).Msgf("check ip result error %s", err.Error())
 			} else { // vm is running and reachable
 				if len(interfaces) > 0 { // agent returned some information
-					logger.Info().Int("vmid", vmr.VmId()).Msgf("found working QEMU Agent")
-					logger.Debug().Int("vmid", vmr.VmId()).Msgf("interfaces found: %v", interfaces)
-					conn := conn.parsePrimaryIPs(interfaces, net0MacAddress)
+					log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
+					logger.Debug().Int("vmid", vmr.VmId()).Msgf("QEMU Agent interfaces found: %v", interfaces)
+					conn = conn.parsePrimaryIPs(interfaces, net0MacAddress)
 					if conn.hasRequiredIP() {
-						return conn.IPs, diags
+						return conn.IPs, diag.Diagnostics{}
 					}
 				}
-				if try > maxAgentTry {
+				if waitedTime > agentTimeout {
 					break
 				}
-				try += 1
+				waitedTime += additionalWait
 			}
-			time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+			time.Sleep(time.Duration(additionalWait) * time.Second)
 		}
+		if err != nil {
+			if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+					Severity: diag.Warning,
+					Summary:  "Qemu Guest Agent is enabled but not working",
+					Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
+			}
+			return primaryIPs{}, diag.FromErr(err)
+		}
+		return conn.IPs, conn.agentDiagnostics()
 	}
-	if err != nil && strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-		diags = append(diags, diag.Diagnostic{
-			Severity:      diag.Warning,
-			Summary:       "Qemu Guest Agent is enabled but not working",
-			Detail:        fmt.Sprintf("error from PVE: \"%s\"\n, QEMU Agent is enabled in you configuration but non installed/not working on your vm", err),
-			AttributePath: cty.Path{}})
-	}
-	return conn.IPs, diags
+	return conn.IPs, diag.Diagnostics{}
 }
 
 // Map struct to the terraform schema
