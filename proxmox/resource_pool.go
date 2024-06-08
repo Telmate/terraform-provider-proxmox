@@ -3,6 +3,7 @@ package proxmox
 import (
 	"fmt"
 
+	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -42,9 +43,11 @@ func resourcePoolCreate(d *schema.ResourceData, meta interface{}) error {
 	defer lock.unlock()
 
 	poolid := d.Get("poolid").(string)
-	comment := d.Get("comment").(string)
 
-	err := client.CreatePool(poolid, comment)
+	err := pxapi.ConfigPool{
+		Name:    pxapi.PoolName(poolid),
+		Comment: pointer(d.Get("comment").(string)),
+	}.Create(client)
 	if err != nil {
 		return err
 	}
@@ -107,8 +110,10 @@ func resourcePoolUpdate(d *schema.ResourceData, meta interface{}) error {
 	logger.Info().Str("poolid", poolID).Msg("Starting update of the Pool resource")
 
 	if d.HasChange("comment") {
-		nextComment := d.Get("comment").(string)
-		err := client.UpdatePoolComment(poolID, nextComment)
+		err := pxapi.ConfigPool{
+			Name:    pxapi.PoolName(poolID),
+			Comment: pointer(d.Get("comment").(string)),
+		}.Update(client)
 		if err != nil {
 			return err
 		}
@@ -128,8 +133,7 @@ func resourcePoolDelete(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = client.DeletePool(poolID)
-	if err != nil {
+	if err = pxapi.PoolName(poolID).Delete(client); err != nil {
 		return err
 	}
 
