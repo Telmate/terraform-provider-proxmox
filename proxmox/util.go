@@ -479,8 +479,8 @@ func testOptionalArguments(t *testing.T, s *schema.Resource) {
 	}
 }
 
-func BoolPointer(b bool) *bool {
-	return &b
+func pointer[T any](item T) *T {
+	return &item
 }
 
 func permissions_check(s1 []string, s2 []string) []string {
