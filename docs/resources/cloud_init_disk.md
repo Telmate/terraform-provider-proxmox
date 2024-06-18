@@ -26,13 +26,13 @@ resource "proxmox_cloud_init_disk" "ci" {
     local-hostname = local.vm_name
   })
 
-  user_data = <<EOT
-#cloud-config
-users:
-  - default
-ssh_authorized_keys:
-  - ssh-rsa AAAAB3N......
-EOT
+  user_data = <<-EOT
+  #cloud-config
+  users:
+    - default
+  ssh_authorized_keys:
+    - ssh-rsa AAAAB3N......
+  EOT
 
   network_config = yamlencode({
     version = 1
@@ -43,27 +43,29 @@ EOT
         type            = "static"
         address         = "192.168.1.100/24"
         gateway         = "192.168.1.1"
-        dns_nameservers = ["1.1.1.1", "8.8.8.8"]
+        dns_nameservers = [
+          "1.1.1.1", 
+          "8.8.8.8"
+          ]
       }]
     }]
   })
 }
 
 resource "proxmox_vm_qemu" "vm" {
-....
+...
   // Define a disk block with media type cdrom which reference the generated cloud-init disk
   disks {
     scsi {
       scsi0 {
-        cd {
-          iso = "${local.iso_storage_pool}:${proxmox_cloud_init_disk.ci.id}"
+        cdrom {
+          iso = "${proxmox_cloud_init_disk.ci.id}"
         }
       }
     }
   }
 ...
 }
-
 ```
 
 ## Argument reference
