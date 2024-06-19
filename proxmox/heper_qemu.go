@@ -14,33 +14,23 @@ const (
 	errorGuestAgentNoIPv6Summary string = "Qemu Guest Agent is enabled but no IPv6 address is found"
 )
 
-func parseCloudInitInterface(ipConfig string, skipIPv4, skipIPv6 bool) (conn connectionInfo) {
+func parseCloudInitInterface(ipConfig pxapi.CloudInitNetworkConfig, ciCustom, skipIPv4, skipIPv6 bool) (conn connectionInfo) {
 	conn.SkipIPv4 = skipIPv4
 	conn.SkipIPv6 = skipIPv6
-	var IPv4Set, IPv6Set bool
-	for _, e := range strings.Split(ipConfig, ",") {
-		if len(e) < 4 {
-			continue
+	if ipConfig.IPv4 != nil {
+		if ipConfig.IPv4.Address != nil {
+			splitCIDR := strings.Split(string(*ipConfig.IPv4.Address), "/")
+			conn.IPs.IPv4 = splitCIDR[0]
 		}
-		if e[:3] == "ip=" {
-			IPv4Set = true
-			splitCIDR := strings.Split(e[3:], "/")
-			if len(splitCIDR) == 2 {
-				conn.IPs.IPv4 = splitCIDR[0]
-			}
-		}
-		if e[:4] == "ip6=" {
-			IPv6Set = true
-			splitCIDR := strings.Split(e[4:], "/")
-			if len(splitCIDR) == 2 {
-				conn.IPs.IPv6 = splitCIDR[0]
-			}
-		}
-	}
-	if !IPv4Set && conn.IPs.IPv4 == "" {
+	} else if !ciCustom {
 		conn.SkipIPv4 = true
 	}
-	if !IPv6Set && conn.IPs.IPv6 == "" {
+	if ipConfig.IPv6 != nil {
+		if ipConfig.IPv6.Address != nil {
+			splitCIDR := strings.Split(string(*ipConfig.IPv6.Address), "/")
+			conn.IPs.IPv6 = splitCIDR[0]
+		}
+	} else if !ciCustom {
 		conn.SkipIPv6 = true
 	}
 	return
