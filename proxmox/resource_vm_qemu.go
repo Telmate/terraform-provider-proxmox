@@ -1233,6 +1233,10 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		rebootRequired = true
 	}
 
+	if d.HasChange("ciupgrade") && *config.CloudInit.UpgradePackages {
+		rebootRequired = true
+	}
+
 	// reboot is only required when memory hotplug is disabled
 	if d.HasChange("memory") && !strings.Contains(d.Get("hotplug").(string), "memory") {
 		rebootRequired = true
