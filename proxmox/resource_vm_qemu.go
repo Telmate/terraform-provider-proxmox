@@ -676,7 +676,7 @@ func resourceVmQemu() *schema.Resource {
 			"ciupgrade": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  true,
+				Default:  false,
 			},
 			"ciuser": {
 				Type:     schema.TypeString,
