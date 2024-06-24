@@ -919,7 +919,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	config.Disks = mapToStruct_QemuStorages(d)
+	config.Disks = mapToSDK_QemuStorages(d)
 
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1208,7 +1208,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
 
-	config.Disks = mapToStruct_QemuStorages(d)
+	config.Disks = mapToSDK_QemuStorages(d)
 
 	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
 
@@ -2682,7 +2682,7 @@ func mapToStruct_QemuScsiStorage(scsi *pxapi.QemuScsiStorage, key string, schema
 	scsi.CdRom = mapToStruct_QemuCdRom(storageSchema)
 }
 
-func mapToStruct_QemuStorages(d *schema.ResourceData) *pxapi.QemuStorages {
+func mapToSDK_QemuStorages(d *schema.ResourceData) *pxapi.QemuStorages {
 	storages := pxapi.QemuStorages{
 		Ide: &pxapi.QemuIdeDisks{
 			Disk_0: &pxapi.QemuIdeStorage{},
