@@ -2035,7 +2035,7 @@ func mapFormStruct_QemuDiskBandwidth(params map[string]interface{}, config pxapi
 	params["mbps_r_burst"] = float64(config.MBps.ReadLimit.Burst)
 	params["mbps_r_concurrent"] = float64(config.MBps.ReadLimit.Concurrent)
 	params["mbps_wr_burst"] = float64(config.MBps.WriteLimit.Burst)
-	params["mbps_wr_concurrent"] = float64(config.MBps.ReadLimit.Burst)
+	params["mbps_wr_concurrent"] = float64(config.MBps.WriteLimit.Concurrent)
 	params["iops_r_burst"] = int(config.Iops.ReadLimit.Burst)
 	params["iops_r_burst_length"] = int(config.Iops.ReadLimit.BurstDuration)
 	params["iops_r_concurrent"] = int(config.Iops.ReadLimit.Concurrent)
