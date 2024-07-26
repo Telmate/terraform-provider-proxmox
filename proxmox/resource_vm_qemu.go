@@ -15,6 +15,8 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/dns/nameservers"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
@@ -671,6 +673,11 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
+			"ciupgrade": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"ciuser": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -695,18 +702,16 @@ func resourceVmQemu() *schema.Resource {
 			"searchdomain": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Computed: true, // could be pre-existing if we clone from a template with it defined
 			},
 			"nameserver": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Computed: true, // could be pre-existing if we clone from a template with it defined
 			},
 			"sshkeys": {
 				Type:     schema.TypeString,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return strings.TrimSpace(old) == strings.TrimSpace(new)
+					return sshkeys.Trim(old) == sshkeys.Trim(new)
 				},
 			},
 			"ipconfig0": {
@@ -902,21 +907,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		// Cloud-init.
-		CIuser:       d.Get("ciuser").(string),
-		CIpassword:   d.Get("cipassword").(string),
-		CIcustom:     d.Get("cicustom").(string),
-		Searchdomain: d.Get("searchdomain").(string),
-		Nameserver:   d.Get("nameserver").(string),
-		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig:     pxapi.IpconfigMap{},
-	}
-	// Populate Ipconfig map
-	for i := 0; i < 16; i++ {
-		iface := fmt.Sprintf("ipconfig%d", i)
-		if v, ok := d.GetOk(iface); ok {
-			config.Ipconfig[i] = v.(string)
-		}
+		CloudInit:      mapToSDK_CloudInit(d),
 	}
 
 	config.Disks = mapToStruct_QemuStorages(d)
@@ -1178,31 +1169,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		// Cloud-init.
-		CIuser:       d.Get("ciuser").(string),
-		CIpassword:   d.Get("cipassword").(string),
-		CIcustom:     d.Get("cicustom").(string),
-		Searchdomain: d.Get("searchdomain").(string),
-		Nameserver:   d.Get("nameserver").(string),
-		Sshkeys:      d.Get("sshkeys").(string),
-		Ipconfig: pxapi.IpconfigMap{
-			0:  d.Get("ipconfig0").(string),
-			1:  d.Get("ipconfig1").(string),
-			2:  d.Get("ipconfig2").(string),
-			3:  d.Get("ipconfig3").(string),
-			4:  d.Get("ipconfig4").(string),
-			5:  d.Get("ipconfig5").(string),
-			6:  d.Get("ipconfig6").(string),
-			7:  d.Get("ipconfig7").(string),
-			8:  d.Get("ipconfig8").(string),
-			9:  d.Get("ipconfig9").(string),
-			10: d.Get("ipconfig10").(string),
-			11: d.Get("ipconfig11").(string),
-			12: d.Get("ipconfig12").(string),
-			13: d.Get("ipconfig13").(string),
-			14: d.Get("ipconfig14").(string),
-			15: d.Get("ipconfig15").(string),
-		},
+		CloudInit:      mapToSDK_CloudInit(d),
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1263,6 +1230,10 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"hostpci",
 		"smbios",
 	) {
+		rebootRequired = true
+	}
+
+	if d.HasChange("ciupgrade") && *config.CloudInit.UpgradePackages {
 		rebootRequired = true
 	}
 
@@ -1437,7 +1408,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 	if err == nil && vmState["status"] == "running" {
 		log.Printf("[DEBUG] VM is running, checking the IP")
-		diags = append(diags, initConnInfo(ctx, d, pconf, client, vmr, config, lock)...)
+		diags = append(diags, initConnInfo(d, client, vmr, config)...)
 	} else {
 		// Optional convenience attributes for provisioners
 		err = d.Set("default_ipv4_address", nil)
@@ -1479,36 +1450,11 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("qemu_os", config.QemuOs)
 	d.Set("tags", tags.String(config.Tags))
 	d.Set("args", config.Args)
-	// Cloud-init.
-	d.Set("ciuser", config.CIuser)
-	// we purposely use the password from the terraform config here
-	// because the proxmox api will always return "**********" leading to diff issues
-	d.Set("cipassword", d.Get("cipassword").(string))
-	d.Set("cicustom", config.CIcustom)
-	d.Set("searchdomain", config.Searchdomain)
-	d.Set("nameserver", config.Nameserver)
-	d.Set("sshkeys", config.Sshkeys)
-	d.Set("ipconfig0", config.Ipconfig[0])
-	d.Set("ipconfig1", config.Ipconfig[1])
-	d.Set("ipconfig2", config.Ipconfig[2])
-	d.Set("ipconfig3", config.Ipconfig[3])
-	d.Set("ipconfig4", config.Ipconfig[4])
-	d.Set("ipconfig5", config.Ipconfig[5])
-	d.Set("ipconfig6", config.Ipconfig[6])
-	d.Set("ipconfig7", config.Ipconfig[7])
-	d.Set("ipconfig8", config.Ipconfig[8])
-	d.Set("ipconfig9", config.Ipconfig[9])
-	d.Set("ipconfig10", config.Ipconfig[10])
-	d.Set("ipconfig11", config.Ipconfig[11])
-	d.Set("ipconfig12", config.Ipconfig[12])
-	d.Set("ipconfig13", config.Ipconfig[13])
-	d.Set("ipconfig14", config.Ipconfig[14])
-	d.Set("ipconfig15", config.Ipconfig[15])
-
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
 	d.Set("disks", mapFromStruct_ConfigQemu(config.Disks))
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
+	mapToTerraform_CloudInit(config.CloudInit, d)
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"force_create", "define_connection_info"}
@@ -1612,7 +1558,13 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 	if vmState["status"] != "stopped" {
-		if _, err := client.StopVm(vmr); err != nil {
+		var err error
+		if d.Get("agent") == 1 {
+			_, err = client.ShutdownVm(vmr)
+		} else {
+			_, err = client.StopVm(vmr)
+		}
+		if err != nil {
 			return diag.FromErr(err)
 		}
 
@@ -1824,13 +1776,11 @@ func UpdateDevicesSet(
 	return devicesSet
 }
 
-func initConnInfo(ctx context.Context,
+func initConnInfo(
 	d *schema.ResourceData,
-	pconf *providerConfiguration,
 	client *pxapi.Client,
 	vmr *pxapi.VmRef,
 	config *pxapi.ConfigQemu,
-	lock *pmApiLockHolder,
 ) diag.Diagnostics {
 	logger, _ := CreateSubLogger("initConnInfo")
 	var diags diag.Diagnostics
@@ -1866,7 +1816,7 @@ func initConnInfo(ctx context.Context,
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-	IPs, agentDiags := getPrimaryIP(config, vmr, client, d, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
+	IPs, agentDiags := getPrimaryIP(config, vmr, client, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1897,7 +1847,7 @@ func initConnInfo(ctx context.Context,
 	return diags
 }
 
-func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, d *schema.ResourceData, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1906,11 +1856,14 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 		SkipIPv6: skipIPv6,
 	}
 	// check if cloud init is enabled
-	if config.HasCloudInit() {
+	if config.CloudInit != nil {
 		log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
 		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
-		CiInterface := d.Get("ipconfig0")
-		conn = parseCloudInitInterface(CiInterface.(string), conn.SkipIPv4, conn.SkipIPv6)
+		var cicustom bool
+		if config.CloudInit.Custom != nil && config.CloudInit.Custom.Network != nil {
+			cicustom = true
+		}
+		conn = parseCloudInitInterface(config.CloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
 		// early return, we have all information we wanted
 		if conn.hasRequiredIP() {
 			if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
@@ -1990,6 +1943,48 @@ func mapFromStruct_ConfigQemu(config *pxapi.QemuStorages) []interface{} {
 			"virtio": virtio,
 		},
 	}
+}
+
+func mapToTerraform_CloudInit(config *pxapi.CloudInit, d *schema.ResourceData) {
+	if config == nil {
+		return
+	}
+	// we purposely use the password from the terraform config here
+	// because the proxmox api will always return "**********" leading to diff issues
+	d.Set("cipassword", d.Get("cipassword").(string))
+
+	d.Set("ciuser", config.Username)
+	if config.Custom != nil {
+		d.Set("cicustom", config.Custom.String())
+	}
+	if config.DNS != nil {
+		d.Set("searchdomain", config.DNS.SearchDomain)
+		d.Set("nameserver", nameservers.String(config.DNS.NameServers))
+	}
+	for i := pxapi.QemuNetworkInterfaceID(0); i < 16; i++ {
+		if v, isSet := config.NetworkInterfaces[i]; isSet {
+			d.Set("ipconfig"+strconv.Itoa(int(i)), mapToTerraform_CloudInitNetworkConfig(v))
+		}
+	}
+	d.Set("sshkeys", sshkeys.String(config.PublicSSHkeys))
+	if config.UpgradePackages != nil {
+		d.Set("ciupgrade", *config.UpgradePackages)
+	}
+}
+
+func mapToTerraform_CloudInitNetworkConfig(config pxapi.CloudInitNetworkConfig) string {
+	if config.IPv4 != nil {
+		if config.IPv6 != nil {
+			return config.IPv4.String() + "," + config.IPv6.String()
+		} else {
+			return config.IPv4.String()
+		}
+	} else {
+		if config.IPv6 != nil {
+			return config.IPv6.String()
+		}
+	}
+	return ""
 }
 
 func mapFormStruct_IsoFile(config *pxapi.IsoFile) string {
@@ -2374,6 +2369,90 @@ func mapToStruct_IsoFile(iso string) *pxapi.IsoFile {
 		return nil
 	}
 	return &pxapi.IsoFile{File: file, Storage: storage}
+}
+
+func mapToSDK_CloudInit(d *schema.ResourceData) *pxapi.CloudInit {
+	ci := pxapi.CloudInit{
+		Custom: &pxapi.CloudInitCustom{
+			Meta:    &pxapi.CloudInitSnippet{},
+			Network: &pxapi.CloudInitSnippet{},
+			User:    &pxapi.CloudInitSnippet{},
+			Vendor:  &pxapi.CloudInitSnippet{},
+		},
+		DNS: &pxapi.GuestDNS{
+			SearchDomain: pointer(d.Get("searchdomain").(string)),
+			NameServers:  nameservers.Split(d.Get("nameserver").(string)),
+		},
+		NetworkInterfaces: pxapi.CloudInitNetworkInterfaces{},
+		PublicSSHkeys:     sshkeys.Split(d.Get("sshkeys").(string)),
+		UpgradePackages:   pointer(d.Get("ciupgrade").(bool)),
+		UserPassword:      pointer(d.Get("cipassword").(string)),
+		Username:          pointer(d.Get("ciuser").(string)),
+	}
+	params := splitStringOfSettings(d.Get("cicustom").(string))
+	if v, isSet := params["meta"]; isSet {
+		ci.Custom.Meta = mapToSDK_CloudInitSnippet(v)
+	}
+	if v, isSet := params["network"]; isSet {
+		ci.Custom.Network = mapToSDK_CloudInitSnippet(v)
+	}
+	if v, isSet := params["user"]; isSet {
+		ci.Custom.User = mapToSDK_CloudInitSnippet(v)
+	}
+	if v, isSet := params["vendor"]; isSet {
+		ci.Custom.Vendor = mapToSDK_CloudInitSnippet(v)
+	}
+	for i := 0; i < 16; i++ {
+		ci.NetworkInterfaces[pxapi.QemuNetworkInterfaceID(i)] = mapToSDK_CloudInitNetworkConfig(d.Get("ipconfig" + strconv.Itoa(i)).(string))
+	}
+	return &ci
+}
+
+func mapToSDK_CloudInitNetworkConfig(param string) pxapi.CloudInitNetworkConfig {
+	config := pxapi.CloudInitNetworkConfig{
+		IPv4: &pxapi.CloudInitIPv4Config{
+			Address: pointer(pxapi.IPv4CIDR("")),
+			DHCP:    false,
+			Gateway: pointer(pxapi.IPv4Address(""))},
+		IPv6: &pxapi.CloudInitIPv6Config{
+			Address: pointer(pxapi.IPv6CIDR("")),
+			DHCP:    false,
+			Gateway: pointer(pxapi.IPv6Address("")),
+			SLAAC:   false}}
+	params := splitStringOfSettings(param)
+	if v, isSet := params["ip"]; isSet {
+		if v == "dhcp" {
+			config.IPv4.DHCP = true
+		} else {
+			*config.IPv4.Address = pxapi.IPv4CIDR(v)
+		}
+	}
+	if v, isSet := params["gw"]; isSet {
+		*config.IPv4.Gateway = pxapi.IPv4Address(v)
+	}
+	if v, isSet := params["ip6"]; isSet {
+		if v == "dhcp" {
+			config.IPv6.DHCP = true
+		} else if v == "auto" {
+			config.IPv6.SLAAC = true
+		} else {
+			*config.IPv6.Address = pxapi.IPv6CIDR(v)
+		}
+	}
+	if v, isSet := params["gw6"]; isSet {
+		*config.IPv6.Gateway = pxapi.IPv6Address(v)
+	}
+	return config
+}
+
+func mapToSDK_CloudInitSnippet(param string) *pxapi.CloudInitSnippet {
+	file := strings.SplitN(param, ":", 2)
+	if len(file) == 2 {
+		return &pxapi.CloudInitSnippet{
+			Storage:  file[0],
+			FilePath: pxapi.CloudInitSnippetPath(file[1])}
+	}
+	return nil
 }
 
 func mapToStruct_QemuCdRom(schema map[string]interface{}) (cdRom *pxapi.QemuCdRom) {
