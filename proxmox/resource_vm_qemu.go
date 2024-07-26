@@ -876,7 +876,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	config := pxapi.ConfigQemu{
 		Name:           vmName,
-		Description:    d.Get("desc").(string),
+		Description:    pointer(d.Get("desc").(string)),
 		Pool:           pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:           d.Get("bios").(string),
 		Onboot:         pointer(d.Get("onboot").(bool)),
@@ -1138,7 +1138,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	config := pxapi.ConfigQemu{
 		Name:           d.Get("name").(string),
-		Description:    d.Get("desc").(string),
+		Description:    pointer(d.Get("desc").(string)),
 		Pool:           pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:           d.Get("bios").(string),
 		Onboot:         pointer(d.Get("onboot").(bool)),
@@ -1426,7 +1426,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	d.Set("name", config.Name)
-	d.Set("desc", config.Description)
+	d.Set("desc", mapToTerraform_Description(config.Description))
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
 	d.Set("startup", config.Startup)
@@ -1983,6 +1983,13 @@ func mapToTerraform_CloudInitNetworkConfig(config pxapi.CloudInitNetworkConfig) 
 		if config.IPv6 != nil {
 			return config.IPv6.String()
 		}
+	}
+	return ""
+}
+
+func mapToTerraform_Description(description *string) string {
+	if description != nil {
+		return *description
 	}
 	return ""
 }
