@@ -886,9 +886,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          mapToStruct_QemuGuestAgent(d),
-		Memory:         d.Get("memory").(int),
+		Memory:         mapToSDK_Memory(d),
 		Machine:        d.Get("machine").(string),
-		Balloon:        d.Get("balloon").(int),
 		QemuCores:      d.Get("cores").(int),
 		QemuSockets:    d.Get("sockets").(int),
 		QemuVcpus:      d.Get("vcpus").(int),
@@ -1148,9 +1147,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          mapToStruct_QemuGuestAgent(d),
-		Memory:         d.Get("memory").(int),
+		Memory:         mapToSDK_Memory(d),
 		Machine:        d.Get("machine").(string),
-		Balloon:        d.Get("balloon").(int),
 		QemuCores:      d.Get("cores").(int),
 		QemuSockets:    d.Get("sockets").(int),
 		QemuVcpus:      d.Get("vcpus").(int),
@@ -1434,9 +1432,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("tablet", config.Tablet)
 	d.Set("boot", config.Boot)
 	d.Set("bootdisk", config.BootDisk)
-	d.Set("memory", config.Memory)
 	d.Set("machine", config.Machine)
-	d.Set("balloon", config.Balloon)
 	d.Set("cores", config.QemuCores)
 	d.Set("sockets", config.QemuSockets)
 	d.Set("vcpus", config.QemuVcpus)
@@ -1455,6 +1451,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("disks", mapFromStruct_ConfigQemu(config.Disks))
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
 	mapToTerraform_CloudInit(config.CloudInit, d)
+	mapToTerraform_Memory(config.Memory, d)
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"force_create", "define_connection_info"}
@@ -2008,6 +2005,16 @@ func mapFromStruct_LinkedCloneId(id *uint) int {
 	return -1
 }
 
+func mapToTerraform_Memory(config *pxapi.QemuMemory, d *schema.ResourceData) {
+	// no nil check as pxapi.QemuMemory is always returned
+	if config.CapacityMiB != nil {
+		d.Set("memory", int(*config.CapacityMiB))
+	}
+	if config.MinimumCapacityMiB != nil {
+		d.Set("balloon", int(*config.MinimumCapacityMiB))
+	}
+}
+
 func mapFormStruct_QemuCdRom(config *pxapi.QemuCdRom) []interface{} {
 	if config == nil {
 		return nil
@@ -2462,6 +2469,16 @@ func mapToSDK_CloudInitSnippet(param string) *pxapi.CloudInitSnippet {
 	return nil
 }
 
+func mapToSDK_Memory(d *schema.ResourceData) *pxapi.QemuMemory {
+	capacity := pxapi.QemuMemoryCapacity(d.Get("memory").(int))
+	balloon := pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))
+	var shares pxapi.QemuMemoryShares
+	return &pxapi.QemuMemory{
+		CapacityMiB:        &capacity,
+		MinimumCapacityMiB: &balloon,
+		Shares:             &shares,
+	}
+}
 func mapToStruct_QemuCdRom(schema map[string]interface{}) (cdRom *pxapi.QemuCdRom) {
 	schemaItem, ok := schema["cdrom"].([]interface{})
 	if !ok {
