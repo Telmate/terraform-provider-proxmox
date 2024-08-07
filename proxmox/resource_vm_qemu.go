@@ -15,13 +15,14 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 )
 
 // using a global variable here so that we have an internally accessible
@@ -1526,10 +1527,14 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("full_clone", d.Get("full_clone"))
 
 	// read in the qemu hostpci
-	qemuPCIDevices, _ := FlattenDevicesList(config.QemuPCIDevices)
+	qemuPCIDevices, err := FlattenDevicesList(config.QemuPCIDevices)
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("unable to flatten QEMU PCI devices: %w", err))
+	}
+	qemuPCIDevices, _ = DropElementsFromMap([]string{"id"}, qemuPCIDevices)
 	logger.Debug().Int("vmid", vmID).Msgf("Hostpci Block Processed '%v'", config.QemuPCIDevices)
 	if err = d.Set("hostpci", qemuPCIDevices); err != nil {
-		return diag.FromErr(err)
+		return diag.FromErr(fmt.Errorf("unable to set hostpci: %w", err))
 	}
 
 	// read in the qemu hostpci
