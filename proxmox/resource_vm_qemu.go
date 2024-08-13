@@ -2479,13 +2479,10 @@ func mapToSDK_CloudInitSnippet(param string) *pxapi.CloudInitSnippet {
 }
 
 func mapToSDK_Memory(d *schema.ResourceData) *pxapi.QemuMemory {
-	capacity := pxapi.QemuMemoryCapacity(d.Get("memory").(int))
-	balloon := pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))
-	var shares pxapi.QemuMemoryShares
 	return &pxapi.QemuMemory{
-		CapacityMiB:        &capacity,
-		MinimumCapacityMiB: &balloon,
-		Shares:             &shares,
+		CapacityMiB:        pointer(pxapi.QemuMemoryCapacity(d.Get("memory").(int))),
+		MinimumCapacityMiB: pointer(pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))),
+		Shares:             pointer(pxapi.QemuMemoryShares(0)),
 	}
 }
 
