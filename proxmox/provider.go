@@ -102,7 +102,7 @@ func Provider() *schema.Provider {
 			"pm_tls_insecure": {
 				Type:        schema.TypeBool,
 				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", true), //we assume it's a lab!
+				DefaultFunc: schema.EnvDefaultFunc("PM_TLS_INSECURE", true), // we assume it's a lab!
 				Description: "By default, every TLS connection is verified to be secure. This option allows terraform to proceed and operate on servers considered insecure. For example if you're connecting to a remote host and you do not have the CA cert that issued the proxmox api url's certificate.",
 			},
 			"pm_http_headers": {
@@ -192,7 +192,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 
-	//permission check
+	// permission check
 	minimumPermissions := []string{
 		"Datastore.AllocateSpace",
 		"Datastore.Audit",
@@ -328,11 +328,12 @@ func getClient(pm_api_url string,
 func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
 	pconf.Mutex.Lock()
 	defer pconf.Mutex.Unlock()
-	pconf.MaxVMID, err = pconf.Client.GetNextID(pconf.MaxVMID + 1)
+	nextId, err = pconf.Client.GetNextID(0)
 	if err != nil {
 		return 0, err
 	}
-	nextId = pconf.MaxVMID
+	pconf.MaxVMID = nextId
+
 	return nextId, nil
 }
 
