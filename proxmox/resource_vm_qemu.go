@@ -878,6 +878,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	config := pxapi.ConfigQemu{
 		Name:           vmName,
+		CPU:            mapToSDK_CPU(d),
 		Description:    pointer(d.Get("desc").(string)),
 		Pool:           pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:           d.Get("bios").(string),
@@ -890,11 +891,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Agent:          mapToStruct_QemuGuestAgent(d),
 		Memory:         mapToSDK_Memory(d),
 		Machine:        d.Get("machine").(string),
-		QemuCores:      d.Get("cores").(int),
-		QemuSockets:    d.Get("sockets").(int),
-		QemuVcpus:      d.Get("vcpus").(int),
-		QemuCpu:        d.Get("cpu").(string),
-		QemuNuma:       pointer(d.Get("numa").(bool)),
 		QemuKVM:        pointer(d.Get("kvm").(bool)),
 		Hotplug:        d.Get("hotplug").(string),
 		Scsihw:         d.Get("scsihw").(string),
@@ -1139,6 +1135,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	config := pxapi.ConfigQemu{
 		Name:           d.Get("name").(string),
+		CPU:            mapToSDK_CPU(d),
 		Description:    pointer(d.Get("desc").(string)),
 		Pool:           pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:           d.Get("bios").(string),
@@ -1151,11 +1148,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Agent:          mapToStruct_QemuGuestAgent(d),
 		Memory:         mapToSDK_Memory(d),
 		Machine:        d.Get("machine").(string),
-		QemuCores:      d.Get("cores").(int),
-		QemuSockets:    d.Get("sockets").(int),
-		QemuVcpus:      d.Get("vcpus").(int),
-		QemuCpu:        d.Get("cpu").(string),
-		QemuNuma:       pointer(d.Get("numa").(bool)),
 		QemuKVM:        pointer(d.Get("kvm").(bool)),
 		Hotplug:        d.Get("hotplug").(string),
 		Scsihw:         d.Get("scsihw").(string),
@@ -1435,11 +1427,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("boot", config.Boot)
 	d.Set("bootdisk", config.BootDisk)
 	d.Set("machine", config.Machine)
-	d.Set("cores", config.QemuCores)
-	d.Set("sockets", config.QemuSockets)
-	d.Set("vcpus", config.QemuVcpus)
-	d.Set("cpu", config.QemuCpu)
-	d.Set("numa", config.QemuNuma)
 	d.Set("kvm", config.QemuKVM)
 	d.Set("hotplug", config.Hotplug)
 	d.Set("scsihw", config.Scsihw)
@@ -1452,6 +1439,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("linked_vmid", config.LinkedVmId)
 	d.Set("disks", mapFromStruct_ConfigQemu(config.Disks))
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
+	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
 	mapToTerraform_Memory(config.Memory, d)
 
@@ -1990,6 +1978,27 @@ func mapToTerraform_CloudInitNetworkConfig(config pxapi.CloudInitNetworkConfig) 
 	return ""
 }
 
+func mapToTerraform_CPU(config *pxapi.QemuCPU, d *schema.ResourceData) {
+	if config == nil {
+		return
+	}
+	if config.Cores != nil {
+		d.Set("cores", int(*config.Cores))
+	}
+	if config.Numa != nil {
+		d.Set("numa", *config.Numa)
+	}
+	if config.Sockets != nil {
+		d.Set("sockets", int(*config.Sockets))
+	}
+	if config.Type != nil {
+		d.Set("cpu", string(*config.Type))
+	}
+	if config.VirtualCores != nil {
+		d.Set("vcpus", int(*config.VirtualCores))
+	}
+}
+
 func mapToTerraform_Description(description *string) string {
 	if description != nil {
 		return *description
@@ -2476,15 +2485,22 @@ func mapToSDK_CloudInitSnippet(param string) *pxapi.CloudInitSnippet {
 }
 
 func mapToSDK_Memory(d *schema.ResourceData) *pxapi.QemuMemory {
-	capacity := pxapi.QemuMemoryCapacity(d.Get("memory").(int))
-	balloon := pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))
-	var shares pxapi.QemuMemoryShares
 	return &pxapi.QemuMemory{
-		CapacityMiB:        &capacity,
-		MinimumCapacityMiB: &balloon,
-		Shares:             &shares,
+		CapacityMiB:        pointer(pxapi.QemuMemoryCapacity(d.Get("memory").(int))),
+		MinimumCapacityMiB: pointer(pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))),
+		Shares:             pointer(pxapi.QemuMemoryShares(0)),
 	}
 }
+
+func mapToSDK_CPU(d *schema.ResourceData) *pxapi.QemuCPU {
+	return &pxapi.QemuCPU{
+		Cores:        pointer(pxapi.QemuCpuCores(d.Get("cores").(int))),
+		Numa:         pointer(d.Get("numa").(bool)),
+		Sockets:      pointer(pxapi.QemuCpuSockets(d.Get("sockets").(int))),
+		Type:         pointer(pxapi.CpuType(d.Get("cpu").(string))),
+		VirtualCores: pointer(pxapi.CpuVirtualCores(d.Get("vcpus").(int)))}
+}
+
 func mapToStruct_QemuCdRom(schema map[string]interface{}) (cdRom *pxapi.QemuCdRom) {
 	schemaItem, ok := schema["cdrom"].([]interface{})
 	if !ok {
