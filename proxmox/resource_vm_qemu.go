@@ -1394,11 +1394,12 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	vmState, err := client.GetVmState(vmr)
-	log.Printf("[DEBUG] VM status: %s", vmState["status"])
-	if err == nil {
-		d.Set("vm_state", vmState["status"])
+	if err != nil {
+		return diag.FromErr(err)
 	}
-	if err == nil && vmState["status"] == "running" {
+	log.Printf("[DEBUG] VM status: %s", vmState["status"])
+	d.Set("vm_state", vmState["status"])
+	if vmState["status"] == "running" {
 		log.Printf("[DEBUG] VM is running, checking the IP")
 		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
 		diags = append(diags, initConnInfo(d, client, vmr, config)...)
@@ -1410,9 +1411,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		diags = append(diags, diag.FromErr(err)...)
 		err = d.Set("ssh_port", nil)
 		diags = append(diags, diag.FromErr(err)...)
-	}
-	if err != nil {
-		return diag.FromErr(err)
 	}
 
 	logger.Debug().Int("vmid", vmID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
