@@ -987,7 +987,11 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	config.Disks = mapToSDK_QemuStorages(d)
+	var diags diag.Diagnostics
+	config.Disks, diags = mapToSDK_QemuStorages(d)
+	if diags.HasError() {
+		return diags
+	}
 
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1038,7 +1042,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			nextid = vmID
 		} else {
 			if err != nil {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 		}
 
@@ -1058,7 +1062,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 			sourceVmrs, err := client.GetVmRefsByName(d.Get("clone").(string))
 			if err != nil {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 
 			// prefer source Vm located on same node
@@ -1073,7 +1077,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			logger.Debug().Str("vmid", d.Id()).Msgf("Cloning VM")
 			err = config.CloneVm(sourceVmr, vmr, client)
 			if err != nil {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 			// give sometime to proxmox to catchup
 			time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
@@ -1083,7 +1087,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			if err != nil {
 				// Set the id because when update config fail the vm is still created
 				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 
 		} else if d.Get("pxe").(bool) {
@@ -1095,7 +1099,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			for _, reg := range regs {
 				re, err := regexp.Compile(reg)
 				if err != nil {
-					return diag.FromErr(err)
+					return append(diags, diag.FromErr(err)...)
 				}
 
 				found = re.MatchString(bs)
@@ -1106,18 +1110,18 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			}
 
 			if !found {
-				return diag.FromErr(fmt.Errorf("no network boot option matched in 'boot' config"))
+				return append(diags, diag.FromErr(fmt.Errorf("no network boot option matched in 'boot' config"))...)
 			}
 			log.Print("[DEBUG][QemuVmCreate] create with PXE")
 			err := config.Create(vmr, client)
 			if err != nil {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 		} else {
 			log.Print("[DEBUG][QemuVmCreate] create with ISO")
 			err := config.Create(vmr, client)
 			if err != nil {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 		}
 	} else {
@@ -1129,7 +1133,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		if err != nil {
 			// Set the id because when update config fail the vm is still created
 			d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 
 	}
@@ -1143,7 +1147,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
 		_, err := client.StartVm(vmr)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 		// // give sometime to proxmox to catchup
 		// time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
@@ -1159,7 +1163,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	d.Set("reboot_required", rebootRequired)
 	log.Print("[DEBUG][QemuVmCreate] vm creation done!")
 	lock.unlock()
-	return resourceVmQemuRead(ctx, d, meta)
+	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
 }
 
 func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1276,7 +1280,11 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
 
-	config.Disks = mapToSDK_QemuStorages(d)
+	var diags diag.Diagnostics
+	config.Disks, diags = mapToSDK_QemuStorages(d)
+	if diags.HasError() {
+		return diags
+	}
 
 	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
 
@@ -1368,14 +1376,11 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	var diags diag.Diagnostics
-
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
 	// enabled. Attempt a graceful shutdown or if that fails, force power-off.
 	vmState, err := client.GetVmState(vmr)
 	if err != nil {
-		diags = append(diags, diag.FromErr(err)...)
-		return diags
+		return append(diags, diag.FromErr(err)...)
 	}
 	switch vmState["status"].(string) { // manage the VM state to match the `vm_state` attribute
 	// case stateStarted: does nothing during update as we don't enforce the VM state
@@ -1383,7 +1388,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		if d.Get("vm_state").(string) == stateRunning { // start the VM
 			log.Print("[DEBUG][QemuVmUpdate] starting VM to match `vm_state`")
 			if _, err = client.StartVm(vmr); err != nil {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 		}
 	case stateRunning:
@@ -1394,7 +1399,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 			if err != nil {
 				log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
 				if _, err = client.StopVm(vmr); err != nil {
-					return diag.FromErr(err)
+					return append(diags, diag.FromErr(err)...)
 				}
 			}
 		} else if rebootRequired { // reboot the VM
@@ -1405,14 +1410,14 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				if err != nil {
 					log.Print("[DEBUG][QemuVmUpdate] reboot failed, stopping VM forcefully")
 					if _, err := client.StopVm(vmr); err != nil {
-						return diag.FromErr(err)
+						return append(diags, diag.FromErr(err)...)
 					}
 					// give sometime to proxmox to catchup
 					dur := time.Duration(d.Get("additional_wait").(int)) * time.Second
 					log.Printf("[DEBUG][QemuVmUpdate] waiting for (%v) before starting the VM again", dur)
 					time.Sleep(dur)
 					if _, err := client.StartVm(vmr); err != nil {
-						return diag.FromErr(err)
+						return append(diags, diag.FromErr(err)...)
 					}
 				}
 			} else { // automatic reboots is disabled
@@ -2445,6 +2450,10 @@ func mapToStruct_IsoFile(iso string) *pxapi.IsoFile {
 	return &pxapi.IsoFile{File: file, Storage: storage}
 }
 
+func mapToSDK_QemuCdRom_Disk(slot string, schema map[string]interface{}) *pxapi.QemuCdRom {
+	return &pxapi.QemuCdRom{Iso: mapToStruct_IsoFile(schema["iso"].(string))}
+}
+
 func mapToSDK_QemuCdRom_Disks(schema map[string]interface{}) (cdRom *pxapi.QemuCdRom) {
 	schemaItem, ok := schema["cdrom"].([]interface{})
 	if !ok {
@@ -2460,11 +2469,39 @@ func mapToSDK_QemuCdRom_Disks(schema map[string]interface{}) (cdRom *pxapi.QemuC
 	}
 }
 
+func mapToSDK_QemuCloudInit_Disk(slot string, schema map[string]interface{}) *pxapi.QemuCloudInitDisk {
+	return &pxapi.QemuCloudInitDisk{
+		Format:  pxapi.QemuDiskFormat_Raw,
+		Storage: schema["storage"].(string),
+	}
+}
+
 func mapToSDK_QemuCloudInit_Disks(schemaItem []interface{}) (ci *pxapi.QemuCloudInitDisk) {
 	ciSchema := schemaItem[0].(map[string]interface{})
 	return &pxapi.QemuCloudInitDisk{
 		Format:  pxapi.QemuDiskFormat_Raw,
 		Storage: ciSchema["storage"].(string),
+	}
+}
+
+func mapToSDK_QemuDiskBandwidth_Disk(schema map[string]interface{}) pxapi.QemuDiskBandwidth {
+	return pxapi.QemuDiskBandwidth{
+		MBps: pxapi.QemuDiskBandwidthMBps{
+			ReadLimit: pxapi.QemuDiskBandwidthMBpsLimit{
+				Burst:      pxapi.QemuDiskBandwidthMBpsLimitBurst(schema["mbps_r_burst"].(float64)),
+				Concurrent: pxapi.QemuDiskBandwidthMBpsLimitConcurrent(schema["mbps_r_concurrent"].(float64))},
+			WriteLimit: pxapi.QemuDiskBandwidthMBpsLimit{
+				Burst:      pxapi.QemuDiskBandwidthMBpsLimitBurst(schema["mbps_wr_burst"].(float64)),
+				Concurrent: pxapi.QemuDiskBandwidthMBpsLimitConcurrent(schema["mbps_wr_concurrent"].(float64))}},
+		Iops: pxapi.QemuDiskBandwidthIops{
+			ReadLimit: pxapi.QemuDiskBandwidthIopsLimit{
+				Burst:         pxapi.QemuDiskBandwidthIopsLimitBurst(schema["iops_r_burst"].(int)),
+				BurstDuration: uint(schema["iops_r_burst_length"].(int)),
+				Concurrent:    pxapi.QemuDiskBandwidthIopsLimitConcurrent(schema["iops_r_concurrent"].(int))},
+			WriteLimit: pxapi.QemuDiskBandwidthIopsLimit{
+				Burst:         pxapi.QemuDiskBandwidthIopsLimitBurst(schema["iops_wr_burst"].(int)),
+				BurstDuration: uint(schema["iops_wr_burst_length"].(int)),
+				Concurrent:    pxapi.QemuDiskBandwidthIopsLimitConcurrent(schema["iops_wr_concurrent"].(int))}},
 	}
 }
 
@@ -2505,6 +2542,20 @@ func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pxapi.QemuGuestAgent {
 	}
 }
 
+func mapToSDK_QemuIdeDisks_Disk(ide *pxapi.QemuIdeDisks, id string, schema map[string]interface{}) diag.Diagnostics {
+	switch id {
+	case "0":
+		return mapToSDK_QemuIdeStorage_Disk(ide.Disk_0, schema, id)
+	case "1":
+		return mapToSDK_QemuIdeStorage_Disk(ide.Disk_1, schema, id)
+	case "2":
+		return mapToSDK_QemuIdeStorage_Disk(ide.Disk_2, schema, id)
+	case "3":
+		return mapToSDK_QemuIdeStorage_Disk(ide.Disk_3, schema, id)
+	}
+	return nil
+}
+
 func mapToSDK_QemuIdeDisks_Disks(ide *pxapi.QemuIdeDisks, schema map[string]interface{}) {
 	schemaItem, ok := schema["ide"].([]interface{})
 	if !ok || len(schemaItem) != 1 || schemaItem[0] == nil {
@@ -2515,6 +2566,51 @@ func mapToSDK_QemuIdeDisks_Disks(ide *pxapi.QemuIdeDisks, schema map[string]inte
 	mapToSDK_QemuIdeStorage_Disks(ide.Disk_1, "ide1", disks)
 	mapToSDK_QemuIdeStorage_Disks(ide.Disk_2, "ide2", disks)
 	mapToSDK_QemuIdeStorage_Disks(ide.Disk_3, "ide3", disks)
+}
+
+func mapToSDK_QemuIdeStorage_Disk(ide *pxapi.QemuIdeStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
+	slot := "ide" + id
+	if ide.CdRom != nil || ide.Disk != nil || ide.Passthrough != nil || ide.CloudInit != nil {
+		return errorDiskSlotDuplicate(slot)
+	}
+	switch schema["type"].(string) {
+	case "disk":
+		if schema["passthrough"].(bool) { // passthrough disk
+			ide.Passthrough = &pxapi.QemuIdePassthrough{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				EmulateSSD:    schema["emulatessd"].(bool),
+				File:          schema["disk_file"].(string),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+		} else { // normal disk
+			ide.Disk = &pxapi.QemuIdeDisk{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				EmulateSSD:    schema["emulatessd"].(bool),
+				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			var tmpDiags diag.Diagnostics
+			ide.Disk.SizeInKibibytes, tmpDiags = mapToSDK_Size_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+			ide.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+		}
+	case "cdrom":
+		ide.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+	case "cloudinit":
+		ide.CloudInit = mapToSDK_QemuCloudInit_Disk(slot, schema)
+	}
+	return
 }
 
 func mapToSDK_QemuIdeStorage_Disks(ide *pxapi.QemuIdeStorage, key string, schema map[string]interface{}) {
@@ -2576,6 +2672,24 @@ func mapToSDK_QemuIdeStorage_Disks(ide *pxapi.QemuIdeStorage, key string, schema
 	ide.CdRom = mapToSDK_QemuCdRom_Disks(storageSchema)
 }
 
+func mapToSDK_QemuSataDisks_Disk(sata *pxapi.QemuSataDisks, id string, schema map[string]interface{}) diag.Diagnostics {
+	switch id {
+	case "0":
+		return mapToSDK_QemuSataStorage_Disk(sata.Disk_0, schema, id)
+	case "1":
+		return mapToSDK_QemuSataStorage_Disk(sata.Disk_1, schema, id)
+	case "2":
+		return mapToSDK_QemuSataStorage_Disk(sata.Disk_2, schema, id)
+	case "3":
+		return mapToSDK_QemuSataStorage_Disk(sata.Disk_3, schema, id)
+	case "4":
+		return mapToSDK_QemuSataStorage_Disk(sata.Disk_4, schema, id)
+	case "5":
+		return mapToSDK_QemuSataStorage_Disk(sata.Disk_5, schema, id)
+	}
+	return nil
+}
+
 func mapToSDK_QemuSataDisks_Disks(sata *pxapi.QemuSataDisks, schema map[string]interface{}) {
 	schemaItem, ok := schema["sata"].([]interface{})
 	if !ok || len(schemaItem) != 1 || schemaItem[0] == nil {
@@ -2588,6 +2702,51 @@ func mapToSDK_QemuSataDisks_Disks(sata *pxapi.QemuSataDisks, schema map[string]i
 	mapToSDK_QemuSataStorage_Disks(sata.Disk_3, "sata3", disks)
 	mapToSDK_QemuSataStorage_Disks(sata.Disk_4, "sata4", disks)
 	mapToSDK_QemuSataStorage_Disks(sata.Disk_5, "sata5", disks)
+}
+
+func mapToSDK_QemuSataStorage_Disk(sata *pxapi.QemuSataStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
+	slot := "sata" + id
+	if sata.CdRom != nil || sata.Disk != nil || sata.Passthrough != nil || sata.CloudInit != nil {
+		return errorDiskSlotDuplicate(slot)
+	}
+	switch schema["type"].(string) {
+	case "disk":
+		if schema["passthrough"].(bool) { // passthrough disk
+			sata.Passthrough = &pxapi.QemuSataPassthrough{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				EmulateSSD:    schema["emulatessd"].(bool),
+				File:          schema["disk_file"].(string),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+		} else { // normal disk
+			sata.Disk = &pxapi.QemuSataDisk{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				EmulateSSD:    schema["emulatessd"].(bool),
+				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			var tmpDiags diag.Diagnostics
+			sata.Disk.SizeInKibibytes, tmpDiags = mapToSDK_Size_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+			sata.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+		}
+	case "cdrom":
+		sata.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+	case "cloudinit":
+		sata.CloudInit = mapToSDK_QemuCloudInit_Disk(slot, schema)
+	}
+	return
 }
 
 func mapToSDK_QemuSataStorage_Disks(sata *pxapi.QemuSataStorage, key string, schema map[string]interface{}) {
@@ -2649,6 +2808,74 @@ func mapToSDK_QemuSataStorage_Disks(sata *pxapi.QemuSataStorage, key string, sch
 	sata.CdRom = mapToSDK_QemuCdRom_Disks(storageSchema)
 }
 
+func mapToSDK_QemuScsiDisks_Disk(scsi *pxapi.QemuScsiDisks, id string, schema map[string]interface{}) diag.Diagnostics {
+	switch id {
+	case "0":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_0, schema, id)
+	case "1":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_1, schema, id)
+	case "2":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_2, schema, id)
+	case "3":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_3, schema, id)
+	case "4":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_4, schema, id)
+	case "5":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_5, schema, id)
+	case "6":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_6, schema, id)
+	case "7":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_7, schema, id)
+	case "8":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_8, schema, id)
+	case "9":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_9, schema, id)
+	case "10":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_10, schema, id)
+	case "11":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_11, schema, id)
+	case "12":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_12, schema, id)
+	case "13":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_13, schema, id)
+	case "14":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_14, schema, id)
+	case "15":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_15, schema, id)
+	case "16":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_16, schema, id)
+	case "17":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_17, schema, id)
+	case "18":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_18, schema, id)
+	case "19":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_19, schema, id)
+	case "20":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_20, schema, id)
+	case "21":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_21, schema, id)
+	case "22":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_22, schema, id)
+	case "23":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_23, schema, id)
+	case "24":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_24, schema, id)
+	case "25":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_25, schema, id)
+	case "26":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_26, schema, id)
+	case "27":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_27, schema, id)
+	case "28":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_28, schema, id)
+	case "29":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_29, schema, id)
+	case "30":
+		return mapToSDK_QemuScsiStorage_Disk(scsi.Disk_30, schema, id)
+	}
+	return nil
+}
+
 func mapToSDK_QemuScsiDisks_Disks(scsi *pxapi.QemuScsiDisks, schema map[string]interface{}) {
 	schemaItem, ok := schema["scsi"].([]interface{})
 	if !ok || len(schemaItem) != 1 || schemaItem[0] == nil {
@@ -2686,6 +2913,55 @@ func mapToSDK_QemuScsiDisks_Disks(scsi *pxapi.QemuScsiDisks, schema map[string]i
 	mapToSDK_QemuScsiStorage_Disks(scsi.Disk_28, "scsi28", disks)
 	mapToSDK_QemuScsiStorage_Disks(scsi.Disk_29, "scsi29", disks)
 	mapToSDK_QemuScsiStorage_Disks(scsi.Disk_30, "scsi30", disks)
+}
+
+func mapToSDK_QemuScsiStorage_Disk(scsi *pxapi.QemuScsiStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
+	slot := "scsi" + id
+	if scsi.CdRom != nil || scsi.Disk != nil || scsi.Passthrough != nil || scsi.CloudInit != nil {
+		return errorDiskSlotDuplicate(slot)
+	}
+	switch schema["type"].(string) {
+	case "disk":
+		if schema["passthrough"].(bool) { // passthrough disk
+			scsi.Passthrough = &pxapi.QemuScsiPassthrough{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				EmulateSSD:    schema["emulatessd"].(bool),
+				File:          schema["disk_file"].(string),
+				IOThread:      schema["iothread"].(bool),
+				ReadOnly:      schema["readonly"].(bool),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+		} else { // normal disk
+			scsi.Disk = &pxapi.QemuScsiDisk{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				EmulateSSD:    schema["emulatessd"].(bool),
+				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				IOThread:      schema["iothread"].(bool),
+				ReadOnly:      schema["readonly"].(bool),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			var tmpDiags diag.Diagnostics
+			scsi.Disk.SizeInKibibytes, tmpDiags = mapToSDK_Size_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+			scsi.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+		}
+	case "cdrom":
+		scsi.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+	case "cloudinit":
+		scsi.CloudInit = mapToSDK_QemuCloudInit_Disk(slot, schema)
+	}
+	return
 }
 
 func mapToSDK_QemuScsiStorage_Disks(scsi *pxapi.QemuScsiStorage, key string, schema map[string]interface{}) {
@@ -2751,7 +3027,7 @@ func mapToSDK_QemuScsiStorage_Disks(scsi *pxapi.QemuScsiStorage, key string, sch
 	scsi.CdRom = mapToSDK_QemuCdRom_Disks(storageSchema)
 }
 
-func mapToSDK_QemuStorages(d *schema.ResourceData) *pxapi.QemuStorages {
+func mapToSDK_QemuStorages(d *schema.ResourceData) (*pxapi.QemuStorages, diag.Diagnostics) {
 	storages := pxapi.QemuStorages{
 		Ide: &pxapi.QemuIdeDisks{
 			Disk_0: &pxapi.QemuIdeStorage{},
@@ -2819,6 +3095,29 @@ func mapToSDK_QemuStorages(d *schema.ResourceData) *pxapi.QemuStorages {
 			Disk_15: &pxapi.QemuVirtIOStorage{},
 		},
 	}
+	diags := make(diag.Diagnostics, 0)
+	if v, ok := d.GetOk("disk"); ok {
+		for _, disk := range v.([]interface{}) {
+			tmpDisk := disk.(map[string]interface{})
+			slot := tmpDisk["slot"].(string)
+			if len(slot) > 6 { // virtio
+				diags = append(diags, mapToSDK_QemuVirtIODisks_Disk(storages.VirtIO, slot[6:], tmpDisk)...)
+				continue
+			}
+			if len(slot) > 4 {
+				switch slot[0:4] {
+				case "sata":
+					diags = append(diags, mapToSDK_QemuSataDisks_Disk(storages.Sata, slot[4:], tmpDisk)...)
+				case "scsi":
+					diags = append(diags, mapToSDK_QemuScsiDisks_Disk(storages.Scsi, slot[4:], tmpDisk)...)
+				}
+				continue
+			}
+			if len(slot) > 3 { // ide
+				diags = append(diags, mapToSDK_QemuIdeDisks_Disk(storages.Ide, slot[3:], tmpDisk)...)
+			}
+		}
+	} else {
 	schemaItem := d.Get("disks").([]interface{})
 	if len(schemaItem) == 1 {
 		schemaStorages, ok := schemaItem[0].(map[string]interface{})
@@ -2829,7 +3128,46 @@ func mapToSDK_QemuStorages(d *schema.ResourceData) *pxapi.QemuStorages {
 				mapToSDK_QemuVirtIODisks_Disks(storages.VirtIO, schemaStorages)
 		}
 	}
-	return &storages
+	}
+	return &storages, diags
+}
+
+func mapToSDK_QemuVirtIODisks_Disk(virtio *pxapi.QemuVirtIODisks, id string, schema map[string]interface{}) diag.Diagnostics {
+	switch id {
+	case "0":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_0, schema, id)
+	case "1":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_1, schema, id)
+	case "2":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_2, schema, id)
+	case "3":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_3, schema, id)
+	case "4":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_4, schema, id)
+	case "5":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_5, schema, id)
+	case "6":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_6, schema, id)
+	case "7":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_7, schema, id)
+	case "8":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_8, schema, id)
+	case "9":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_9, schema, id)
+	case "10":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_10, schema, id)
+	case "11":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_11, schema, id)
+	case "12":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_12, schema, id)
+	case "13":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_13, schema, id)
+	case "14":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_14, schema, id)
+	case "15":
+		return mapToSDK_QemuVirtIOStorage_Disk(virtio.Disk_15, schema, id)
+	}
+	return nil
 }
 
 func mapToSDK_QemuVirtIODisks_Disks(virtio *pxapi.QemuVirtIODisks, schema map[string]interface{}) {
@@ -2854,6 +3192,55 @@ func mapToSDK_QemuVirtIODisks_Disks(virtio *pxapi.QemuVirtIODisks, schema map[st
 	mapToSDK_QemuVirtIOStorage_Disks(virtio.Disk_13, "virtio13", disks)
 	mapToSDK_QemuVirtIOStorage_Disks(virtio.Disk_14, "virtio14", disks)
 	mapToSDK_QemuVirtIOStorage_Disks(virtio.Disk_15, "virtio15", disks)
+}
+
+func mapToSDK_QemuVirtIOStorage_Disk(virtio *pxapi.QemuVirtIOStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
+	slot := "virtio" + id
+	if virtio.CdRom != nil || virtio.Disk != nil || virtio.Passthrough != nil || virtio.CloudInit != nil {
+		return errorDiskSlotDuplicate(slot)
+	}
+	switch schema["type"].(string) {
+	case "disk":
+		if schema["passthrough"].(bool) { // passthrough disk
+			virtio.Passthrough = &pxapi.QemuVirtIOPassthrough{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				File:          schema["disk_file"].(string),
+				IOThread:      schema["iothread"].(bool),
+				ReadOnly:      schema["readonly"].(bool),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+		} else { // normal disk
+			virtio.Disk = &pxapi.QemuVirtIODisk{
+				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
+				Backup:        schema["backup"].(bool),
+				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
+				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
+				Discard:       schema["discard"].(bool),
+				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				IOThread:      schema["iothread"].(bool),
+				ReadOnly:      schema["readonly"].(bool),
+				Replicate:     schema["replicate"].(bool),
+				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
+				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			var tmpDiags diag.Diagnostics
+			virtio.Disk.SizeInKibibytes, tmpDiags = mapToSDK_Size_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+			virtio.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
+			diags = append(diags, tmpDiags...)
+		}
+	case "cdrom":
+		virtio.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+	case "cloudinit":
+		return diag.Diagnostics{{
+			Severity: diag.Error,
+			Summary:  "virtio can't have cloudinit disk"}}
+	}
+	return
 }
 
 func mapToSDK_QemuVirtIOStorage_Disks(virtio *pxapi.QemuVirtIOStorage, key string, schema map[string]interface{}) {
@@ -2911,6 +3298,29 @@ func mapToSDK_QemuVirtIOStorage_Disks(virtio *pxapi.QemuVirtIOStorage, key strin
 		return
 	}
 	virtio.CdRom = mapToSDK_QemuCdRom_Disks(storageSchema)
+}
+
+func mapToSDK_Size_Disk(slot string, schema map[string]interface{}) (pxapi.QemuDiskSize, diag.Diagnostics) {
+	size := convert_SizeStringToKibibytes_Unsafe(schema["size"].(string))
+	if size == 0 {
+		return 0, diag.Diagnostics{{
+			Severity: diag.Error,
+			Summary:  "slot: " + slot + " size is required for disk",
+			Detail:   "slot: " + slot + " size must be greater than 0 when type is disk and passthrough is false"}}
+	}
+	return pxapi.QemuDiskSize(size), nil
+
+}
+
+func mapToSDK_Storage_Disk(slot string, schema map[string]interface{}) (string, diag.Diagnostics) {
+	v := schema["storage"].(string)
+	if v == "" {
+		return "", diag.Diagnostics{{
+			Severity: diag.Error,
+			Summary:  "slot: " + slot + " storage is required for disk",
+			Detail:   "slot: " + slot + " storage may not be empty when type is disk and passthrough is false"}}
+	}
+	return v, nil
 }
 
 // schema definition
