@@ -948,7 +948,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tablet:         pointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
-		Agent:          mapToStruct_QemuGuestAgent(d),
+		Agent:          mapToSDK_QemuGuestAgent(d),
 		Memory:         d.Get("memory").(int),
 		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
@@ -1224,7 +1224,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tablet:         pointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
-		Agent:          mapToStruct_QemuGuestAgent(d),
+		Agent:          mapToSDK_QemuGuestAgent(d),
 		Memory:         d.Get("memory").(int),
 		Machine:        d.Get("machine").(string),
 		Balloon:        d.Get("balloon").(int),
@@ -2429,6 +2429,7 @@ func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage) []interfac
 }
 
 // Map the terraform schema to sdk struct
+
 func mapToStruct_IsoFile(iso string) *pxapi.IsoFile {
 	if iso == "" {
 		return nil
@@ -2494,7 +2495,7 @@ func mapToStruct_QemuDiskBandwidth(schema map[string]interface{}) pxapi.QemuDisk
 	}
 }
 
-func mapToStruct_QemuGuestAgent(d *schema.ResourceData) *pxapi.QemuGuestAgent {
+func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pxapi.QemuGuestAgent {
 	var tmpEnable bool
 	if d.Get("agent").(int) == 1 {
 		tmpEnable = true
