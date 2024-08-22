@@ -1471,6 +1471,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// read in the qemu hostpci
 	qemuUsbsDevices, _ := FlattenDevicesList(config.QemuUsbs)
+	qemuUsbsDevices, _ = DropElementsFromMap([]string{"id"}, qemuUsbsDevices)
 	logger.Debug().Int("vmid", vmID).Msgf("Usb Block Processed '%v'", config.QemuUsbs)
 	if err = d.Set("usb", qemuUsbsDevices); err != nil {
 		return diag.FromErr(err)
