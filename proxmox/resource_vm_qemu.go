@@ -2956,7 +2956,7 @@ func mapToSDK_Serials(d *schema.ResourceData) pxapi.SerialInterfaces {
 		}
 		serials[pxapi.SerialID(serialMap["id"].(int))] = newSerial
 	}
-	return nil
+	return serials
 }
 
 func mapToStruct_VirtIOStorage(virtio *pxapi.QemuVirtIOStorage, key string, schema map[string]interface{}) {
