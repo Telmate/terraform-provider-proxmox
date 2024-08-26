@@ -602,7 +602,8 @@ func resourceVmQemu() *schema.Resource {
 						},
 						"type": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "socket",
 							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 								v := i.(string)
 								if v == "socket" {
