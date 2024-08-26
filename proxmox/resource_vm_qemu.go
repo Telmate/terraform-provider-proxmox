@@ -869,9 +869,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	qemuNetworks, _ := ExpandDevicesList(d.Get("network").([]interface{}))
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
-	serials := d.Get("serial").(*schema.Set)
-	qemuSerials, _ := DevicesSetToMap(serials)
-
 	qemuPCIDevices, _ := ExpandDevicesList(d.Get("hostpci").([]interface{}))
 
 	qemuUsbs, _ := ExpandDevicesList(d.Get("usb").([]interface{}))
@@ -900,7 +897,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
 		QemuNetworks:   qemuNetworks,
-		QemuSerials:    qemuSerials,
+		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -1113,9 +1110,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 	logger.Debug().Int("vmid", vmID).Msgf("Processed NetworkSet into qemuNetworks as %+v", qemuNetworks)
 
-	serials := d.Get("serial").(*schema.Set)
-	qemuSerials, _ := DevicesSetToMap(serials)
-
 	qemuPCIDevices, err := ExpandDevicesList(d.Get("hostpci").([]interface{}))
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("error while processing HostPCI configuration: %v", err))
@@ -1157,7 +1151,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
 		QemuNetworks:   qemuNetworks,
-		QemuSerials:    qemuSerials,
+		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -1442,6 +1436,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
 	mapToTerraform_Memory(config.Memory, d)
+	if len(config.Serials) != 0 {
+		d.Set("serials", mapToTerraform_Serials(config.Serials))
+	}
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"force_create", "define_connection_info"}
@@ -1517,10 +1514,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	d.Set("pool", vmr.Pool())
-	// Serials
-	configSerialsSet := d.Get("serial").(*schema.Set)
-	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials, "id")
-	d.Set("serial", activeSerialSet)
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
@@ -2384,6 +2377,22 @@ func mapFromStruct_QemuVirtIOStorage(config *pxapi.QemuVirtIOStorage) []interfac
 	return mapFormStruct_QemuCdRom(config.CdRom)
 }
 
+func mapToTerraform_Serials(config pxapi.SerialInterfaces) []interface{} {
+	var index int
+	serials := make([]interface{}, len(config))
+	for i, e := range config {
+		localMap := map[string]interface{}{"id": int(i)}
+		if e.Socket {
+			localMap["type"] = "socket"
+		} else {
+			localMap["type"] = string(e.Path)
+		}
+		serials[index] = localMap
+		index++
+	}
+	return serials
+}
+
 // Map the terraform schema to sdk struct
 func mapToStruct_IsoFile(iso string) *pxapi.IsoFile {
 	if iso == "" {
@@ -2910,6 +2919,27 @@ func mapToStruct_QemuVirtIODisks(virtio *pxapi.QemuVirtIODisks, schema map[strin
 	mapToStruct_VirtIOStorage(virtio.Disk_13, "virtio13", disks)
 	mapToStruct_VirtIOStorage(virtio.Disk_14, "virtio14", disks)
 	mapToStruct_VirtIOStorage(virtio.Disk_15, "virtio15", disks)
+}
+
+func mapToSDK_Serials(d *schema.ResourceData) pxapi.SerialInterfaces {
+	serials := pxapi.SerialInterfaces{
+		pxapi.SerialID0: pxapi.SerialInterface{Delete: true},
+		pxapi.SerialID1: pxapi.SerialInterface{Delete: true},
+		pxapi.SerialID2: pxapi.SerialInterface{Delete: true},
+		pxapi.SerialID3: pxapi.SerialInterface{Delete: true}}
+	serialsMap := d.Get("serials").([]interface{})
+	for _, serial := range serialsMap {
+		serialMap := serial.(map[string]interface{})
+		newSerial := pxapi.SerialInterface{Delete: false}
+		serialType := serialMap["type"].(string)
+		if serialType == "socket" {
+			newSerial.Socket = true
+		} else {
+			newSerial.Path = pxapi.SerialPath(serialType)
+		}
+		serials[pxapi.SerialID(serialMap["id"].(int))] = newSerial
+	}
+	return nil
 }
 
 func mapToStruct_VirtIOStorage(virtio *pxapi.QemuVirtIOStorage, key string, schema map[string]interface{}) {
