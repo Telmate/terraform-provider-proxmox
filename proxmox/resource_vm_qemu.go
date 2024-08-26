@@ -592,10 +592,27 @@ func resourceVmQemu() *schema.Resource {
 						"id": {
 							Type:     schema.TypeInt,
 							Required: true,
+							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+								v := i.(int)
+								if err := pxapi.SerialID(v).Validate(); err != nil {
+									return diag.Errorf("serial id must be between 0 and 3, got: %d", v)
+								}
+								return nil
+							},
 						},
 						"type": {
 							Type:     schema.TypeString,
 							Required: true,
+							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+								v := i.(string)
+								if v == "socket" {
+									return nil
+								}
+								if err := pxapi.SerialPath(v).Validate(); err != nil {
+									return diag.Errorf("serial type must be 'socket' or match the following regex `/dev/.+`, got: %s", v)
+								}
+								return nil
+							},
 						},
 					},
 				},
