@@ -1454,7 +1454,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	mapToTerraform_CloudInit(config.CloudInit, d)
 	mapToTerraform_Memory(config.Memory, d)
 	if len(config.Serials) != 0 {
-		d.Set("serials", mapToTerraform_Serials(config.Serials))
+		d.Set("serial", mapToTerraform_Serials(config.Serials))
 	}
 
 	// Some dirty hacks to populate undefined keys with default values.
@@ -2944,8 +2944,8 @@ func mapToSDK_Serials(d *schema.ResourceData) pxapi.SerialInterfaces {
 		pxapi.SerialID1: pxapi.SerialInterface{Delete: true},
 		pxapi.SerialID2: pxapi.SerialInterface{Delete: true},
 		pxapi.SerialID3: pxapi.SerialInterface{Delete: true}}
-	serialsMap := d.Get("serials").([]interface{})
-	for _, serial := range serialsMap {
+	serialsMap := d.Get("serial").(*schema.Set)
+	for _, serial := range serialsMap.List() {
 		serialMap := serial.(map[string]interface{})
 		newSerial := pxapi.SerialInterface{Delete: false}
 		serialType := serialMap["type"].(string)
