@@ -3614,16 +3614,16 @@ func mapToSDK_QemuStorages(d *schema.ResourceData) (*pxapi.QemuStorages, diag.Di
 			}
 		}
 	} else {
-	schemaItem := d.Get("disks").([]interface{})
-	if len(schemaItem) == 1 {
-		schemaStorages, ok := schemaItem[0].(map[string]interface{})
-		if ok {
+		schemaItem := d.Get("disks").([]interface{})
+		if len(schemaItem) == 1 {
+			schemaStorages, ok := schemaItem[0].(map[string]interface{})
+			if ok {
 				mapToSDK_QemuIdeDisks_Disks(storages.Ide, schemaStorages)
 				mapToSDK_QemuSataDisks_Disks(storages.Sata, schemaStorages)
 				mapToSDK_QemuScsiDisks_Disks(storages.Scsi, schemaStorages)
 				mapToSDK_QemuVirtIODisks_Disks(storages.VirtIO, schemaStorages)
+			}
 		}
-	}
 	}
 	return &storages, diags
 }
@@ -4412,17 +4412,17 @@ func schema_DiskSerial() *schema.Schema {
 func schema_DiskSize(s schema.Schema) *schema.Schema {
 	s.Type = schema.TypeString
 	s.ValidateDiagFunc = func(i interface{}, k cty.Path) diag.Diagnostics {
-			v, ok := i.(string)
-			if !ok {
-				return diag.Errorf(errorString, k)
-			}
-			if !regexp.MustCompile(`^[123456789]\d*[KMGT]?$`).MatchString(v) {
-				return diag.Errorf("%s must match the following regex ^[123456789]\\d*[KMGT]?$", k)
-			}
-			return nil
+		v, ok := i.(string)
+		if !ok {
+			return diag.Errorf(errorString, k)
+		}
+		if !regexp.MustCompile(`^[123456789]\d*[KMGT]?$`).MatchString(v) {
+			return diag.Errorf("%s must match the following regex ^[123456789]\\d*[KMGT]?$", k)
+		}
+		return nil
 	}
 	s.DiffSuppressFunc = func(k, old, new string, d *schema.ResourceData) bool {
-			return convert_SizeStringToKibibytes_Unsafe(old) == convert_SizeStringToKibibytes_Unsafe(new)
+		return convert_SizeStringToKibibytes_Unsafe(old) == convert_SizeStringToKibibytes_Unsafe(new)
 	}
 	return &s
 }
