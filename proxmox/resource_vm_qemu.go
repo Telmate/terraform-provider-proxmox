@@ -2900,8 +2900,15 @@ func mapToStruct_IsoFile(iso string) *pxapi.IsoFile {
 	return &pxapi.IsoFile{File: file, Storage: storage}
 }
 
-func mapToSDK_QemuCdRom_Disk(slot string, schema map[string]interface{}) *pxapi.QemuCdRom {
-	return &pxapi.QemuCdRom{Iso: mapToStruct_IsoFile(schema["iso"].(string))}
+func mapToSDK_QemuCdRom_Disk(slot string, schema map[string]interface{}) (*pxapi.QemuCdRom, diag.Diagnostics) {
+	diags := warnings_CdromAndCloudinit(slot, "cdrom", schema)
+	if schema["storage"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "storage", "type", "cdrom", ""))
+	}
+	if schema["passthrough"].(bool) {
+		return &pxapi.QemuCdRom{Passthrough: true}, diags
+	}
+	return &pxapi.QemuCdRom{Iso: mapToStruct_IsoFile(schema["iso"].(string))}, diags
 }
 
 func mapToSDK_QemuCdRom_Disks(schema map[string]interface{}) (cdRom *pxapi.QemuCdRom) {
@@ -2919,11 +2926,18 @@ func mapToSDK_QemuCdRom_Disks(schema map[string]interface{}) (cdRom *pxapi.QemuC
 	}
 }
 
-func mapToSDK_QemuCloudInit_Disk(slot string, schema map[string]interface{}) *pxapi.QemuCloudInitDisk {
+func mapToSDK_QemuCloudInit_Disk(slot string, schema map[string]interface{}) (*pxapi.QemuCloudInitDisk, diag.Diagnostics) {
+	diags := warnings_CdromAndCloudinit(slot, "cloudinit", schema)
+	if schema["iso"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "iso", "type", "cloudinit", ""))
+	}
+	if schema["passthrough"].(bool) {
+		diags = append(diags, warningDisk(slot, "passthrough", "type", "cloudinit", ""))
+	}
 	return &pxapi.QemuCloudInitDisk{
 		Format:  pxapi.QemuDiskFormat_Raw,
 		Storage: schema["storage"].(string),
-	}
+	}, diags
 }
 
 func mapToSDK_QemuCloudInit_Disks(schemaItem []interface{}) (ci *pxapi.QemuCloudInitDisk) {
@@ -3025,6 +3039,15 @@ func mapToSDK_QemuIdeStorage_Disk(ide *pxapi.QemuIdeStorage, schema map[string]i
 	}
 	switch schema["type"].(string) {
 	case "disk":
+		if schema["iothread"].(bool) {
+			diags = append(diags, warningDisk(slot, "iothread", "slot", slot, ""))
+		}
+		if schema["iso"].(string) != "" {
+			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+		}
+		if schema["readonly"].(bool) {
+			diags = append(diags, warningDisk(slot, "readonly", "slot", slot, ""))
+		}
 		if schema["passthrough"].(bool) { // passthrough disk
 			ide.Passthrough = &pxapi.QemuIdePassthrough{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3037,6 +3060,7 @@ func mapToSDK_QemuIdeStorage_Disk(ide *pxapi.QemuIdeStorage, schema map[string]i
 				Replicate:     schema["replicate"].(bool),
 				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
 				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			diags = append(diags, warnings_DiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			ide.Disk = &pxapi.QemuIdeDisk{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3054,11 +3078,14 @@ func mapToSDK_QemuIdeStorage_Disk(ide *pxapi.QemuIdeStorage, schema map[string]i
 			diags = append(diags, tmpDiags...)
 			ide.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
 			diags = append(diags, tmpDiags...)
+			if schema["disk_file"].(string) != "" {
+				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			}
 		}
 	case "cdrom":
-		ide.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+		ide.CdRom, diags = mapToSDK_QemuCdRom_Disk(slot, schema)
 	case "cloudinit":
-		ide.CloudInit = mapToSDK_QemuCloudInit_Disk(slot, schema)
+		ide.CloudInit, diags = mapToSDK_QemuCloudInit_Disk(slot, schema)
 	}
 	return
 }
@@ -3161,6 +3188,15 @@ func mapToSDK_QemuSataStorage_Disk(sata *pxapi.QemuSataStorage, schema map[strin
 	}
 	switch schema["type"].(string) {
 	case "disk":
+		if schema["iothread"].(bool) {
+			diags = append(diags, warningDisk(slot, "iothread", "slot", slot, ""))
+		}
+		if schema["iso"].(string) != "" {
+			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+		}
+		if schema["readonly"].(bool) {
+			diags = append(diags, warningDisk(slot, "readonly", "slot", slot, ""))
+		}
 		if schema["passthrough"].(bool) { // passthrough disk
 			sata.Passthrough = &pxapi.QemuSataPassthrough{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3173,6 +3209,7 @@ func mapToSDK_QemuSataStorage_Disk(sata *pxapi.QemuSataStorage, schema map[strin
 				Replicate:     schema["replicate"].(bool),
 				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
 				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			diags = append(diags, warnings_DiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			sata.Disk = &pxapi.QemuSataDisk{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3190,11 +3227,14 @@ func mapToSDK_QemuSataStorage_Disk(sata *pxapi.QemuSataStorage, schema map[strin
 			diags = append(diags, tmpDiags...)
 			sata.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
 			diags = append(diags, tmpDiags...)
+			if schema["disk_file"].(string) != "" {
+				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			}
 		}
 	case "cdrom":
-		sata.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+		sata.CdRom, diags = mapToSDK_QemuCdRom_Disk(slot, schema)
 	case "cloudinit":
-		sata.CloudInit = mapToSDK_QemuCloudInit_Disk(slot, schema)
+		sata.CloudInit, diags = mapToSDK_QemuCloudInit_Disk(slot, schema)
 	}
 	return
 }
@@ -3372,6 +3412,9 @@ func mapToSDK_QemuScsiStorage_Disk(scsi *pxapi.QemuScsiStorage, schema map[strin
 	}
 	switch schema["type"].(string) {
 	case "disk":
+		if schema["iso"].(string) != "" {
+			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+		}
 		if schema["passthrough"].(bool) { // passthrough disk
 			scsi.Passthrough = &pxapi.QemuScsiPassthrough{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3386,6 +3429,7 @@ func mapToSDK_QemuScsiStorage_Disk(scsi *pxapi.QemuScsiStorage, schema map[strin
 				Replicate:     schema["replicate"].(bool),
 				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
 				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			diags = append(diags, warnings_DiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			scsi.Disk = &pxapi.QemuScsiDisk{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3405,11 +3449,14 @@ func mapToSDK_QemuScsiStorage_Disk(scsi *pxapi.QemuScsiStorage, schema map[strin
 			diags = append(diags, tmpDiags...)
 			scsi.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
 			diags = append(diags, tmpDiags...)
+			if schema["disk_file"].(string) != "" {
+				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			}
 		}
 	case "cdrom":
-		scsi.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+		scsi.CdRom, diags = mapToSDK_QemuCdRom_Disk(slot, schema)
 	case "cloudinit":
-		scsi.CloudInit = mapToSDK_QemuCloudInit_Disk(slot, schema)
+		scsi.CloudInit, diags = mapToSDK_QemuCloudInit_Disk(slot, schema)
 	}
 	return
 }
@@ -3651,6 +3698,12 @@ func mapToSDK_QemuVirtIOStorage_Disk(virtio *pxapi.QemuVirtIOStorage, schema map
 	}
 	switch schema["type"].(string) {
 	case "disk":
+		if schema["emulatessd"].(bool) {
+			diags = append(diags, warningDisk(slot, "emulatessd", "slot", slot, ""))
+		}
+		if schema["iso"].(string) != "" {
+			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+		}
 		if schema["passthrough"].(bool) { // passthrough disk
 			virtio.Passthrough = &pxapi.QemuVirtIOPassthrough{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3664,6 +3717,7 @@ func mapToSDK_QemuVirtIOStorage_Disk(virtio *pxapi.QemuVirtIOStorage, schema map
 				Replicate:     schema["replicate"].(bool),
 				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
 				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
+			diags = append(diags, warnings_DiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			virtio.Disk = &pxapi.QemuVirtIODisk{
 				AsyncIO:       pxapi.QemuDiskAsyncIO(schema["asyncio"].(string)),
@@ -3682,9 +3736,12 @@ func mapToSDK_QemuVirtIOStorage_Disk(virtio *pxapi.QemuVirtIOStorage, schema map
 			diags = append(diags, tmpDiags...)
 			virtio.Disk.Storage, tmpDiags = mapToSDK_Storage_Disk(slot, schema)
 			diags = append(diags, tmpDiags...)
+			if schema["disk_file"].(string) != "" {
+				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			}
 		}
 	case "cdrom":
-		virtio.CdRom = mapToSDK_QemuCdRom_Disk(slot, schema)
+		virtio.CdRom, diags = mapToSDK_QemuCdRom_Disk(slot, schema)
 	case "cloudinit":
 		return diag.Diagnostics{{
 			Severity: diag.Error,
@@ -4416,4 +4473,95 @@ func schema_PassthroughSize() *schema.Schema {
 		Type:     schema.TypeString,
 		Computed: true,
 	}
+}
+
+func warningDisk(slot, setting, property, value, extra string) diag.Diagnostic {
+	return diag.Diagnostic{
+		Severity: diag.Warning,
+		Summary:  "slot: " + slot + " " + setting + " is ignored when " + property + " = " + value + extra}
+}
+
+func warnings_CdromAndCloudinit(slot, kind string, schema map[string]interface{}) (diags diag.Diagnostics) {
+	if schema["asyncio"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "asyncio", "type", kind, ""))
+	}
+	if schema["cache"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "cache", "type", kind, ""))
+	}
+	if schema["discard"].(bool) {
+		diags = append(diags, warningDisk(slot, "discard", "type", kind, ""))
+	}
+	if schema["disk_file"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "disk_file", "type", kind, ""))
+	}
+	if schema["emulatessd"].(bool) {
+		diags = append(diags, warningDisk(slot, "emulatessd", "type", kind, ""))
+	}
+	if schema["iops_r_burst"].(int) != 0 {
+		diags = append(diags, warningDisk(slot, "iops_r_burst", "type", kind, ""))
+	}
+	if schema["iops_r_burst_length"].(int) != 0 {
+		diags = append(diags, warningDisk(slot, "iops_r_burst_length", "type", kind, ""))
+	}
+	if schema["iops_r_concurrent"].(int) != 0 {
+		diags = append(diags, warningDisk(slot, "iops_r_concurrent", "type", kind, ""))
+	}
+	if schema["iops_wr_burst"].(int) != 0 {
+		diags = append(diags, warningDisk(slot, "iops_wr_burst", "type", kind, ""))
+	}
+	if schema["iops_wr_burst_length"].(int) != 0 {
+		diags = append(diags, warningDisk(slot, "iops_wr_burst_length", "type", kind, ""))
+	}
+	if schema["iops_wr_concurrent"].(int) != 0 {
+		diags = append(diags, warningDisk(slot, "iops_wr_concurrent", "type", kind, ""))
+	}
+	if schema["iothread"].(bool) {
+		diags = append(diags, warningDisk(slot, "iothread", "type", kind, ""))
+	}
+	if schema["mbps_r_burst"].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, "mbps_r_burst", "type", kind, ""))
+	}
+	if schema["mbps_r_concurrent"].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, "mbps_r_concurrent", "type", kind, ""))
+	}
+	if schema["mbps_wr_burst"].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, "mbps_wr_burst", "type", kind, ""))
+	}
+	if schema["mbps_wr_concurrent"].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, "mbps_wr_concurrent", "type", kind, ""))
+	}
+	if schema["readonly"].(bool) {
+		diags = append(diags, warningDisk(slot, "readonly", "type", kind, ""))
+	}
+	if schema["replicate"].(bool) {
+		diags = append(diags, warningDisk(slot, "replicate", "type", kind, ""))
+	}
+	if schema["serial"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "serial", "type", kind, ""))
+	}
+	if schema["size"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "size", "type", kind, ""))
+	}
+	if schema["wwn"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "wwn", "type", kind, ""))
+	}
+	return
+}
+
+func warnings_DiskPassthrough(slot string, schema map[string]interface{}) diag.Diagnostics {
+	if schema["storage"].(string) != "" {
+		return diag.Diagnostics{warningDisk(slot, "storage", "type", "passthrough", "and slot = "+slot)}
+	}
+	return diag.Diagnostics{}
+}
+
+func warning_iothread_Disk(slot, property, value, extra string) diag.Diagnostic {
+	return warningDisk(slot, "iothread", property, value, extra)
+}
+
+func warning_iso_Disk(slot string, schema map[string]interface{}) diag.Diagnostics {
+	if schema["iso"].(string) != "" {
+		return diag.Diagnostics{warningDisk(slot, "iso", "type", "disk", "")}
+	}
+	return nil
 }
