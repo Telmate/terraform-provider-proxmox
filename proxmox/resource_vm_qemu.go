@@ -543,8 +543,7 @@ func resourceVmQemu() *schema.Resource {
 								return diag.Errorf("type must be one of 'disk', 'cdrom', 'cloudinit'")
 							}},
 						"wwn": schema_DiskWWN(),
-					}},
-			},
+					}}},
 			"disks": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -2047,24 +2046,6 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 
 // Map struct to the terraform schema
 
-func mapToTerraform_QemuDisks_Disks(config pxapi.QemuStorages) []interface{} {
-	ide := mapToTerraform_QemuIdeDisks_Disks(config.Ide)
-	sata := mapToTerraform_QemuSataDisks_Disks(config.Sata)
-	scsi := mapToTerraform_QemuScsiDisks_Disks(config.Scsi)
-	virtio := mapToTerraform_QemuVirtIODisks_Disks(config.VirtIO)
-	if ide == nil && sata == nil && scsi == nil && virtio == nil {
-		return nil
-	}
-	return []interface{}{
-		map[string]interface{}{
-			"ide":    ide,
-			"sata":   sata,
-			"scsi":   scsi,
-			"virtio": virtio,
-		},
-	}
-}
-
 func mapFormStruct_IsoFile(config *pxapi.IsoFile) string {
 	if config == nil {
 		return ""
@@ -2137,6 +2118,24 @@ func mapToTerraform_QemuDisks_Disk(config pxapi.QemuStorages) []map[string]inter
 		return nil
 	}
 	return disks
+}
+
+func mapToTerraform_QemuDisks_Disks(config pxapi.QemuStorages) []interface{} {
+	ide := mapToTerraform_QemuIdeDisks_Disks(config.Ide)
+	sata := mapToTerraform_QemuSataDisks_Disks(config.Sata)
+	scsi := mapToTerraform_QemuScsiDisks_Disks(config.Scsi)
+	virtio := mapToTerraform_QemuVirtIODisks_Disks(config.VirtIO)
+	if ide == nil && sata == nil && scsi == nil && virtio == nil {
+		return nil
+	}
+	return []interface{}{
+		map[string]interface{}{
+			"ide":    ide,
+			"sata":   sata,
+			"scsi":   scsi,
+			"virtio": virtio,
+		},
+	}
 }
 
 func mapFormStruct_QemuDiskBandwidth(params map[string]interface{}, config pxapi.QemuDiskBandwidth) {
