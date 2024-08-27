@@ -151,7 +151,8 @@ func Test_HasRequiredIP(t *testing.T) {
 
 func Test_ParseCloudInitInterface(t *testing.T) {
 	type testInput struct {
-		ci       string
+		ci       pxapi.CloudInitNetworkConfig
+		ciCustom bool
 		skipIPv4 bool
 		skipIPv6 bool
 	}
@@ -161,60 +162,138 @@ func Test_ParseCloudInitInterface(t *testing.T) {
 		output connectionInfo
 	}{
 		{name: `IPv4=DHCP`,
-			input:  testInput{ci: "ip=dhcp"},
-			output: connectionInfo{SkipIPv6: true}},
+			input: testInput{ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+				DHCP: true}}},
+			output: connectionInfo{
+				SkipIPv6: true}},
+		{name: `IPv4=DHCP ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+					DHCP: true}},
+				ciCustom: true}},
 		{name: `IPv4=DHCP SkipIPv4`,
 			input: testInput{
-				ci:       "ip=dhcp",
+				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+					DHCP: true}},
 				skipIPv4: true},
 			output: connectionInfo{
 				SkipIPv4: true,
 				SkipIPv6: true}},
+		{name: `IPv4=DHCP SkipIPv4 ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+					DHCP: true}},
+				ciCustom: true,
+				skipIPv4: true},
+			output: connectionInfo{SkipIPv4: true}},
 		{name: `IPv4=Static`,
-			input: testInput{ci: "ip=192.168.1.1/24"},
+			input: testInput{ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+				Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}}},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv4: "192.168.1.1"},
 				SkipIPv6: true}},
+		{name: `IPv4=Static ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
+				ciCustom: true},
+			output: connectionInfo{IPs: primaryIPs{IPv4: "192.168.1.1"}}},
 		{name: `IPv4=Static IPv6=Static`,
-			input: testInput{ci: "ip=192.168.1.1/24,ip6=2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"},
+			input: testInput{ci: pxapi.CloudInitNetworkConfig{
+				IPv4: &pxapi.CloudInitIPv4Config{
+					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))},
+				IPv6: &pxapi.CloudInitIPv6Config{
+					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}}},
+			output: connectionInfo{IPs: primaryIPs{
+				IPv4: "192.168.1.1",
+				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}}},
+		{name: `IPv4=Static IPv6=Static ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{
+					IPv4: &pxapi.CloudInitIPv4Config{
+						Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))},
+					IPv6: &pxapi.CloudInitIPv6Config{
+						Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
+				ciCustom: true},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv4: "192.168.1.1",
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}}},
 		{name: `IPv4=Static SkipIPv4`,
 			input: testInput{
-				ci:       "ip=192.168.1.1/24",
+				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
 				skipIPv4: true},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv4: "192.168.1.1"},
 				SkipIPv4: true,
 				SkipIPv6: true}},
+		{name: `IPv4=Static SkipIPv4 ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
+					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
+				ciCustom: true,
+				skipIPv4: true},
+			output: connectionInfo{IPs: primaryIPs{
+				IPv4: "192.168.1.1"},
+				SkipIPv4: true}},
 		{name: `IPv6=DHCP`,
-			input:  testInput{ci: "ip6=dhcp"},
+			input: testInput{ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+				DHCP: true}}},
 			output: connectionInfo{SkipIPv4: true}},
+		{name: `IPv6=DHCP ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+					DHCP: true}},
+				ciCustom: true}},
 		{name: `IPv6=DHCP SkipIPv6`,
 			input: testInput{
-				ci:       "ip6=dhcp",
+				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+					DHCP: true}},
 				skipIPv6: true},
 			output: connectionInfo{
 				SkipIPv4: true,
 				SkipIPv6: true}},
+		{name: `IPv6=DHCP SkipIPv6 ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+					DHCP: true}},
+				ciCustom: true,
+				skipIPv6: true},
+			output: connectionInfo{SkipIPv6: true}},
 		{name: `IPv6=Static`,
-			input: testInput{ci: "ip6=2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"},
+			input: testInput{ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+				Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}}},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
 				SkipIPv4: true}},
+		{name: `IPv6=Static ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
+				ciCustom: true},
+			output: connectionInfo{IPs: primaryIPs{IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}}},
 		{name: `IPv6=Static SkipIPv6`,
 			input: testInput{
-				ci:       "ip6=2001:0db8:85a3:0000:0000:8a2e:0370:7334/64",
+				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
 				skipIPv6: true},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
 				SkipIPv4: true,
 				SkipIPv6: true}},
+		{name: `IPv6=Static SkipIPv6 ciCustom`,
+			input: testInput{
+				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
+					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
+				ciCustom: true,
+				skipIPv6: true},
+			output: connectionInfo{IPs: primaryIPs{
+				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+				SkipIPv6: true}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			require.Equal(t, test.output, parseCloudInitInterface(test.input.ci, test.input.skipIPv4, test.input.skipIPv6))
+			require.Equal(t, test.output, parseCloudInitInterface(test.input.ci, test.input.ciCustom, test.input.skipIPv4, test.input.skipIPv6))
 		})
 	}
 }
