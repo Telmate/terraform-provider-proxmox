@@ -4678,14 +4678,3 @@ func warnings_DiskPassthrough(slot string, schema map[string]interface{}) diag.D
 	}
 	return diag.Diagnostics{}
 }
-
-func warning_iothread_Disk(slot, property, value, extra string) diag.Diagnostic {
-	return warningDisk(slot, "iothread", property, value, extra)
-}
-
-func warning_iso_Disk(slot string, schema map[string]interface{}) diag.Diagnostics {
-	if schema["iso"].(string) != "" {
-		return diag.Diagnostics{warningDisk(slot, "iso", "type", "disk", "")}
-	}
-	return nil
-}
