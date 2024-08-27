@@ -175,6 +175,82 @@ details.
 | `queues`    | `int`  | `1`           | Number of packet queues to be used on the device. Requires `virtio` model to have an effect. |
 | `link_down` | `bool` | `false`       | Whether this interface should be disconnected (like pulling the plug). |
 
+### Disk Block
+
+The `disk` block is used to configure the disk devices. It may be specified multiple times. This block does not diff as pretty as the `disks` block, but it is more flexible for modules. Putting the disks in alphanumeric order based on the value of `slot` is recommended for readability.
+
+Due to the complexity of the `disk` block, there is a settings matrix that can be found in the [Disk compatibility matrix](#disk-compatibility-matrix).
+
+| Argument             | Type   |Default| Description|
+|:---------------------|:------:|:-----:|:-----------|
+|`asyncio`             |`string`|       |The drive's asyncio setting. Options: `io_uring`, `native`, `threads`|
+|`backup`              |`bool`  |`true` |Whether the drive should be included when making backups.|
+|`cache`               |`string`|       |The drive’s cache mode. Options: `directsync`, `none`, `unsafe`, `writeback`, `writethrough`.|
+|`discard`             |`bool`  |`false`|Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveats too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info.|
+|`disk_file`           |`string`|       |The path to the disk file. **Required** when `type`=`disk` and `passthrough`=`true`|
+|`emulatessd`          |`bool`  |`false`|Whether to expose this drive as an SSD, rather than a rotational hard disk.|
+|`format`              |`string`|`raw`  |The drive’s backing file’s data format.|
+|`id`                  |`int`   |       |**Computed** Unique id of the disk.|
+|`iops_r_burst`        |`int`   |`0`    |Maximum number of iops while reading in short bursts. `0` means unlimited.|
+|`iops_r_burst_length` |`int`   |`0`    |Length of the read burst duration in seconds. `0` means the default duration dictated by proxmox.|
+|`iops_r_concurrent`   |`int`   |`0`    |Maximum number of iops while reading concurrently. `0` means unlimited.|
+|`iops_wr_burst`       |`int`   |`0`    |Maximum number of iops while writing in short bursts. `0` means unlimited.|
+|`iops_wr_burst_length`|`int`   |`0`    |Length of the write burst duration in seconds. `0` means the default duration dictated by proxmox.|
+|`iops_wr_concurrent`  |`int`   |`0`    |Maximum number of iops while writing concurrently. `0` means unlimited.|
+|`iothread`            |`bool`  |`false`|Whether to use iothreads for this drive. Only effective when the the emulated controller type (`scsihw` top level block argument) is `virtio-scsi-single`.|
+|`iso`                 |`string`|       |The name of the ISO image to mount to the VM in the format: [storage pool]:iso/[name of iso file]. Note that `iso` is mutually exclusive with `passthrough`.|
+|`linked_disk_id`      |`int`   |       |**Computed** The `vmid` of the linked vm this disk was cloned from.|
+|`mbps_r_burst`        |`float` |`0.0`  |Maximum read speed in megabytes per second. `0` means unlimited.|
+|`mbps_r_concurrent`   |`float` |`0.0`  |Maximum read speed in megabytes per second. `0` means unlimited.|
+|`mbps_wr_burst`       |`float` |`0.0`  |Maximum write speed in megabytes per second. `0` means unlimited.|
+|`mbps_wr_concurrent`  |`float` |`0.0`  |Maximum throttled write pool in megabytes per second. `0` means unlimited.|
+|`passthrough`         |`bool`  |`false`|Wether the physical cdrom drive should be passed through.|
+|`readonly`            |`bool`  |`false`|Whether the drive should be readonly.|
+|`replicate`           |`bool`  |`false`|Whether the drive should considered for replication jobs.|
+|`serial`              |`string`|       |The serial number of the disk.|
+|`size`                |`string`|       |The size of the created disk. Accepts `K` for kibibytes, `M` for mebibytes, `G` for gibibytes, `T` for tibibytes. When only a number is provided gibibytes is assumed. **Required** when `type`=`disk` and `passthrough`=`false`, **Computed** when `type`=`disk` and `passthrough`=`true`. |
+|`slot`                |`string`|       |**Required** The slot id of the disk.|
+|`storage`             |`string`|       |Required when `type`=`disk` and `passthrough`=`false`. The name of the storage pool on which to store the disk.|
+|`type`                |`string`|`disk` |The type of disk to create. Options: `cdrom`, `cloudinit` ,`disk`.|
+|`wwn`                 |`string`|       |The WWN of the disk.|
+
+#### Disk compatibility matrix
+
+**Note** `cloudinit` can only be used with `ide`, `sata` and `scsi` disk types.
+
+| Argument             | Disk Type         | Disk Slot           |Passthrough|
+|:---------------------|:-----------------:|:-------------------:|:---------:|
+|`asyncio`             |`disk`             |`all`                |`both`     |
+|`backup`              |`disk`             |`all`                |`both`     |
+|`cache`               |`disk`             |`all`                |`both`     |
+|`discard`             |`disk`             |`all`                |`both`     |
+|`disk_file`           |`disk`             |`all`                |`true`     |
+|`emulatessd`          |`disk`             |`ide`, `sata`, `scsi`|`both`     |
+|`format`              |`disk`             |`all`                |`both`     |
+|`id`                  |`disk`             |`all`                |`false`    |
+|`iops_r_burst`        |`disk`             |`all`                |`both`     |
+|`iops_r_burst_length` |`disk`             |`all`                |`both`     |
+|`iops_r_concurrent`   |`disk`             |`all`                |`both`     |
+|`iops_wr_burst`       |`disk`             |`all`                |`both`     |
+|`iops_wr_burst_length`|`disk`             |`all`                |`both`     |
+|`iops_wr_concurrent`  |`disk`             |`all`                |`false`    |
+|`iothread`            |`disk`             |`scsi`, `virtio`     |`false`    |
+|`iso`                 |`iso`              |`all`                |`false`    |
+|`linked_disk_id`      |`disk`             |`all`                |`false`    |
+|`mbps_r_burst`        |`disk`             |`all`                |`false`    |
+|`mbps_r_concurrent`   |`disk`             |`all`                |`false`    |
+|`mbps_wr_burst`       |`disk`             |`all`                |`false`    |
+|`mbps_wr_concurrent`  |`disk`             |`all`                |`false`    |
+|`passthrough`         |`disk`, `iso`      |`all`                |`false`    |
+|`readonly`            |`disk`             |`scsi`, `virtio`     |`false`    |
+|`replicate`           |`disk`             |`all`                |`false`    |
+|`serial`              |`disk`             |`all`                |`false`    |
+|`size`                |`disk`             |`all`                |`false`    |
+|`slot`                |`disk`, `iso`      |`all`                |`false`    |
+|`storage`             |`disk`, `cloudinit`|`all`                |`false`    |
+|`type`                |`disk`             |`all`                |`false`    |
+|`wwn`                 |`disk`             |`all`                |`false`    |
+
 ### Disks Block
 
 The `disks` block is used to configure the disk devices. It may be specified once. There are four types of disk `ide`,`sata`,`scsi` and `virtio`. Configuration for these sub types can be found in their respective chapters:
