@@ -74,10 +74,12 @@ func _resourcePoolRead(d *schema.ResourceData, meta interface{}) error {
 		return fmt.Errorf("unexpected error when trying to read and parse resource id: %v", err)
 	}
 
+	pool := pxapi.PoolName(poolID)
+
 	logger, _ := CreateSubLogger("resource_pool_read")
 	logger.Info().Str("poolid", poolID).Msg("Reading configuration for poolid")
 
-	poolInfo, err := client.GetPoolInfo(poolID)
+	poolInfo, err := pool.Get(client)
 	if err != nil {
 		d.SetId("")
 		return nil
@@ -85,8 +87,8 @@ func _resourcePoolRead(d *schema.ResourceData, meta interface{}) error {
 
 	d.SetId(clusterResourceId("pools", poolID))
 	d.Set("comment", "")
-	if poolInfo["comment"] != nil {
-		d.Set("comment", poolInfo["comment"].(string))
+	if poolInfo.Comment != nil {
+		d.Set("comment", poolInfo.Comment)
 	}
 
 	// DEBUG print the read result
