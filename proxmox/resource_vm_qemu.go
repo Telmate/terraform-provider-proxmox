@@ -1394,12 +1394,14 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	vmState, err := client.GetVmState(vmr)
-	log.Printf("[DEBUG] VM status: %s", vmState["status"])
-	if err == nil {
-		d.Set("vm_state", vmState["status"])
+	if err != nil {
+		return diag.FromErr(err)
 	}
-	if err == nil && vmState["status"] == "running" {
+	log.Printf("[DEBUG] VM status: %s", vmState["status"])
+	d.Set("vm_state", vmState["status"])
+	if vmState["status"] == "running" {
 		log.Printf("[DEBUG] VM is running, checking the IP")
+		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
 		diags = append(diags, initConnInfo(d, client, vmr, config)...)
 	} else {
 		// Optional convenience attributes for provisioners
@@ -1409,9 +1411,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		diags = append(diags, diag.FromErr(err)...)
 		err = d.Set("ssh_port", nil)
 		diags = append(diags, diag.FromErr(err)...)
-	}
-	if err != nil {
-		return diag.FromErr(err)
 	}
 
 	logger.Debug().Int("vmid", vmID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
@@ -1870,11 +1869,18 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 	// get all information we can from qemu agent until the timer runs out
 	if ciAgentEnabled {
 		var waitedTime int
+		// TODO rework this logic when network interfaces are properly handled in the SDK
 		vmConfig, err := client.GetVmConfig(vmr)
 		if err != nil {
 			return primaryIPs{}, diag.FromErr(err)
 		}
-		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
+		var primaryMacAddress string
+		for i := 0; i < 16; i++ {
+			if _, ok := vmConfig["net"+strconv.Itoa(i)]; ok {
+				primaryMacAddress = macAddressRegex.FindString(vmConfig["net"+strconv.Itoa(i)].(string))
+				break
+			}
+		}
 		for time.Now().Before(endTime) {
 			var interfaces []pxapi.AgentNetworkInterface
 			interfaces, err = vmr.GetAgentInformation(client, false)
@@ -1888,7 +1894,7 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 				if len(interfaces) > 0 { // agent returned some information
 					log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
 					logger.Debug().Int("vmid", vmr.VmId()).Msgf("QEMU Agent interfaces found: %v", interfaces)
-					conn = conn.parsePrimaryIPs(interfaces, net0MacAddress)
+					conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
 					if conn.hasRequiredIP() {
 						return conn.IPs, diag.Diagnostics{}
 					}
