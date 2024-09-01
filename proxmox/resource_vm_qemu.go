@@ -659,10 +659,28 @@ func resourceVmQemu() *schema.Resource {
 						"id": {
 							Type:     schema.TypeInt,
 							Required: true,
+							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+								v := i.(int)
+								if err := pxapi.SerialID(v).Validate(); err != nil {
+									return diag.Errorf("serial id must be between 0 and 3, got: %d", v)
+								}
+								return nil
+							},
 						},
 						"type": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "socket",
+							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+								v := i.(string)
+								if v == "socket" {
+									return nil
+								}
+								if err := pxapi.SerialPath(v).Validate(); err != nil {
+									return diag.Errorf("serial type must be 'socket' or match the following regex `/dev/.+`, got: %s", v)
+								}
+								return nil
+							},
 						},
 					},
 				},
@@ -936,9 +954,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	qemuNetworks, _ := ExpandDevicesList(d.Get("network").([]interface{}))
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
-	serials := d.Get("serial").(*schema.Set)
-	qemuSerials, _ := DevicesSetToMap(serials)
-
 	qemuPCIDevices, _ := ExpandDevicesList(d.Get("hostpci").([]interface{}))
 
 	qemuUsbs, _ := ExpandDevicesList(d.Get("usb").([]interface{}))
@@ -967,7 +982,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
 		QemuNetworks:   qemuNetworks,
-		QemuSerials:    qemuSerials,
+		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -1184,9 +1199,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 	logger.Debug().Int("vmid", vmID).Msgf("Processed NetworkSet into qemuNetworks as %+v", qemuNetworks)
 
-	serials := d.Get("serial").(*schema.Set)
-	qemuSerials, _ := DevicesSetToMap(serials)
-
 	qemuPCIDevices, err := ExpandDevicesList(d.Get("hostpci").([]interface{}))
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("error while processing HostPCI configuration: %v", err))
@@ -1228,7 +1240,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
 		QemuNetworks:   qemuNetworks,
-		QemuSerials:    qemuSerials,
+		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -1466,12 +1478,14 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	vmState, err := client.GetVmState(vmr)
-	log.Printf("[DEBUG] VM status: %s", vmState["status"])
-	if err == nil {
-		d.Set("vm_state", vmState["status"])
+	if err != nil {
+		return diag.FromErr(err)
 	}
-	if err == nil && vmState["status"] == "running" {
+	log.Printf("[DEBUG] VM status: %s", vmState["status"])
+	d.Set("vm_state", vmState["status"])
+	if vmState["status"] == "running" {
 		log.Printf("[DEBUG] VM is running, checking the IP")
+		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
 		diags = append(diags, initConnInfo(d, client, vmr, config)...)
 	} else {
 		// Optional convenience attributes for provisioners
@@ -1481,9 +1495,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		diags = append(diags, diag.FromErr(err)...)
 		err = d.Set("ssh_port", nil)
 		diags = append(diags, diag.FromErr(err)...)
-	}
-	if err != nil {
-		return diag.FromErr(err)
 	}
 
 	logger.Debug().Int("vmid", vmID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
@@ -1516,6 +1527,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
 	mapToTerraform_Memory(config.Memory, d)
+	if len(config.Serials) != 0 {
+		d.Set("serial", mapToTerraform_Serials(config.Serials))
+	}
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"force_create", "define_connection_info"}
@@ -1545,6 +1559,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// read in the qemu hostpci
 	qemuUsbsDevices, _ := FlattenDevicesList(config.QemuUsbs)
+	qemuUsbsDevices, _ = DropElementsFromMap([]string{"id"}, qemuUsbsDevices)
 	logger.Debug().Int("vmid", vmID).Msgf("Usb Block Processed '%v'", config.QemuUsbs)
 	if err = d.Set("usb", qemuUsbsDevices); err != nil {
 		return diag.FromErr(err)
@@ -1591,10 +1606,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	d.Set("pool", vmr.Pool())
-	// Serials
-	configSerialsSet := d.Get("serial").(*schema.Set)
-	activeSerialSet := UpdateDevicesSet(configSerialsSet, config.QemuSerials, "id")
-	d.Set("serial", activeSerialSet)
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
@@ -1944,11 +1955,18 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 	// get all information we can from qemu agent until the timer runs out
 	if ciAgentEnabled {
 		var waitedTime int
+		// TODO rework this logic when network interfaces are properly handled in the SDK
 		vmConfig, err := client.GetVmConfig(vmr)
 		if err != nil {
 			return primaryIPs{}, diag.FromErr(err)
 		}
-		net0MacAddress := macAddressRegex.FindString(vmConfig["net0"].(string))
+		var primaryMacAddress string
+		for i := 0; i < 16; i++ {
+			if _, ok := vmConfig["net"+strconv.Itoa(i)]; ok {
+				primaryMacAddress = macAddressRegex.FindString(vmConfig["net"+strconv.Itoa(i)].(string))
+				break
+			}
+		}
 		for time.Now().Before(endTime) {
 			var interfaces []pxapi.AgentNetworkInterface
 			interfaces, err = vmr.GetAgentInformation(client, false)
@@ -1962,7 +1980,7 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 				if len(interfaces) > 0 { // agent returned some information
 					log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
 					logger.Debug().Int("vmid", vmr.VmId()).Msgf("QEMU Agent interfaces found: %v", interfaces)
-					conn = conn.parsePrimaryIPs(interfaces, net0MacAddress)
+					conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
 					if conn.hasRequiredIP() {
 						return conn.IPs, diag.Diagnostics{}
 					}
@@ -2904,6 +2922,22 @@ func mapToTerraform_QemuVirtIOStorage_Disks(config *pxapi.QemuVirtIOStorage) []i
 		}
 	}
 	return mapToTerraform_QemuCdRom_Disks(config.CdRom)
+}
+
+func mapToTerraform_Serials(config pxapi.SerialInterfaces) []interface{} {
+	var index int
+	serials := make([]interface{}, len(config))
+	for i, e := range config {
+		localMap := map[string]interface{}{"id": int(i)}
+		if e.Socket {
+			localMap["type"] = "socket"
+		} else {
+			localMap["type"] = string(e.Path)
+		}
+		serials[index] = localMap
+		index++
+	}
+	return serials
 }
 
 // Map the terraform schema to sdk struct
@@ -3929,6 +3963,27 @@ func mapToSDK_QemuVirtIOStorage_Disks(virtio *pxapi.QemuVirtIOStorage, key strin
 		return
 	}
 	virtio.CdRom = mapToSDK_QemuCdRom_Disks(storageSchema)
+}
+
+func mapToSDK_Serials(d *schema.ResourceData) pxapi.SerialInterfaces {
+	serials := pxapi.SerialInterfaces{
+		pxapi.SerialID0: pxapi.SerialInterface{Delete: true},
+		pxapi.SerialID1: pxapi.SerialInterface{Delete: true},
+		pxapi.SerialID2: pxapi.SerialInterface{Delete: true},
+		pxapi.SerialID3: pxapi.SerialInterface{Delete: true}}
+	serialsMap := d.Get("serial").(*schema.Set)
+	for _, serial := range serialsMap.List() {
+		serialMap := serial.(map[string]interface{})
+		newSerial := pxapi.SerialInterface{Delete: false}
+		serialType := serialMap["type"].(string)
+		if serialType == "socket" {
+			newSerial.Socket = true
+		} else {
+			newSerial.Path = pxapi.SerialPath(serialType)
+		}
+		serials[pxapi.SerialID(serialMap["id"].(int))] = newSerial
+	}
+	return serials
 }
 
 func mapToSDK_Size_Disk(slot string, schema map[string]interface{}) (pxapi.QemuDiskSize, diag.Diagnostics) {

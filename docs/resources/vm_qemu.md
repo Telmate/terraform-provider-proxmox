@@ -543,9 +543,7 @@ See the [docs about EFI disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#
 
 ### Serial Block
 
-Create a serial device inside the VM (up to a maximum of 4 can be specified), and either pass through a host serial
-device (i.e. /dev/ttyS0), or create a unix socket on the host side. The order in which `serial` blocks are declared does
-not matter.
+Create a serial device inside the VM (up to a maximum of 4 can be specified), and either pass through a host serial device (i.e. /dev/ttyS0), or create a unix socket on the host side. The order in which `serial` blocks are declared does not matter.
 
 **WARNING**: Use with caution, as the docs indicate this device is experimental and users have reported issues with it.
 
@@ -555,7 +553,7 @@ details.
 | Argument | Type  | Default Value | Description                                                                                                            |
 | -------- | ----- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `id`     | `int` |               | **Required** The ID of the serial device. Must be unique, and between `0-3`.                                           |
-| `type`   | `str` |               | **Required** The type of serial device to create. Options: `socket`, or the path to a serial device like `/dev/ttyS0`. |
+| `type`   | `str` | `socket`      | The type of serial device to create. Options: `socket`, or the path to a serial device like `/dev/ttyS0`. |
 
 ### USB Block
 
