@@ -2105,9 +2105,10 @@ func mapToTerraform_Memory(config *pxapi.QemuMemory, d *schema.ResourceData) {
 // nil check is done by the caller
 func mapToTerraform_QemuCdRom_Disk_unsafe(config *pxapi.QemuCdRom) map[string]interface{} {
 	return map[string]interface{}{
-		"type":        "cdrom",
+		"backup":      true, // always true to avoid diff
+		"iso":         mapFormStruct_IsoFile(config.Iso),
 		"passthrough": config.Passthrough,
-		"iso":         mapFormStruct_IsoFile(config.Iso)}
+		"type":        "cdrom"}
 }
 
 func mapToTerraform_QemuCdRom_Disks(config *pxapi.QemuCdRom) []interface{} {
@@ -2129,8 +2130,9 @@ func mapToTerraform_QemuCdRom_Disks(config *pxapi.QemuCdRom) []interface{} {
 // nil check is done by the caller
 func mapToTerraform_QemuCloudInit_Disk_unsafe(config *pxapi.QemuCloudInitDisk) map[string]interface{} {
 	return map[string]interface{}{
-		"type":    "cloudinit",
-		"storage": config.Storage}
+		"backup":  true, // always true to avoid diff
+		"storage": config.Storage,
+		"type":    "cloudinit"}
 }
 
 // nil pointer check is done by the caller
