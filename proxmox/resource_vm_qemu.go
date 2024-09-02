@@ -493,7 +493,7 @@ func resourceVmQemu() *schema.Resource {
 						"discard":              {Type: schema.TypeBool, Optional: true},
 						"disk_file":            schema_PassthroughFile(schema.Schema{Optional: true}),
 						"emulatessd":           {Type: schema.TypeBool, Optional: true},
-						"format":               schema_DiskFormat(),
+						"format":               schema_DiskFormat(schema.Schema{}),
 						"id":                   schema_DiskId(),
 						"iops_r_burst":         schema_DiskBandwidthIopsBurst(),
 						"iops_r_burst_length":  schema_DiskBandwidthIopsBurstLength(),
@@ -3227,7 +3227,7 @@ func mapToSDK_QemuIdeStorage_Disk(ide *pxapi.QemuIdeStorage, schema map[string]i
 				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
 				Discard:       schema["discard"].(bool),
 				EmulateSSD:    schema["emulatessd"].(bool),
-				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				Format:        default_format(schema["format"].(string)),
 				Replicate:     schema["replicate"].(bool),
 				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
 				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
@@ -3376,7 +3376,7 @@ func mapToSDK_QemuSataStorage_Disk(sata *pxapi.QemuSataStorage, schema map[strin
 				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
 				Discard:       schema["discard"].(bool),
 				EmulateSSD:    schema["emulatessd"].(bool),
-				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				Format:        default_format(schema["format"].(string)),
 				Replicate:     schema["replicate"].(bool),
 				Serial:        pxapi.QemuDiskSerial(schema["serial"].(string)),
 				WorldWideName: pxapi.QemuWorldWideName(schema["wwn"].(string))}
@@ -3596,7 +3596,7 @@ func mapToSDK_QemuScsiStorage_Disk(scsi *pxapi.QemuScsiStorage, schema map[strin
 				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
 				Discard:       schema["discard"].(bool),
 				EmulateSSD:    schema["emulatessd"].(bool),
-				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				Format:        default_format(schema["format"].(string)),
 				IOThread:      schema["iothread"].(bool),
 				ReadOnly:      schema["readonly"].(bool),
 				Replicate:     schema["replicate"].(bool),
@@ -3883,7 +3883,7 @@ func mapToSDK_QemuVirtIOStorage_Disk(virtio *pxapi.QemuVirtIOStorage, schema map
 				Bandwidth:     mapToSDK_QemuDiskBandwidth_Disk(schema),
 				Cache:         pxapi.QemuDiskCache(schema["cache"].(string)),
 				Discard:       schema["discard"].(bool),
-				Format:        pxapi.QemuDiskFormat(schema["format"].(string)),
+				Format:        default_format(schema["format"].(string)),
 				IOThread:      schema["iothread"].(bool),
 				ReadOnly:      schema["readonly"].(bool),
 				Replicate:     schema["replicate"].(bool),
@@ -4194,7 +4194,7 @@ func schema_Ide(slot string) *schema.Schema {
 							"cache":          schema_DiskCache(),
 							"discard":        {Type: schema.TypeBool, Optional: true},
 							"emulatessd":     {Type: schema.TypeBool, Optional: true},
-							"format":         schema_DiskFormat(),
+							"format":         schema_DiskFormat(schema.Schema{Default: "raw"}),
 							"id":             schema_DiskId(),
 							"linked_disk_id": schema_LinkedDiskId(),
 							"replicate":      {Type: schema.TypeBool, Optional: true},
@@ -4252,7 +4252,7 @@ func schema_Sata(slot string) *schema.Schema {
 							"cache":          schema_DiskCache(),
 							"discard":        {Type: schema.TypeBool, Optional: true},
 							"emulatessd":     {Type: schema.TypeBool, Optional: true},
-							"format":         schema_DiskFormat(),
+							"format":         schema_DiskFormat(schema.Schema{Default: "raw"}),
 							"id":             schema_DiskId(),
 							"linked_disk_id": schema_LinkedDiskId(),
 							"replicate":      {Type: schema.TypeBool, Optional: true},
@@ -4310,7 +4310,7 @@ func schema_Scsi(slot string) *schema.Schema {
 							"cache":          schema_DiskCache(),
 							"discard":        {Type: schema.TypeBool, Optional: true},
 							"emulatessd":     {Type: schema.TypeBool, Optional: true},
-							"format":         schema_DiskFormat(),
+							"format":         schema_DiskFormat(schema.Schema{Default: "raw"}),
 							"id":             schema_DiskId(),
 							"iothread":       {Type: schema.TypeBool, Optional: true},
 							"linked_disk_id": schema_LinkedDiskId(),
@@ -4370,7 +4370,7 @@ func schema_Virtio(setting string) *schema.Schema {
 							"backup":         schema_DiskBackup(),
 							"cache":          schema_DiskCache(),
 							"discard":        {Type: schema.TypeBool, Optional: true},
-							"format":         schema_DiskFormat(),
+							"format":         schema_DiskFormat(schema.Schema{Default: "raw"}),
 							"id":             schema_DiskId(),
 							"iothread":       {Type: schema.TypeBool, Optional: true},
 							"linked_disk_id": schema_LinkedDiskId(),
@@ -4546,22 +4546,20 @@ func schema_DiskCache() *schema.Schema {
 	}
 }
 
-func schema_DiskFormat() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeString,
-		Optional: true,
-		Default:  "raw",
-		ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
-			v, ok := i.(string)
-			if !ok {
-				return diag.Errorf(errorString, k)
-			}
-			if err := pxapi.QemuDiskFormat(v).Validate(); err != nil {
-				return diag.FromErr(err)
-			}
-			return nil
-		},
+func schema_DiskFormat(s schema.Schema) *schema.Schema {
+	s.Type = schema.TypeString
+	s.Optional = true
+	s.ValidateDiagFunc = func(i interface{}, k cty.Path) diag.Diagnostics {
+		v, ok := i.(string)
+		if !ok {
+			return diag.Errorf(errorString, k)
+		}
+		if err := pxapi.QemuDiskFormat(v).Validate(); err != nil {
+			return diag.FromErr(err)
+		}
+		return nil
 	}
+	return &s
 }
 
 func schema_DiskId() *schema.Schema {
@@ -4676,6 +4674,9 @@ func warnings_CdromAndCloudinit(slot, kind string, schema map[string]interface{}
 	if schema["emulatessd"].(bool) {
 		diags = append(diags, warningDisk(slot, "emulatessd", "type", kind, ""))
 	}
+	if schema["format"].(string) != "" {
+		diags = append(diags, warningDisk(slot, "format", "type", kind, ""))
+	}
 	if schema["iops_r_burst"].(int) != 0 {
 		diags = append(diags, warningDisk(slot, "iops_r_burst", "type", kind, ""))
 	}
@@ -4728,8 +4729,18 @@ func warnings_CdromAndCloudinit(slot, kind string, schema map[string]interface{}
 }
 
 func warnings_DiskPassthrough(slot string, schema map[string]interface{}) diag.Diagnostics {
+	if schema["format"].(string) != "" {
+		return diag.Diagnostics{warningDisk(slot, "format", "type", "passthrough", "and slot = "+slot)}
+	}
 	if schema["storage"].(string) != "" {
 		return diag.Diagnostics{warningDisk(slot, "storage", "type", "passthrough", "and slot = "+slot)}
 	}
 	return diag.Diagnostics{}
+}
+
+func default_format(rawFormat string) pxapi.QemuDiskFormat {
+	if rawFormat == "" {
+		return pxapi.QemuDiskFormat("raw")
+	}
+	return pxapi.QemuDiskFormat(rawFormat)
 }
