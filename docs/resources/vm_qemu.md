@@ -190,7 +190,7 @@ Due to the complexity of the `disk` block, there is a settings matrix that can b
 |`discard`             |`bool`  |`false`|Controls whether to pass discard/trim requests to the underlying storage. Only effective when the underlying storage supports thin provisioning. There are other caveats too, see the [docs about disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_hard_disk) for more info.|
 |`disk_file`           |`string`|       |The path to the disk file. **Required** when `type`=`disk` and `passthrough`=`true`|
 |`emulatessd`          |`bool`  |`false`|Whether to expose this drive as an SSD, rather than a rotational hard disk.|
-|`format`              |`string`|`raw`  |The drive’s backing file’s data format.|
+|`format`              |`string`|`raw`  |The drive’s backing file’s data format. Default only applies when `type`=`disk` and `passthrough`=`false`|
 |`id`                  |`int`   |       |**Computed** Unique id of the disk.|
 |`iops_r_burst`        |`int`   |`0`    |Maximum number of iops while reading in short bursts. `0` means unlimited.|
 |`iops_r_burst_length` |`int`   |`0`    |Length of the read burst duration in seconds. `0` means the default duration dictated by proxmox.|
