@@ -9,6 +9,7 @@ import (
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -479,7 +480,7 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
-	config.Pool = pointer(pxapi.PoolName(d.Get("pool").(string)))
+	config.Pool = util.Pointer(pxapi.PoolName(d.Get("pool").(string)))
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)
@@ -651,7 +652,7 @@ func resourceLxcUpdate(d *schema.ResourceData, meta interface{}) error {
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
-	config.Pool = pointer(pxapi.PoolName(d.Get("pool").(string)))
+	config.Pool = util.Pointer(pxapi.PoolName(d.Get("pool").(string)))
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)

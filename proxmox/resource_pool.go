@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -46,7 +47,7 @@ func resourcePoolCreate(d *schema.ResourceData, meta interface{}) error {
 
 	err := pxapi.ConfigPool{
 		Name:    pxapi.PoolName(poolid),
-		Comment: pointer(d.Get("comment").(string)),
+		Comment: util.Pointer(d.Get("comment").(string)),
 	}.Create(client)
 	if err != nil {
 		return err
@@ -114,7 +115,7 @@ func resourcePoolUpdate(d *schema.ResourceData, meta interface{}) error {
 	if d.HasChange("comment") {
 		err := pxapi.ConfigPool{
 			Name:    pxapi.PoolName(poolID),
-			Comment: pointer(d.Get("comment").(string)),
+			Comment: util.Pointer(d.Get("comment").(string)),
 		}.Update(client)
 		if err != nil {
 			return err
