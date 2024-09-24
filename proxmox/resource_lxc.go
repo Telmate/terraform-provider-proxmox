@@ -578,23 +578,22 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 
-		//Start LXC if start parameter is set to true
-		if d.Get("start").(bool) {
-			log.Print("[DEBUG][LxcCreate] starting LXC")
-			_, err := client.StartVm(vmr)
-			if err != nil {
-				return err
-			}
-
-		} else {
-			log.Print("[DEBUG][LxcCreate] start = false, not starting LXC")
-		}
-
 	} else {
 		err = config.CreateLxc(vmr, client)
 		if err != nil {
 			return err
 		}
+	}
+
+	//Start LXC if start parameter is set to true
+	if d.Get("start").(bool) {
+		log.Print("[DEBUG][LxcCreate] starting LXC")
+		_, err := client.StartVm(vmr)
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Print("[DEBUG][LxcCreate] start = false, not starting LXC")
 	}
 
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
