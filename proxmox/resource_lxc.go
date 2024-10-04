@@ -541,42 +541,90 @@ func resourceLxcCreate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 
+		// // Waiting for the clone to become ready and
+		// // read back all the current disk configurations from proxmox
+		// // this allows us to receive updates on the post-clone state of the container we're building
+		// log.Print("[DEBUG][LxcCreate] Waiting for clone becoming ready")
+		// var config_post_clone *pxapi.ConfigLxc
+		// for {
+		// 	// Wait until we can actually retrieve the config from the cloned machine
+		// 	config_post_clone, err = pxapi.NewConfigLxcFromApi(vmr, client)
+		// 	if config_post_clone != nil {
+		// 		break
+		// 		// to prevent an infinite loop we check for any other error
+		// 		// this error is actually fine because the clone is not ready yet
+		// 	} else if err.Error() != "vm locked, could not obtain config" {
+		// 		return err
+		// 	}
+		// 	time.Sleep(5 * time.Second)
+		// 	log.Print("[DEBUG][LxcCreate] Clone still not ready, checking again")
+		// }
+		// if config_post_clone.RootFs["size"] == config.RootFs["size"] {
+		// 	log.Print("[DEBUG][LxcCreate] Waiting for clone becoming ready")
+		// } else {
+		// 	log.Print("[DEBUG][LxcCreate] We must resize")
+		// 	processDiskResize(config_post_clone.RootFs, config.RootFs, "rootfs", pconf, vmr)
+		// }
+		// config_post_resize, err := pxapi.NewConfigLxcFromApi(vmr, client)
+		// if err != nil {
+		// 	return err
+		// }
+		// config.RootFs["size"] = config_post_resize.RootFs["size"]
+		// config.RootFs["volume"] = config_post_resize.RootFs["volume"]
+
+		// // Update all remaining stuff
+		// err = config.UpdateConfig(vmr, client)
+		// if err != nil {
+		// 	return err
+		// }
+
 		// Waiting for the clone to become ready and
 		// read back all the current disk configurations from proxmox
-		// this allows us to receive updates on the post-clone state of the container we're building
 		log.Print("[DEBUG][LxcCreate] Waiting for clone becoming ready")
 		var config_post_clone *pxapi.ConfigLxc
 		for {
 			// Wait until we can actually retrieve the config from the cloned machine
 			config_post_clone, err = pxapi.NewConfigLxcFromApi(vmr, client)
 			if config_post_clone != nil {
+				// Ensure that RootFs map is initialized
+				if config_post_clone.RootFs == nil {
+					config_post_clone.RootFs = make(map[string]interface{})
+				}
 				break
-				// to prevent an infinite loop we check for any other error
-				// this error is actually fine because the clone is not ready yet
-			} else if err.Error() != "vm locked, could not obtain config" {
+			} else if err != nil && err.Error() != "vm locked, could not obtain config" {
 				return err
 			}
 			time.Sleep(5 * time.Second)
 			log.Print("[DEBUG][LxcCreate] Clone still not ready, checking again")
 		}
+
+		// Ensure that the original config RootFs map is initialized
+		if config.RootFs == nil {
+			config.RootFs = make(map[string]interface{})
+		}
+
+		// Compare the size of the root file systems
 		if config_post_clone.RootFs["size"] == config.RootFs["size"] {
 			log.Print("[DEBUG][LxcCreate] Waiting for clone becoming ready")
 		} else {
 			log.Print("[DEBUG][LxcCreate] We must resize")
 			processDiskResize(config_post_clone.RootFs, config.RootFs, "rootfs", pconf, vmr)
 		}
+
+		// Fetch the post-resize config
 		config_post_resize, err := pxapi.NewConfigLxcFromApi(vmr, client)
 		if err != nil {
 			return err
 		}
+
+		// Ensure that the post-resize RootFs map is initialized
+		if config_post_resize.RootFs == nil {
+			config_post_resize.RootFs = make(map[string]interface{})
+		}
+
+		// Update original config with post-resize values
 		config.RootFs["size"] = config_post_resize.RootFs["size"]
 		config.RootFs["volume"] = config_post_resize.RootFs["volume"]
-
-		// Update all remaining stuff
-		err = config.UpdateConfig(vmr, client)
-		if err != nil {
-			return err
-		}
 
 		//Start LXC if start parameter is set to true
 		if d.Get("start").(bool) {
