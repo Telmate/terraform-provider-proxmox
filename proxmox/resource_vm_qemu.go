@@ -1477,6 +1477,11 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		return diag.FromErr(err)
 	}
 
+	var ciDisk bool
+	if config.Disks != nil {
+		ciDisk = mapToTerraform_QemuStorage(d, *config.Disks)
+	}
+
 	vmState, err := client.GetVmState(vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1486,7 +1491,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if vmState["status"] == "running" {
 		log.Printf("[DEBUG] VM is running, checking the IP")
 		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
-		diags = append(diags, initConnInfo(d, client, vmr, config)...)
+		diags = append(diags, initConnInfo(d, client, vmr, config, ciDisk)...)
 	} else {
 		// Optional convenience attributes for provisioners
 		err = d.Set("default_ipv4_address", nil)
@@ -1520,9 +1525,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("args", config.Args)
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
-	if config.Disks != nil {
-		mapToTerraform_QemuStorage(d, *config.Disks)
-	}
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
 	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
@@ -1852,12 +1854,7 @@ func UpdateDevicesSet(
 	return devicesSet
 }
 
-func initConnInfo(
-	d *schema.ResourceData,
-	client *pxapi.Client,
-	vmr *pxapi.VmRef,
-	config *pxapi.ConfigQemu,
-) diag.Diagnostics {
+func initConnInfo(d *schema.ResourceData, client *pxapi.Client, vmr *pxapi.VmRef, config *pxapi.ConfigQemu, hasCiDisk bool) diag.Diagnostics {
 	logger, _ := CreateSubLogger("initConnInfo")
 	var diags diag.Diagnostics
 	// allow user to opt-out of setting the connection info for the resource
@@ -1892,7 +1889,7 @@ func initConnInfo(
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-	IPs, agentDiags := getPrimaryIP(config, vmr, client, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
+	IPs, agentDiags := getPrimaryIP(config, vmr, client, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool), hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1923,7 +1920,7 @@ func initConnInfo(
 	return diags
 }
 
-func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1931,24 +1928,29 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 		SkipIPv4: skipIPv4,
 		SkipIPv6: skipIPv6,
 	}
-	// check if cloud init is enabled
-	if config.CloudInit != nil {
-		log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
-		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
-		var cicustom bool
-		if config.CloudInit.Custom != nil && config.CloudInit.Custom.Network != nil {
-			cicustom = true
-		}
-		conn = parseCloudInitInterface(config.CloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
-		// early return, we have all information we wanted
-		if conn.hasRequiredIP() {
-			if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
-				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Cloud-init is enabled but no IP config is set",
-					Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled"}}
+	if hasCiDisk { // Check if we have a Cloud-Init disk, cloud-init setting won't have any effect if without it.
+		if config.CloudInit != nil { // Check if we have a Cloud-Init configuration
+			log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
+			logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
+			var cicustom bool
+			if config.CloudInit.Custom != nil && config.CloudInit.Custom.Network != nil {
+				cicustom = true
 			}
-			return conn.IPs, diag.Diagnostics{}
+			conn = parseCloudInitInterface(config.CloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
+			// early return, we have all information we wanted
+			if conn.hasRequiredIP() {
+				if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
+					return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+						Severity: diag.Warning,
+						Summary:  "Cloud-init is enabled but no IP config is set",
+						Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled"}}
+				}
+				return conn.IPs, diag.Diagnostics{}
+			}
+		} else {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "VM has a Cloud-init disk but no Cloud-init settings"}}
 		}
 	}
 
@@ -2144,15 +2146,15 @@ func mapToTerraform_QemuCloudInit_Disks_unsafe(config *pxapi.QemuCloudInitDisk) 
 					"storage": string(config.Storage)}}}}
 }
 
-func mapToTerraform_QemuDisks_Disk(config pxapi.QemuStorages) []map[string]interface{} {
+func mapToTerraform_QemuDisks_Disk(config pxapi.QemuStorages, ciDisk *bool) []map[string]interface{} {
 	disks := make([]map[string]interface{}, 0, 56) // max is sum of underlying arrays
-	if ideDisks := mapToTerraform_QemuIdeDisks_Disk(config.Ide); ideDisks != nil {
+	if ideDisks := mapToTerraform_QemuIdeDisks_Disk(config.Ide, ciDisk); ideDisks != nil {
 		disks = append(disks, ideDisks...)
 	}
-	if sataDisks := mapToTerraform_QemuSataDisks_Disk(config.Sata); sataDisks != nil {
+	if sataDisks := mapToTerraform_QemuSataDisks_Disk(config.Sata, ciDisk); sataDisks != nil {
 		disks = append(disks, sataDisks...)
 	}
-	if scsiDisks := mapToTerraform_QemuScsiDisks_Disk(config.Scsi); scsiDisks != nil {
+	if scsiDisks := mapToTerraform_QemuScsiDisks_Disk(config.Scsi, ciDisk); scsiDisks != nil {
 		disks = append(disks, scsiDisks...)
 	}
 	if virtioDisks := mapToTerraform_QemuVirtIODisks_Disk(config.VirtIO); virtioDisks != nil {
@@ -2164,10 +2166,10 @@ func mapToTerraform_QemuDisks_Disk(config pxapi.QemuStorages) []map[string]inter
 	return disks
 }
 
-func mapToTerraform_QemuDisks_Disks(config pxapi.QemuStorages) []interface{} {
-	ide := mapToTerraform_QemuIdeDisks_Disks(config.Ide)
-	sata := mapToTerraform_QemuSataDisks_Disks(config.Sata)
-	scsi := mapToTerraform_QemuScsiDisks_Disks(config.Scsi)
+func mapToTerraform_QemuDisks_Disks(config pxapi.QemuStorages, ciDisk *bool) []interface{} {
+	ide := mapToTerraform_QemuIdeDisks_Disks(config.Ide, ciDisk)
+	sata := mapToTerraform_QemuSataDisks_Disks(config.Sata, ciDisk)
+	scsi := mapToTerraform_QemuScsiDisks_Disks(config.Scsi, ciDisk)
 	virtio := mapToTerraform_QemuVirtIODisks_Disks(config.VirtIO)
 	if ide == nil && sata == nil && scsi == nil && virtio == nil {
 		return nil
@@ -2208,18 +2210,18 @@ func mapFromStruct_QemuGuestAgent(d *schema.ResourceData, config *pxapi.QemuGues
 	}
 }
 
-func mapToTerraform_QemuIdeDisks_Disk(config *pxapi.QemuIdeDisks) []map[string]interface{} {
+func mapToTerraform_QemuIdeDisks_Disk(config *pxapi.QemuIdeDisks, ciDisk *bool) []map[string]interface{} {
 	if config == nil {
 		return nil
 	}
 	disks := make([]map[string]interface{}, 0, 3)
-	if disk := mapToTerraform_QemuIdeStorage_Disk(config.Disk_0, "ide0"); disk != nil {
+	if disk := mapToTerraform_QemuIdeStorage_Disk(config.Disk_0, "ide0", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuIdeStorage_Disk(config.Disk_1, "ide1"); disk != nil {
+	if disk := mapToTerraform_QemuIdeStorage_Disk(config.Disk_1, "ide1", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuIdeStorage_Disk(config.Disk_2, "ide2"); disk != nil {
+	if disk := mapToTerraform_QemuIdeStorage_Disk(config.Disk_2, "ide2", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
@@ -2228,19 +2230,19 @@ func mapToTerraform_QemuIdeDisks_Disk(config *pxapi.QemuIdeDisks) []map[string]i
 	return disks
 }
 
-func mapToTerraform_QemuIdeDisks_Disks(config *pxapi.QemuIdeDisks) []interface{} {
+func mapToTerraform_QemuIdeDisks_Disks(config *pxapi.QemuIdeDisks, ciDisk *bool) []interface{} {
 	if config == nil {
 		return nil
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"ide0": mapToTerraform_QemuIdeStorage_Disks(config.Disk_0),
-			"ide1": mapToTerraform_QemuIdeStorage_Disks(config.Disk_1),
-			"ide2": mapToTerraform_QemuIdeStorage_Disks(config.Disk_2),
-			"ide3": mapToTerraform_QemuIdeStorage_Disks(config.Disk_3)}}
+			"ide0": mapToTerraform_QemuIdeStorage_Disks(config.Disk_0, ciDisk),
+			"ide1": mapToTerraform_QemuIdeStorage_Disks(config.Disk_1, ciDisk),
+			"ide2": mapToTerraform_QemuIdeStorage_Disks(config.Disk_2, ciDisk),
+			"ide3": mapToTerraform_QemuIdeStorage_Disks(config.Disk_3, ciDisk)}}
 }
 
-func mapToTerraform_QemuIdeStorage_Disk(config *pxapi.QemuIdeStorage, slot string) (settings map[string]interface{}) {
+func mapToTerraform_QemuIdeStorage_Disk(config *pxapi.QemuIdeStorage, slot string, ciDisk *bool) (settings map[string]interface{}) {
 	if config == nil {
 		return nil
 	}
@@ -2283,12 +2285,13 @@ func mapToTerraform_QemuIdeStorage_Disk(config *pxapi.QemuIdeStorage, slot strin
 	}
 	if config.CloudInit != nil {
 		settings = mapToTerraform_QemuCloudInit_Disk_unsafe(config.CloudInit)
+		*ciDisk = true
 	}
 	settings["slot"] = slot
 	return settings
 }
 
-func mapToTerraform_QemuIdeStorage_Disks(config *pxapi.QemuIdeStorage) []interface{} {
+func mapToTerraform_QemuIdeStorage_Disks(config *pxapi.QemuIdeStorage, ciDisk *bool) []interface{} {
 	if config == nil {
 		return nil
 	}
@@ -2334,32 +2337,33 @@ func mapToTerraform_QemuIdeStorage_Disks(config *pxapi.QemuIdeStorage) []interfa
 		}
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		return mapToTerraform_QemuCloudInit_Disks_unsafe(config.CloudInit)
 	}
 	return mapToTerraform_QemuCdRom_Disks(config.CdRom)
 }
 
-func mapToTerraform_QemuSataDisks_Disk(config *pxapi.QemuSataDisks) []map[string]interface{} {
+func mapToTerraform_QemuSataDisks_Disk(config *pxapi.QemuSataDisks, ciDisk *bool) []map[string]interface{} {
 	if config == nil {
 		return nil
 	}
 	disks := make([]map[string]interface{}, 0, 6)
-	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_0, "sata0"); disk != nil {
+	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_0, "sata0", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_1, "sata1"); disk != nil {
+	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_1, "sata1", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata2"); disk != nil {
+	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata2", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata3"); disk != nil {
+	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata3", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata4"); disk != nil {
+	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata4", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata5"); disk != nil {
+	if disk := mapToTerraform_QemuSataStorage_Disk(config.Disk_2, "sata5", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
@@ -2368,23 +2372,23 @@ func mapToTerraform_QemuSataDisks_Disk(config *pxapi.QemuSataDisks) []map[string
 	return disks
 }
 
-func mapToTerraform_QemuSataDisks_Disks(config *pxapi.QemuSataDisks) []interface{} {
+func mapToTerraform_QemuSataDisks_Disks(config *pxapi.QemuSataDisks, ciDisk *bool) []interface{} {
 	if config == nil {
 		return nil
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"sata0": mapToTerraform_QemuSataStorage_DIsks(config.Disk_0),
-			"sata1": mapToTerraform_QemuSataStorage_DIsks(config.Disk_1),
-			"sata2": mapToTerraform_QemuSataStorage_DIsks(config.Disk_2),
-			"sata3": mapToTerraform_QemuSataStorage_DIsks(config.Disk_3),
-			"sata4": mapToTerraform_QemuSataStorage_DIsks(config.Disk_4),
-			"sata5": mapToTerraform_QemuSataStorage_DIsks(config.Disk_5),
+			"sata0": mapToTerraform_QemuSataStorage_DIsks(config.Disk_0, ciDisk),
+			"sata1": mapToTerraform_QemuSataStorage_DIsks(config.Disk_1, ciDisk),
+			"sata2": mapToTerraform_QemuSataStorage_DIsks(config.Disk_2, ciDisk),
+			"sata3": mapToTerraform_QemuSataStorage_DIsks(config.Disk_3, ciDisk),
+			"sata4": mapToTerraform_QemuSataStorage_DIsks(config.Disk_4, ciDisk),
+			"sata5": mapToTerraform_QemuSataStorage_DIsks(config.Disk_5, ciDisk),
 		},
 	}
 }
 
-func mapToTerraform_QemuSataStorage_Disk(config *pxapi.QemuSataStorage, slot string) (settings map[string]interface{}) {
+func mapToTerraform_QemuSataStorage_Disk(config *pxapi.QemuSataStorage, slot string, ciDisk *bool) (settings map[string]interface{}) {
 	if config == nil {
 		return nil
 	}
@@ -2426,13 +2430,14 @@ func mapToTerraform_QemuSataStorage_Disk(config *pxapi.QemuSataStorage, slot str
 		settings = mapToTerraform_QemuCdRom_Disk_unsafe(config.CdRom)
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		settings = mapToTerraform_QemuCloudInit_Disk_unsafe(config.CloudInit)
 	}
 	settings["slot"] = slot
 	return settings
 }
 
-func mapToTerraform_QemuSataStorage_DIsks(config *pxapi.QemuSataStorage) []interface{} {
+func mapToTerraform_QemuSataStorage_DIsks(config *pxapi.QemuSataStorage, ciDisk *bool) []interface{} {
 	if config == nil {
 		return nil
 	}
@@ -2478,107 +2483,108 @@ func mapToTerraform_QemuSataStorage_DIsks(config *pxapi.QemuSataStorage) []inter
 		}
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		return mapToTerraform_QemuCloudInit_Disks_unsafe(config.CloudInit)
 	}
 	return mapToTerraform_QemuCdRom_Disks(config.CdRom)
 }
 
-func mapToTerraform_QemuScsiDisks_Disk(config *pxapi.QemuScsiDisks) []map[string]interface{} {
+func mapToTerraform_QemuScsiDisks_Disk(config *pxapi.QemuScsiDisks, ciDisk *bool) []map[string]interface{} {
 	if config == nil {
 		return nil
 	}
 	disks := make([]map[string]interface{}, 0, 31)
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_0, "scsi0"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_0, "scsi0", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_1, "scsi1"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_1, "scsi1", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_2, "scsi2"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_2, "scsi2", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_3, "scsi3"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_3, "scsi3", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_4, "scsi4"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_4, "scsi4", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_5, "scsi5"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_5, "scsi5", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_6, "scsi6"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_6, "scsi6", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_7, "scsi7"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_7, "scsi7", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_8, "scsi8"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_8, "scsi8", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_9, "scsi9"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_9, "scsi9", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_10, "scsi10"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_10, "scsi10", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_11, "scsi11"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_11, "scsi11", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_12, "scsi12"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_12, "scsi12", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_13, "scsi13"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_13, "scsi13", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_14, "scsi14"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_14, "scsi14", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_15, "scsi15"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_15, "scsi15", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_16, "scsi16"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_16, "scsi16", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_17, "scsi17"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_17, "scsi17", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_18, "scsi18"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_18, "scsi18", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_19, "scsi19"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_19, "scsi19", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_20, "scsi20"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_20, "scsi20", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_21, "scsi21"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_21, "scsi21", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_22, "scsi22"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_22, "scsi22", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_23, "scsi23"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_23, "scsi23", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_24, "scsi24"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_24, "scsi24", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_25, "scsi25"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_25, "scsi25", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_26, "scsi26"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_26, "scsi26", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_27, "scsi27"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_27, "scsi27", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_28, "scsi28"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_28, "scsi28", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_29, "scsi29"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_29, "scsi29", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_30, "scsi30"); disk != nil {
+	if disk := mapToTerraform_QemuScsiStorage_Disk(config.Disk_30, "scsi30", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
@@ -2587,48 +2593,48 @@ func mapToTerraform_QemuScsiDisks_Disk(config *pxapi.QemuScsiDisks) []map[string
 	return disks
 }
 
-func mapToTerraform_QemuScsiDisks_Disks(config *pxapi.QemuScsiDisks) []interface{} {
+func mapToTerraform_QemuScsiDisks_Disks(config *pxapi.QemuScsiDisks, ciDisk *bool) []interface{} {
 	if config == nil {
 		return nil
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"scsi0":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_0),
-			"scsi1":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_1),
-			"scsi2":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_2),
-			"scsi3":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_3),
-			"scsi4":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_4),
-			"scsi5":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_5),
-			"scsi6":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_6),
-			"scsi7":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_7),
-			"scsi8":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_8),
-			"scsi9":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_9),
-			"scsi10": mapToTerraform_QemuScsiStorage_Disks(config.Disk_10),
-			"scsi11": mapToTerraform_QemuScsiStorage_Disks(config.Disk_11),
-			"scsi12": mapToTerraform_QemuScsiStorage_Disks(config.Disk_12),
-			"scsi13": mapToTerraform_QemuScsiStorage_Disks(config.Disk_13),
-			"scsi14": mapToTerraform_QemuScsiStorage_Disks(config.Disk_14),
-			"scsi15": mapToTerraform_QemuScsiStorage_Disks(config.Disk_15),
-			"scsi16": mapToTerraform_QemuScsiStorage_Disks(config.Disk_16),
-			"scsi17": mapToTerraform_QemuScsiStorage_Disks(config.Disk_17),
-			"scsi18": mapToTerraform_QemuScsiStorage_Disks(config.Disk_18),
-			"scsi19": mapToTerraform_QemuScsiStorage_Disks(config.Disk_19),
-			"scsi20": mapToTerraform_QemuScsiStorage_Disks(config.Disk_20),
-			"scsi21": mapToTerraform_QemuScsiStorage_Disks(config.Disk_21),
-			"scsi22": mapToTerraform_QemuScsiStorage_Disks(config.Disk_22),
-			"scsi23": mapToTerraform_QemuScsiStorage_Disks(config.Disk_23),
-			"scsi24": mapToTerraform_QemuScsiStorage_Disks(config.Disk_24),
-			"scsi25": mapToTerraform_QemuScsiStorage_Disks(config.Disk_25),
-			"scsi26": mapToTerraform_QemuScsiStorage_Disks(config.Disk_26),
-			"scsi27": mapToTerraform_QemuScsiStorage_Disks(config.Disk_27),
-			"scsi28": mapToTerraform_QemuScsiStorage_Disks(config.Disk_28),
-			"scsi29": mapToTerraform_QemuScsiStorage_Disks(config.Disk_29),
-			"scsi30": mapToTerraform_QemuScsiStorage_Disks(config.Disk_30),
+			"scsi0":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_0, ciDisk),
+			"scsi1":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_1, ciDisk),
+			"scsi2":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_2, ciDisk),
+			"scsi3":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_3, ciDisk),
+			"scsi4":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_4, ciDisk),
+			"scsi5":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_5, ciDisk),
+			"scsi6":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_6, ciDisk),
+			"scsi7":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_7, ciDisk),
+			"scsi8":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_8, ciDisk),
+			"scsi9":  mapToTerraform_QemuScsiStorage_Disks(config.Disk_9, ciDisk),
+			"scsi10": mapToTerraform_QemuScsiStorage_Disks(config.Disk_10, ciDisk),
+			"scsi11": mapToTerraform_QemuScsiStorage_Disks(config.Disk_11, ciDisk),
+			"scsi12": mapToTerraform_QemuScsiStorage_Disks(config.Disk_12, ciDisk),
+			"scsi13": mapToTerraform_QemuScsiStorage_Disks(config.Disk_13, ciDisk),
+			"scsi14": mapToTerraform_QemuScsiStorage_Disks(config.Disk_14, ciDisk),
+			"scsi15": mapToTerraform_QemuScsiStorage_Disks(config.Disk_15, ciDisk),
+			"scsi16": mapToTerraform_QemuScsiStorage_Disks(config.Disk_16, ciDisk),
+			"scsi17": mapToTerraform_QemuScsiStorage_Disks(config.Disk_17, ciDisk),
+			"scsi18": mapToTerraform_QemuScsiStorage_Disks(config.Disk_18, ciDisk),
+			"scsi19": mapToTerraform_QemuScsiStorage_Disks(config.Disk_19, ciDisk),
+			"scsi20": mapToTerraform_QemuScsiStorage_Disks(config.Disk_20, ciDisk),
+			"scsi21": mapToTerraform_QemuScsiStorage_Disks(config.Disk_21, ciDisk),
+			"scsi22": mapToTerraform_QemuScsiStorage_Disks(config.Disk_22, ciDisk),
+			"scsi23": mapToTerraform_QemuScsiStorage_Disks(config.Disk_23, ciDisk),
+			"scsi24": mapToTerraform_QemuScsiStorage_Disks(config.Disk_24, ciDisk),
+			"scsi25": mapToTerraform_QemuScsiStorage_Disks(config.Disk_25, ciDisk),
+			"scsi26": mapToTerraform_QemuScsiStorage_Disks(config.Disk_26, ciDisk),
+			"scsi27": mapToTerraform_QemuScsiStorage_Disks(config.Disk_27, ciDisk),
+			"scsi28": mapToTerraform_QemuScsiStorage_Disks(config.Disk_28, ciDisk),
+			"scsi29": mapToTerraform_QemuScsiStorage_Disks(config.Disk_29, ciDisk),
+			"scsi30": mapToTerraform_QemuScsiStorage_Disks(config.Disk_30, ciDisk),
 		},
 	}
 }
 
-func mapToTerraform_QemuScsiStorage_Disk(config *pxapi.QemuScsiStorage, slot string) (settings map[string]interface{}) {
+func mapToTerraform_QemuScsiStorage_Disk(config *pxapi.QemuScsiStorage, slot string, ciDisk *bool) (settings map[string]interface{}) {
 	if config == nil {
 		return nil
 	}
@@ -2674,13 +2680,14 @@ func mapToTerraform_QemuScsiStorage_Disk(config *pxapi.QemuScsiStorage, slot str
 		settings = mapToTerraform_QemuCdRom_Disk_unsafe(config.CdRom)
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		settings = mapToTerraform_QemuCloudInit_Disk_unsafe(config.CloudInit)
 	}
 	settings["slot"] = slot
 	return settings
 }
 
-func mapToTerraform_QemuScsiStorage_Disks(config *pxapi.QemuScsiStorage) []interface{} {
+func mapToTerraform_QemuScsiStorage_Disks(config *pxapi.QemuScsiStorage, ciDisk *bool) []interface{} {
 	if config == nil {
 		return nil
 	}
@@ -2730,17 +2737,20 @@ func mapToTerraform_QemuScsiStorage_Disks(config *pxapi.QemuScsiStorage) []inter
 		}
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		return mapToTerraform_QemuCloudInit_Disks_unsafe(config.CloudInit)
 	}
 	return mapToTerraform_QemuCdRom_Disks(config.CdRom)
 }
 
-func mapToTerraform_QemuStorage(d *schema.ResourceData, config pxapi.QemuStorages) {
+func mapToTerraform_QemuStorage(d *schema.ResourceData, config pxapi.QemuStorages) bool {
+	ciDisk := pointer(false)
 	if _, ok := d.GetOk("disk"); ok {
-		d.Set("disk", mapToTerraform_QemuDisks_Disk(config))
+		d.Set("disk", mapToTerraform_QemuDisks_Disk(config, ciDisk))
 	} else {
-		d.Set("disks", mapToTerraform_QemuDisks_Disks(config))
+		d.Set("disks", mapToTerraform_QemuDisks_Disks(config, ciDisk))
 	}
+	return *ciDisk
 }
 
 func mapToTerraform_QemuVirtIODisks_Disk(config *pxapi.QemuVirtIODisks) []map[string]interface{} {
