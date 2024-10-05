@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/url"
 	"path"
 	"regexp"
@@ -40,7 +41,7 @@ const (
 )
 
 const (
-schemaAdditionalWait = "additional_wait"
+	schemaAdditionalWait = "additional_wait"
 	schemaAgentTimeout   = "agent_timeout"
 	schemaSkipIPv4       = "skip_ipv4"
 	schemaSkipIPv6       = "skip_ipv6"
@@ -1969,10 +1970,13 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 		if err != nil {
 			return primaryIPs{}, diag.FromErr(err)
 		}
-		var primaryMacAddress string
+		var primaryMacAddress net.HardwareAddr
 		for i := 0; i < 16; i++ {
 			if _, ok := vmConfig["net"+strconv.Itoa(i)]; ok {
-				primaryMacAddress = macAddressRegex.FindString(vmConfig["net"+strconv.Itoa(i)].(string))
+				primaryMacAddress, err = net.ParseMAC(macAddressRegex.FindString(vmConfig["net"+strconv.Itoa(i)].(string)))
+				if err != nil {
+					return primaryIPs{}, diag.FromErr(err)
+				}
 				break
 			}
 		}

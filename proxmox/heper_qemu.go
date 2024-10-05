@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"net"
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
@@ -79,10 +80,10 @@ func (conn connectionInfo) hasRequiredIP() bool {
 	return true
 }
 
-func (conn connectionInfo) parsePrimaryIPs(interfaces []pxapi.AgentNetworkInterface, mac string) connectionInfo {
-	lowerCaseMac := strings.ToLower(mac)
+func (conn connectionInfo) parsePrimaryIPs(interfaces []pxapi.AgentNetworkInterface, mac net.HardwareAddr) connectionInfo {
+	macString := mac.String()
 	for _, iFace := range interfaces {
-		if iFace.MacAddress.String() == lowerCaseMac {
+		if iFace.MacAddress.String() == macString {
 			for _, addr := range iFace.IpAddresses {
 				if addr.IsGlobalUnicast() {
 					if addr.To4() != nil {

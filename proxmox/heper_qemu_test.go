@@ -312,7 +312,7 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 	}
 	type testInput struct {
 		interfaces []pxapi.AgentNetworkInterface
-		mac        string
+		mac        net.HardwareAddr
 		conn       connectionInfo
 	}
 	tests := []struct {
@@ -322,7 +322,7 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 	}{
 		{name: `Only Loopback`,
 			input: testInput{
-				mac: "9c:7a:1b:4f:3e:a2",
+				mac: parseMac("9c:7a:1b:4f:3e:a2"),
 				interfaces: []pxapi.AgentNetworkInterface{
 					{
 						MacAddress: parseMac("9C:7A:1B:4F:3E:A2"),
@@ -332,7 +332,7 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 							parseIP("::1/128")}}}}},
 		{name: `Only IPv4`,
 			input: testInput{
-				mac: "3A:7E:9D:1F:5B:8C",
+				mac: parseMac("3A:7E:9D:1F:5B:8C"),
 				interfaces: []pxapi.AgentNetworkInterface{
 					{MacAddress: parseMac("3A:7E:9D:1F:5B:8C"),
 						Name: "eth1",
@@ -343,7 +343,7 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 			output: connectionInfo{IPs: primaryIPs{IPv4: formatIP("192.168.1.1")}}},
 		{name: `Only IPv6`,
 			input: testInput{
-				mac: "6F:2C:4A:8E:7D:1B",
+				mac: parseMac("6F:2C:4A:8E:7D:1B"),
 				interfaces: []pxapi.AgentNetworkInterface{
 					{MacAddress: parseMac("6F:2C:4A:8E:7D:1B"),
 						Name: "eth1",
@@ -354,7 +354,7 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 			output: connectionInfo{IPs: primaryIPs{IPv6: formatIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334")}}},
 		{name: `Full test`,
 			input: testInput{
-				mac: "3A:7E:9D:1F:5B:8C",
+				mac: parseMac("3A:7E:9D:1F:5B:8C"),
 				interfaces: []pxapi.AgentNetworkInterface{
 					{MacAddress: parseMac("6F:2C:4A:8E:7D:1B"),
 						Name: "lo",
@@ -379,7 +379,7 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 		},
 		{name: `IPv4 Already Set`,
 			input: testInput{
-				mac: "3A:7E:9D:1F:5B:8C",
+				mac: parseMac("3A:7E:9D:1F:5B:8C"),
 				interfaces: []pxapi.AgentNetworkInterface{
 					{MacAddress: parseMac("3A:7E:9D:1F:5B:8C"),
 						IpAddresses: []net.IP{parseIP("192.168.1.1/24")}}},
@@ -387,7 +387,7 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 			output: connectionInfo{IPs: primaryIPs{IPv4: formatIP("10.10.1.1")}}},
 		{name: `IPv6 Already Set`,
 			input: testInput{
-				mac: "3A:7E:9D:1F:5B:8C",
+				mac: parseMac("3A:7E:9D:1F:5B:8C"),
 				interfaces: []pxapi.AgentNetworkInterface{
 					{MacAddress: parseMac("3A:7E:9D:1F:5B:8C"),
 						IpAddresses: []net.IP{parseIP("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64")}}},
