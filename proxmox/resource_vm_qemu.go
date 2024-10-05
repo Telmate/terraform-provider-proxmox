@@ -39,6 +39,13 @@ const (
 	stateStopped string = "stopped"
 )
 
+const (
+schemaAdditionalWait = "additional_wait"
+	schemaAgentTimeout   = "agent_timeout"
+	schemaSkipIPv4       = "skip_ipv4"
+	schemaSkipIPv6       = "skip_ipv6"
+)
+
 func resourceVmQemu() *schema.Resource {
 	thisResource = &schema.Resource{
 		CreateContext: resourceVmQemuCreate,
@@ -75,7 +82,7 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
-			"agent_timeout": {
+			schemaAgentTimeout: {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  60,
@@ -91,7 +98,7 @@ func resourceVmQemu() *schema.Resource {
 					if v > 0 {
 						return nil
 					}
-					return diag.Errorf("agent_timeout must be greater than 0")
+					return diag.Errorf(schemaAgentTimeout + " must be greater than 0")
 				},
 			},
 			"vmid": {
@@ -743,7 +750,7 @@ func resourceVmQemu() *schema.Resource {
 				Default:     10,
 				Description: "Value in second to wait after a VM has been cloned, useful if system is not fast or during I/O intensive parallel terraform tasks",
 			},
-			"additional_wait": {
+			schemaAdditionalWait: {
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Default:     5,
@@ -883,17 +890,17 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
-			"skip_ipv4": {
+			schemaSkipIPv4: {
 				Type:          schema.TypeBool,
 				Optional:      true,
 				Default:       false,
-				ConflictsWith: []string{"skip_ipv6"},
+				ConflictsWith: []string{schemaSkipIPv6},
 			},
-			"skip_ipv6": {
+			schemaSkipIPv6: {
 				Type:          schema.TypeBool,
 				Optional:      true,
 				Default:       false,
-				ConflictsWith: []string{"skip_ipv4"},
+				ConflictsWith: []string{schemaSkipIPv4},
 			},
 			"reboot_required": {
 				Type:        schema.TypeBool,
@@ -1143,7 +1150,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
-	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+	time.Sleep(time.Duration(d.Get(schemaAdditionalWait).(int)) * time.Second)
 
 	if d.Get("vm_state").(string) == "running" || d.Get("vm_state").(string) == "started" {
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
@@ -1387,7 +1394,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 						return append(diags, diag.FromErr(err)...)
 					}
 					// give sometime to proxmox to catchup
-					dur := time.Duration(d.Get("additional_wait").(int)) * time.Second
+					dur := time.Duration(d.Get(schemaAdditionalWait).(int)) * time.Second
 					log.Printf("[DEBUG][QemuVmUpdate] waiting for (%v) before starting the VM again", dur)
 					time.Sleep(dur)
 					if _, err := client.StartVm(vmr); err != nil {
@@ -1889,7 +1896,7 @@ func initConnInfo(d *schema.ResourceData, client *pxapi.Client, vmr *pxapi.VmRef
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-	IPs, agentDiags := getPrimaryIP(config, vmr, client, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool), hasCiDisk)
+	IPs, agentDiags := getPrimaryIP(config, vmr, client, guestAgentWaitEnd, d.Get(schemaAdditionalWait).(int), d.Get(schemaAgentTimeout).(int), ciAgentEnabled, d.Get(schemaSkipIPv4).(bool), d.Get(schemaSkipIPv6).(bool), hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
