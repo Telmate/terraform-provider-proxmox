@@ -123,8 +123,7 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
 terraform {
   required_providers {
     proxmox = {
-      source = "registry.example.com/telmate/proxmox"
-      #source = "Telmate/proxmox"
+      source = "Telmate/proxmox"
       version = ">=3.0.1rc4"
     }
   }
