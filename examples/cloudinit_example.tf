@@ -56,6 +56,7 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
 
     # Setup the network interface and assign a vlan tag: 256
     network {
+        id = 0
         model = "virtio"
         bridge = "vmbr0"
         tag = 256
