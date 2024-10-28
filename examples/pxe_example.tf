@@ -72,6 +72,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
     }
 
     network {
+        id        = 0
         bridge    = "vmbr0"
         firewall  = false
         link_down = false
