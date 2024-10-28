@@ -26,6 +26,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/dns/nameservers"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
@@ -326,59 +327,7 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
-			"network": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"model": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"macaddr": {
-							Type:             schema.TypeString,
-							Optional:         true,
-							Computed:         true,
-							ValidateDiagFunc: MacAddressValidator(),
-						},
-						"bridge": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "nat",
-						},
-						"tag": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "VLAN tag.",
-							Default:     -1,
-						},
-						"firewall": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
-						},
-						"rate": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Computed: true,
-						},
-						"mtu": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-						"queues": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Computed: true,
-						},
-						"link_down": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
-						},
-					},
-				},
-			},
+			network.Root: network.Schema(),
 			"smbios": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -952,7 +901,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
-	qemuNetworks, _ := ExpandDevicesList(d.Get("network").([]interface{}))
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	qemuPCIDevices, _ := ExpandDevicesList(d.Get("hostpci").([]interface{}))
@@ -982,7 +930,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuOs:         d.Get("qemu_os").(string),
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
-		QemuNetworks:   qemuNetworks,
 		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
@@ -990,9 +937,14 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		CloudInit:      mapToSDK_CloudInit(d),
 	}
 
-	var diags diag.Diagnostics
+	var diags, tmpDiags diag.Diagnostics
 	config.Disks, diags = mapToSDK_QemuStorages(d)
 	if diags.HasError() {
+		return diags
+	}
+	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
 		return diags
 	}
 
@@ -1194,12 +1146,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
-	qemuNetworks, err := ExpandDevicesList(d.Get("network").([]interface{}))
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("error while processing Network configuration: %v", err))
-	}
-	logger.Debug().Int("vmid", vmID).Msgf("Processed NetworkSet into qemuNetworks as %+v", qemuNetworks)
-
 	qemuPCIDevices, err := ExpandDevicesList(d.Get("hostpci").([]interface{}))
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("error while processing HostPCI configuration: %v", err))
@@ -1240,7 +1186,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuOs:         d.Get("qemu_os").(string),
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
-		QemuNetworks:   qemuNetworks,
 		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
@@ -1251,9 +1196,14 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
 
-	var diags diag.Diagnostics
+	var diags, tmpDiags diag.Diagnostics
 	config.Disks, diags = mapToSDK_QemuStorages(d)
 	if diags.HasError() {
+		return diags
+	}
+	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
 		return diags
 	}
 
@@ -1528,6 +1478,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
 	mapToTerraform_Memory(config.Memory, d)
+	if len(config.Networks) != 0 {
+		network.Terraform(config.Networks, d)
+	}
 	if len(config.Serials) != 0 {
 		d.Set("serial", mapToTerraform_Serials(config.Serials))
 	}
@@ -1579,33 +1532,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		d.Set("features", UpdateDeviceConfDefaults(config.QemuVga, activeVgaSet))
 	}
 
-	// Networks.
-	// add an explicit check that the keys in the config.QemuNetworks map are a strict subset of
-	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
-	logger.Debug().Int("vmid", vmID).Msgf("Analyzing Network blocks ")
-	for _, networkEntry := range config.QemuNetworks {
-		logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", networkEntry)
-		// If network tag was not set, assign default value.
-		if networkEntry["tag"] == "" || networkEntry["tag"] == nil {
-			networkEntry["tag"] = thisResource.Schema["network"].Elem.(*schema.Resource).Schema["tag"].Default
-		}
-		for key := range networkEntry {
-			if _, ok := thisResource.Schema["network"].Elem.(*schema.Resource).Schema[key]; !ok {
-				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
-					continue
-				}
-				return diag.FromErr(fmt.Errorf("proxmox Provider Error: proxmox API returned new network parameter '%v' we cannot process", key))
-			}
-		}
-	}
-	// flatten the structure into the format terraform needs and remove the "id" attribute as that will be encoded into
-	// the list structure.
-	flatNetworks, _ := FlattenDevicesList(config.QemuNetworks)
-	flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
-	if err = d.Set("network", flatNetworks); err != nil {
-		return diag.FromErr(err)
-	}
-
 	d.Set("pool", vmr.Pool())
 
 	// Reset reboot_required variable. It should change only during updates.
@@ -1614,9 +1540,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	if len(flatNetworks) > 0 {
-		logger.Debug().Int("vmid", vmID).Msgf("VM Net Config '%+v' from '%+v' set as '%+v' type of '%T'", config.QemuNetworks, flatNetworks, d.Get("network"), flatNetworks[0]["macaddr"])
-	}
 	logger.Debug().Int("vmid", vmID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return diags
