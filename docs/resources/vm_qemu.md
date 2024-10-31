@@ -66,6 +66,7 @@ resource "proxmox_vm_qemu" "pxe-minimal-example" {
     pxe                       = true
     target_node               = "test"
     network {
+        id = 0
         bridge    = "vmbr0"
         firewall  = false
         link_down = false
@@ -165,8 +166,9 @@ second will be `net1` etc...
 See the [docs about network devices](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_network_device) for more
 details.
 
-| Argument    | Type   | Default Value | Description                                                                                                                                                                                                                                                                                                                                                     |
-| ----------- | ------ | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Argument    | Type   | Default Value | Description |
+| ----------- | ------ | ------------- | ----------- |
+| `id`        | `int`  |               | **Required** The ID of the network device `0`-`31`. |
 | `model`     | `str`  |               | **Required** Network Card Model. The virtio model provides the best performance with very low CPU overhead. If your guest does not support this driver, it is usually best to use e1000. Options: `e1000`, `e1000-82540em`, `e1000-82544gc`, `e1000-82545em`, `i82551`, `i82557b`, `i82559er`, `ne2k_isa`, `ne2k_pci`, `pcnet`, `rtl8139`, `virtio`, `vmxnet3`. |
 | `macaddr`   | `str`  |               | Override the randomly generated MAC Address for the VM. Requires the MAC Address be Unicast.  |
 | `bridge`    | `str`  | `"nat"`       | Bridge to which the network device should be attached. The Proxmox VE standard bridge is called `vmbr0`. |

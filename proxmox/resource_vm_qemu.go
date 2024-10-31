@@ -27,6 +27,8 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/dns/nameservers"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
 // using a global variable here so that we have an internally accessible
@@ -333,59 +335,7 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
-			"network": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"model": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"macaddr": {
-							Type:             schema.TypeString,
-							Optional:         true,
-							Computed:         true,
-							ValidateDiagFunc: MacAddressValidator(),
-						},
-						"bridge": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "nat",
-						},
-						"tag": {
-							Type:        schema.TypeInt,
-							Optional:    true,
-							Description: "VLAN tag.",
-							Default:     -1,
-						},
-						"firewall": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
-						},
-						"rate": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Computed: true,
-						},
-						"mtu": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-						"queues": {
-							Type:     schema.TypeInt,
-							Optional: true,
-							Computed: true,
-						},
-						"link_down": {
-							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
-						},
-					},
-				},
-			},
+			network.Root: network.Schema(),
 			"smbios": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -959,7 +909,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
-	qemuNetworks, _ := ExpandDevicesList(d.Get("network").([]interface{}))
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	qemuPCIDevices, _ := ExpandDevicesList(d.Get("hostpci").([]interface{}))
@@ -969,19 +918,19 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	config := pxapi.ConfigQemu{
 		Name:           vmName,
 		CPU:            mapToSDK_CPU(d),
-		Description:    pointer(d.Get("desc").(string)),
-		Pool:           pointer(pxapi.PoolName(d.Get("pool").(string))),
+		Description:    util.Pointer(d.Get("desc").(string)),
+		Pool:           util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:           d.Get("bios").(string),
-		Onboot:         pointer(d.Get("onboot").(bool)),
+		Onboot:         util.Pointer(d.Get("onboot").(bool)),
 		Startup:        d.Get("startup").(string),
-		Protection:     pointer(d.Get("protection").(bool)),
-		Tablet:         pointer(d.Get("tablet").(bool)),
+		Protection:     util.Pointer(d.Get("protection").(bool)),
+		Tablet:         util.Pointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          mapToSDK_QemuGuestAgent(d),
 		Memory:         mapToSDK_Memory(d),
 		Machine:        d.Get("machine").(string),
-		QemuKVM:        pointer(d.Get("kvm").(bool)),
+		QemuKVM:        util.Pointer(d.Get("kvm").(bool)),
 		Hotplug:        d.Get("hotplug").(string),
 		Scsihw:         d.Get("scsihw").(string),
 		HaState:        d.Get("hastate").(string),
@@ -989,7 +938,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuOs:         d.Get("qemu_os").(string),
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
-		QemuNetworks:   qemuNetworks,
 		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
@@ -997,9 +945,14 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		CloudInit:      mapToSDK_CloudInit(d),
 	}
 
-	var diags diag.Diagnostics
+	var diags, tmpDiags diag.Diagnostics
 	config.Disks, diags = mapToSDK_QemuStorages(d)
 	if diags.HasError() {
+		return diags
+	}
+	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
 		return diags
 	}
 
@@ -1201,12 +1154,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
-	qemuNetworks, err := ExpandDevicesList(d.Get("network").([]interface{}))
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("error while processing Network configuration: %v", err))
-	}
-	logger.Debug().Int("vmid", vmID).Msgf("Processed NetworkSet into qemuNetworks as %+v", qemuNetworks)
-
 	qemuPCIDevices, err := ExpandDevicesList(d.Get("hostpci").([]interface{}))
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("error while processing HostPCI configuration: %v", err))
@@ -1227,19 +1174,19 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	config := pxapi.ConfigQemu{
 		Name:           d.Get("name").(string),
 		CPU:            mapToSDK_CPU(d),
-		Description:    pointer(d.Get("desc").(string)),
-		Pool:           pointer(pxapi.PoolName(d.Get("pool").(string))),
+		Description:    util.Pointer(d.Get("desc").(string)),
+		Pool:           util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:           d.Get("bios").(string),
-		Onboot:         pointer(d.Get("onboot").(bool)),
+		Onboot:         util.Pointer(d.Get("onboot").(bool)),
 		Startup:        d.Get("startup").(string),
-		Protection:     pointer(d.Get("protection").(bool)),
-		Tablet:         pointer(d.Get("tablet").(bool)),
+		Protection:     util.Pointer(d.Get("protection").(bool)),
+		Tablet:         util.Pointer(d.Get("tablet").(bool)),
 		Boot:           d.Get("boot").(string),
 		BootDisk:       d.Get("bootdisk").(string),
 		Agent:          mapToSDK_QemuGuestAgent(d),
 		Memory:         mapToSDK_Memory(d),
 		Machine:        d.Get("machine").(string),
-		QemuKVM:        pointer(d.Get("kvm").(bool)),
+		QemuKVM:        util.Pointer(d.Get("kvm").(bool)),
 		Hotplug:        d.Get("hotplug").(string),
 		Scsihw:         d.Get("scsihw").(string),
 		HaState:        d.Get("hastate").(string),
@@ -1247,7 +1194,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuOs:         d.Get("qemu_os").(string),
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
-		QemuNetworks:   qemuNetworks,
 		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
 		QemuUsbs:       qemuUsbs,
@@ -1258,9 +1204,14 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}
 
-	var diags diag.Diagnostics
+	var diags, tmpDiags diag.Diagnostics
 	config.Disks, diags = mapToSDK_QemuStorages(d)
 	if diags.HasError() {
+		return diags
+	}
+	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
 		return diags
 	}
 
@@ -1537,6 +1488,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
 	mapToTerraform_Memory(config.Memory, d)
+	if len(config.Networks) != 0 {
+		network.Terraform(config.Networks, d)
+	}
 	if len(config.Serials) != 0 {
 		d.Set("serial", mapToTerraform_Serials(config.Serials))
 	}
@@ -1588,33 +1542,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		d.Set("features", UpdateDeviceConfDefaults(config.QemuVga, activeVgaSet))
 	}
 
-	// Networks.
-	// add an explicit check that the keys in the config.QemuNetworks map are a strict subset of
-	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
-	logger.Debug().Int("vmid", vmID).Msgf("Analyzing Network blocks ")
-	for _, networkEntry := range config.QemuNetworks {
-		logger.Debug().Int("vmid", vmID).Msgf("Network block received '%v'", networkEntry)
-		// If network tag was not set, assign default value.
-		if networkEntry["tag"] == "" || networkEntry["tag"] == nil {
-			networkEntry["tag"] = thisResource.Schema["network"].Elem.(*schema.Resource).Schema["tag"].Default
-		}
-		for key := range networkEntry {
-			if _, ok := thisResource.Schema["network"].Elem.(*schema.Resource).Schema[key]; !ok {
-				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
-					continue
-				}
-				return diag.FromErr(fmt.Errorf("proxmox Provider Error: proxmox API returned new network parameter '%v' we cannot process", key))
-			}
-		}
-	}
-	// flatten the structure into the format terraform needs and remove the "id" attribute as that will be encoded into
-	// the list structure.
-	flatNetworks, _ := FlattenDevicesList(config.QemuNetworks)
-	flatNetworks, _ = DropElementsFromMap([]string{"id"}, flatNetworks)
-	if err = d.Set("network", flatNetworks); err != nil {
-		return diag.FromErr(err)
-	}
-
 	d.Set("pool", vmr.Pool())
 
 	// Reset reboot_required variable. It should change only during updates.
@@ -1623,9 +1550,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	if len(flatNetworks) > 0 {
-		logger.Debug().Int("vmid", vmID).Msgf("VM Net Config '%+v' from '%+v' set as '%+v' type of '%T'", config.QemuNetworks, flatNetworks, d.Get("network"), flatNetworks[0]["macaddr"])
-	}
 	logger.Debug().Int("vmid", vmID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return diags
@@ -2989,14 +2913,14 @@ func mapToSDK_CloudInit(d *schema.ResourceData) *pxapi.CloudInit {
 			Vendor:  &pxapi.CloudInitSnippet{},
 		},
 		DNS: &pxapi.GuestDNS{
-			SearchDomain: pointer(d.Get("searchdomain").(string)),
+			SearchDomain: util.Pointer(d.Get("searchdomain").(string)),
 			NameServers:  nameservers.Split(d.Get("nameserver").(string)),
 		},
 		NetworkInterfaces: pxapi.CloudInitNetworkInterfaces{},
 		PublicSSHkeys:     sshkeys.Split(d.Get("sshkeys").(string)),
-		UpgradePackages:   pointer(d.Get("ciupgrade").(bool)),
-		UserPassword:      pointer(d.Get("cipassword").(string)),
-		Username:          pointer(d.Get("ciuser").(string)),
+		UpgradePackages:   util.Pointer(d.Get("ciupgrade").(bool)),
+		UserPassword:      util.Pointer(d.Get("cipassword").(string)),
+		Username:          util.Pointer(d.Get("ciuser").(string)),
 	}
 	params := splitStringOfSettings(d.Get("cicustom").(string))
 	if v, isSet := params["meta"]; isSet {
@@ -3020,13 +2944,13 @@ func mapToSDK_CloudInit(d *schema.ResourceData) *pxapi.CloudInit {
 func mapToSDK_CloudInitNetworkConfig(param string) pxapi.CloudInitNetworkConfig {
 	config := pxapi.CloudInitNetworkConfig{
 		IPv4: &pxapi.CloudInitIPv4Config{
-			Address: pointer(pxapi.IPv4CIDR("")),
+			Address: util.Pointer(pxapi.IPv4CIDR("")),
 			DHCP:    false,
-			Gateway: pointer(pxapi.IPv4Address(""))},
+			Gateway: util.Pointer(pxapi.IPv4Address(""))},
 		IPv6: &pxapi.CloudInitIPv6Config{
-			Address: pointer(pxapi.IPv6CIDR("")),
+			Address: util.Pointer(pxapi.IPv6CIDR("")),
 			DHCP:    false,
-			Gateway: pointer(pxapi.IPv6Address("")),
+			Gateway: util.Pointer(pxapi.IPv6Address("")),
 			SLAAC:   false}}
 	params := splitStringOfSettings(param)
 	if v, isSet := params["ip"]; isSet {
@@ -3066,19 +2990,19 @@ func mapToSDK_CloudInitSnippet(param string) *pxapi.CloudInitSnippet {
 
 func mapToSDK_Memory(d *schema.ResourceData) *pxapi.QemuMemory {
 	return &pxapi.QemuMemory{
-		CapacityMiB:        pointer(pxapi.QemuMemoryCapacity(d.Get("memory").(int))),
-		MinimumCapacityMiB: pointer(pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))),
-		Shares:             pointer(pxapi.QemuMemoryShares(0)),
+		CapacityMiB:        util.Pointer(pxapi.QemuMemoryCapacity(d.Get("memory").(int))),
+		MinimumCapacityMiB: util.Pointer(pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))),
+		Shares:             util.Pointer(pxapi.QemuMemoryShares(0)),
 	}
 }
 
 func mapToSDK_CPU(d *schema.ResourceData) *pxapi.QemuCPU {
 	return &pxapi.QemuCPU{
-		Cores:        pointer(pxapi.QemuCpuCores(d.Get("cores").(int))),
-		Numa:         pointer(d.Get("numa").(bool)),
-		Sockets:      pointer(pxapi.QemuCpuSockets(d.Get("sockets").(int))),
-		Type:         pointer(pxapi.CpuType(d.Get("cpu").(string))),
-		VirtualCores: pointer(pxapi.CpuVirtualCores(d.Get("vcpus").(int)))}
+		Cores:        util.Pointer(pxapi.QemuCpuCores(d.Get("cores").(int))),
+		Numa:         util.Pointer(d.Get("numa").(bool)),
+		Sockets:      util.Pointer(pxapi.QemuCpuSockets(d.Get("sockets").(int))),
+		Type:         util.Pointer(pxapi.CpuType(d.Get("cpu").(string))),
+		VirtualCores: util.Pointer(pxapi.CpuVirtualCores(d.Get("vcpus").(int)))}
 }
 
 func mapToSDK_QemuCdRom_Disk(slot string, schema map[string]interface{}) (*pxapi.QemuCdRom, diag.Diagnostics) {

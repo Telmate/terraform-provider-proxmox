@@ -480,11 +480,6 @@ func testOptionalArguments(t *testing.T, s *schema.Resource) {
 	}
 }
 
-// Gets inlined by the compiler, so it's not a performance hit
-func pointer[T any](item T) *T {
-	return &item
-}
-
 func permissions_check(s1 []string, s2 []string) []string {
 
 	var diff []string

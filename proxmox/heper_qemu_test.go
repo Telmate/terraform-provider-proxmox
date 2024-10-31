@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/stretchr/testify/require"
 )
@@ -188,22 +189,22 @@ func Test_ParseCloudInitInterface(t *testing.T) {
 			output: connectionInfo{SkipIPv4: true}},
 		{name: `IPv4=Static`,
 			input: testInput{ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
-				Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}}},
+				Address: util.Pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}}},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv4: "192.168.1.1"},
 				SkipIPv6: true}},
 		{name: `IPv4=Static ciCustom`,
 			input: testInput{
 				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
-					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
+					Address: util.Pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
 				ciCustom: true},
 			output: connectionInfo{IPs: primaryIPs{IPv4: "192.168.1.1"}}},
 		{name: `IPv4=Static IPv6=Static`,
 			input: testInput{ci: pxapi.CloudInitNetworkConfig{
 				IPv4: &pxapi.CloudInitIPv4Config{
-					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))},
+					Address: util.Pointer(pxapi.IPv4CIDR("192.168.1.1/24"))},
 				IPv6: &pxapi.CloudInitIPv6Config{
-					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}}},
+					Address: util.Pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}}},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv4: "192.168.1.1",
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}}},
@@ -211,9 +212,9 @@ func Test_ParseCloudInitInterface(t *testing.T) {
 			input: testInput{
 				ci: pxapi.CloudInitNetworkConfig{
 					IPv4: &pxapi.CloudInitIPv4Config{
-						Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))},
+						Address: util.Pointer(pxapi.IPv4CIDR("192.168.1.1/24"))},
 					IPv6: &pxapi.CloudInitIPv6Config{
-						Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
+						Address: util.Pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
 				ciCustom: true},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv4: "192.168.1.1",
@@ -221,7 +222,7 @@ func Test_ParseCloudInitInterface(t *testing.T) {
 		{name: `IPv4=Static SkipIPv4`,
 			input: testInput{
 				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
-					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
+					Address: util.Pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
 				skipIPv4: true},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv4: "192.168.1.1"},
@@ -230,7 +231,7 @@ func Test_ParseCloudInitInterface(t *testing.T) {
 		{name: `IPv4=Static SkipIPv4 ciCustom`,
 			input: testInput{
 				ci: pxapi.CloudInitNetworkConfig{IPv4: &pxapi.CloudInitIPv4Config{
-					Address: pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
+					Address: util.Pointer(pxapi.IPv4CIDR("192.168.1.1/24"))}},
 				ciCustom: true,
 				skipIPv4: true},
 			output: connectionInfo{IPs: primaryIPs{
@@ -262,20 +263,20 @@ func Test_ParseCloudInitInterface(t *testing.T) {
 			output: connectionInfo{SkipIPv6: true}},
 		{name: `IPv6=Static`,
 			input: testInput{ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
-				Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}}},
+				Address: util.Pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}}},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
 				SkipIPv4: true}},
 		{name: `IPv6=Static ciCustom`,
 			input: testInput{
 				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
-					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
+					Address: util.Pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
 				ciCustom: true},
 			output: connectionInfo{IPs: primaryIPs{IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"}}},
 		{name: `IPv6=Static SkipIPv6`,
 			input: testInput{
 				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
-					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
+					Address: util.Pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
 				skipIPv6: true},
 			output: connectionInfo{IPs: primaryIPs{
 				IPv6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
@@ -284,7 +285,7 @@ func Test_ParseCloudInitInterface(t *testing.T) {
 		{name: `IPv6=Static SkipIPv6 ciCustom`,
 			input: testInput{
 				ci: pxapi.CloudInitNetworkConfig{IPv6: &pxapi.CloudInitIPv6Config{
-					Address: pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
+					Address: util.Pointer(pxapi.IPv6CIDR("2001:0db8:85a3:0000:0000:8a2e:0370:7334/64"))}},
 				ciCustom: true,
 				skipIPv6: true},
 			output: connectionInfo{IPs: primaryIPs{
