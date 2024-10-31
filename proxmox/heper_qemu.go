@@ -68,7 +68,7 @@ func (conn connectionInfo) agentDiagnostics() diag.Diagnostics {
 		return diag.Diagnostics{diag.Diagnostic{
 			Severity: diag.Warning,
 			Summary:  errorGuestAgentNoIPv6Summary,
-			Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue. To suppress this warning set '" + schemaSkipIPv4 + "' to true."}}
+			Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue. To suppress this warning set '" + schemaSkipIPv6 + "' to true."}}
 	}
 	return diag.Diagnostics{}
 }
