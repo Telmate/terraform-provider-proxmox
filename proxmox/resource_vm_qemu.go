@@ -2679,7 +2679,7 @@ func mapToTerraform_QemuScsiStorage_Disks(config *pxapi.QemuScsiStorage, ciDisk 
 }
 
 func mapToTerraform_QemuStorage(d *schema.ResourceData, config pxapi.QemuStorages) bool {
-	ciDisk := pointer(false)
+	ciDisk := util.Pointer(false)
 	if _, ok := d.GetOk("disk"); ok {
 		d.Set("disk", mapToTerraform_QemuDisks_Disk(config, ciDisk))
 	} else {
