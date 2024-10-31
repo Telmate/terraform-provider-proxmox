@@ -1821,7 +1821,7 @@ func initConnInfo(d *schema.ResourceData, client *pxapi.Client, vmr *pxapi.VmRef
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-	IPs, agentDiags := getPrimaryIP(config, vmr, client, guestAgentWaitEnd, d.Get(schemaAdditionalWait).(int), d.Get(schemaAgentTimeout).(int), ciAgentEnabled, d.Get(schemaSkipIPv4).(bool), d.Get(schemaSkipIPv6).(bool), hasCiDisk)
+	IPs, agentDiags := getPrimaryIP(config.CloudInit, config.Networks, vmr, client, guestAgentWaitEnd, d.Get(schemaAdditionalWait).(int), d.Get(schemaAgentTimeout).(int), ciAgentEnabled, d.Get(schemaSkipIPv4).(bool), d.Get(schemaSkipIPv6).(bool), hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1852,7 +1852,7 @@ func initConnInfo(d *schema.ResourceData, client *pxapi.Client, vmr *pxapi.VmRef
 	return diags
 }
 
-func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(cloudInit *pxapi.CloudInit, networks pxapi.QemuNetworkInterfaces, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1861,14 +1861,14 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 		SkipIPv6: skipIPv6,
 	}
 	if hasCiDisk { // Check if we have a Cloud-Init disk, cloud-init setting won't have any effect if without it.
-		if config.CloudInit != nil { // Check if we have a Cloud-Init configuration
+		if cloudInit != nil { // Check if we have a Cloud-Init configuration
 			log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
 			logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
 			var cicustom bool
-			if config.CloudInit.Custom != nil && config.CloudInit.Custom.Network != nil {
+			if cloudInit.Custom != nil && cloudInit.Custom.Network != nil {
 				cicustom = true
 			}
-			conn = parseCloudInitInterface(config.CloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
+			conn = parseCloudInitInterface(cloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
 			// early return, we have all information we wanted
 			if conn.hasRequiredIP() {
 				if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
@@ -1888,19 +1888,14 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 
 	// get all information we can from qemu agent until the timer runs out
 	if ciAgentEnabled {
-		var waitedTime int
-		// TODO rework this logic when network interfaces are properly handled in the SDK
-		vmConfig, err := client.GetVmConfig(vmr)
-		if err != nil {
-			return primaryIPs{}, diag.FromErr(err)
-		}
-		var primaryMacAddress net.HardwareAddr
-		for i := 0; i < 16; i++ {
-			if _, ok := vmConfig["net"+strconv.Itoa(i)]; ok {
-				primaryMacAddress, err = net.ParseMAC(macAddressRegex.FindString(vmConfig["net"+strconv.Itoa(i)].(string)))
-				if err != nil {
-					return primaryIPs{}, diag.FromErr(err)
-				}
+		var (
+			waitedTime        int
+			primaryMacAddress net.HardwareAddr
+			err               error
+		)
+		for i := 0; i < network.MaximumNetworkInterfaces; i++ {
+			if v, ok := networks[pxapi.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+				primaryMacAddress = *v.MAC
 				break
 			}
 		}
