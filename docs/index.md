@@ -97,24 +97,22 @@ provider "proxmox" {
 
 The following arguments are supported in the provider block:
 
-- `pm_api_url` - (Required; or use environment variable `PM_API_URL`) This is the target Proxmox API endpoint.
-- `pm_user` - (Optional; or use environment variable `PM_USER`) The user, remember to include the authentication realm
-  such as myuser@pam or myuser@pve.
-- `pm_password` - (Optional; sensitive; or use environment variable `PM_PASS`) The password.
-- `pm_api_token_id` - (Optional; or use environment variable `PM_API_TOKEN_ID`) This is
-  an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user.
-- `pm_api_token_secret` - (Optional; or use environment variable `PM_API_TOKEN_SECRET`) This uuid is only
-  available when the token was initially created.
-- `pm_otp` - (Optional; or use environment variable `PM_OTP`) The 2FA OTP code.
-- `pm_tls_insecure` - (Optional) Disable TLS verification while connecting to the proxmox server.
-- `pm_parallel` - (Optional; defaults to 4) Allowed simultaneous Proxmox processes (e.g. creating resources).
-- `pm_log_enable` - (Optional; defaults to false) Enable debug logging, see the section below for logging details.
-- `pm_log_levels` - (Optional) A map of log sources and levels.
-- `pm_log_file` - (Optional; defaults to "terraform-plugin-proxmox.log") If logging is enabled, the log file the
-  provider will write logs to.
-- `pm_timeout` - (Optional; defaults to 300) Timeout value (seconds) for proxmox API calls.
-- `pm_debug` - (Optional; defaults to false) Enable verbose output in proxmox-api-go
-- `pm_proxy_server` - (Optional; defaults to nil) Send provider api call to a proxy server for easy debugging
+| Argument              | environment variable | Type     | Default Value                  | Description |
+| --------------------- | -------------------- | -------- | ------------------------------ | ----------- |
+| `pm_api_url`          | `PM_API_URL`         | `string` |                                | **Required** This is the target Proxmox API endpoint. |
+| `pm_user`             | `PM_USER`            | `string` |                                | The user, remember to include the authentication realm such as myuser@pam or myuser@pve. |
+| `pm_password`         | `PM_PASS`            | `string` |                                | **Sensitive** The password. |
+| `pm_api_token_id`     | `PM_API_TOKEN_ID`    | `string` |                                | This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user. |
+| `pm_api_token_secret` | `PM_API_TOKEN`       | `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
+| `pm_otp`              | `PM_OTP`             | `string` |                                | The 2FA OTP code. |
+| `pm_tls_insecure`     |                      | `bool`   | `true`                         | Disable TLS verification while connecting to the proxmox server. |
+| `pm_parallel`         |                      | `uint`   | `4`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). |
+| `pm_log_enable`       |                      | `bool`   | `false`                        | Enable debug logging, see the section below for logging details. |
+| `pm_log_levels`       |                      | `map`    |                                | A map of log sources and levels. |
+| `pm_log_file`         |                      | `string` | `terraform-plugin-proxmox.log` | The log file the provider will write logs to. |
+| `pm_timeout`          |                      | `uint`   | `300`                          | Timeout value (seconds) for proxmox API calls. |
+| `pm_debug`            |                      | `bool`   | `false`                        | Enable verbose output in proxmox-api-go. |
+| `pm_proxy_server`     |                      | `string` |                                | Send provider api call to a proxy server for easy debugging. |
 
 Additionally, one can set the `PM_OTP_PROMPT` environment variable to prompt for OTP 2FA code (if required).
 
