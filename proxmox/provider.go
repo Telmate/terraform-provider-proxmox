@@ -11,6 +11,9 @@ import (
 	"sync"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/validator"
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -116,7 +119,23 @@ func Provider() *schema.Provider {
 			schemaPmParallel: {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  4,
+				Default:  1,
+				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
+					v, ok := i.(int)
+					if !ok {
+						return diag.Errorf(validator.ErrorUint, k)
+					}
+					if v < 1 {
+						return diag.Errorf(schemaPmParallel + " must be greater than 0")
+					}
+					if v > 1 { // TODO actually fix the parallelism! workaround for #1136
+						return diag.Diagnostics{
+							diag.Diagnostic{
+								Severity: diag.Warning,
+								Summary:  "setting " + schemaPmParallel + " greater than 1 is currently not recommended when using dynamic guest id allocation"}}
+					}
+					return nil
+				},
 			},
 			schemaPmTlsInsecure: {
 				Type:        schema.TypeBool,
