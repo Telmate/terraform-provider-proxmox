@@ -560,17 +560,89 @@ details.
 
 ### USB Block
 
-The `usb` block is used to configure USB devices. It may be specified multiple times. The order in which the
-blocks are specified determines the ID for each net device. i.e. The first `usb` block will become `usb0`, the
-second will be `usb1` etc...
+The `usb` block is used to configure USB devices. It may be specified multiple times. When no `device_id`, `mapping_id`, or `port_id` is specified, it will be a `spice` device.
+In order to have a normal diff put the `usb` blocks in alphanumeric order based on the value of `id`.
+Don't need it in a module? Use the [USBs](#usbs-block) instead.
 
 See the [docs about USB passthrough](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_usb_passthrough) for more
 details.
 
-| Argument | Type   | Default Value | Description                                                                                                         |
-| -------- | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `host`   | `str`  |               | **Required** USB device host. This can either be done via the vendor- and product-id, or via the host bus and port. |
-| `usb3`   | `bool` | `false`       | Specifies whether if given host option is a USB3 device or port.                                                    |
+| Argument     | Type     | Default Value | Description |
+| ------------ | -------- | ------------- | ----------- |
+| `id`         | `int`    |               | **Required** The ID of the USB device. Must be unique, and between `0-4`. |
+| `device_id`  | `string` |               | The USB device ID, mutually exclusive with `mapping_id` and `port_id`. |
+| `mapping_id` | `string` |               | The USB mapping ID, mutually exclusive with `device_id` and `port_id`. |
+| `port_id`    | `string` |               | The USB port ID, mutually exclusive with `device_id` and `mapping_id`. |
+| `usb3`       | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs Block
+
+The `usbs` block is used to configure USB devices.
+There are four types of USB devices `device`, `mapping`, `port`, and `spice`. Configuration for these sub types can be found in their respective chapters:
+
+* `device`: [USBs.x.Device Block](#usbsxdevice-block).
+* `mapping`: [USBs.x.Mapping Block](#usbsxmapping-block).
+* `port`: [USBs.x.Port Block](#usbsxport-block).
+* `spice`: [USBs.x.Spice Block](#usbsxspice-block).
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  //<arguments omitted for brevity...>
+
+  usbs {
+    usb0 {
+      device {
+        device_id = "e0bc:40a9"
+        usb3 = true
+      }
+    }
+    usb1 {
+      mapping {
+        mapping_id = "mapped-device"
+        usb3 = true
+      }
+    }
+    usb2 {
+      port {
+        port_id = "1-1"
+        usb3 = true
+      }
+    }
+    usb4 {
+      spice {
+        usb3 = true
+      }
+    }
+  }
+}
+```
+
+### USBs.x.Device Block
+
+| Argument    | Type     | Default Value | Description |
+| ----------- | -------- | ------------- | ----------- |
+| `device_id` | `string` |               | **Required** The USB device ID, mutually exclusive with `mapping_id` and `port_id`. |
+| `usb3`      | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs.x.Mapping Block
+
+| Argument     | Type     | Default Value | Description |
+| ------------ | -------- | ------------- | ----------- |
+| `mapping_id` | `string` |               | **Required** The USB mapping ID, mutually exclusive with `device_id` and `port_id`. |
+| `usb3`       | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs.x.Port Block
+
+| Argument  | Type     | Default Value | Description |
+| --------- | -------- | ------------- | ----------- |
+| `port_id` | `string` |               | **Required** The USB port ID, mutually exclusive with `device_id` and `mapping_id`. |
+| `usb3`    | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs.x.Spice Block
+
+| Argument | Type   | Default Value | Description |
+| -------- | ------ | ------------- | ----------- |
+| `usb3`   | `bool` | `false`       | Specifies whether the USB device or port is USB3. |
 
 ## SMBIOS Block
 

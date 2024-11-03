@@ -27,6 +27,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
@@ -635,22 +636,8 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
-			"usb": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"host": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"usb3": {
-							Type:     schema.TypeBool,
-							Optional: true,
-						},
-					},
-				},
-			},
+			usb.RootUSB:  usb.SchemaUSB(),
+			usb.RootUSBs: usb.SchemaUSBs(),
 			"os_type": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -905,8 +892,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	qemuPCIDevices, _ := ExpandDevicesList(d.Get("hostpci").([]interface{}))
 
-	qemuUsbs, _ := ExpandDevicesList(d.Get("usb").([]interface{}))
-
 	config := pxapi.ConfigQemu{
 		Name:           vmName,
 		CPU:            mapToSDK_CPU(d),
@@ -932,7 +917,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Args:           d.Get("args").(string),
 		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
-		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:      mapToSDK_CloudInit(d),
 	}
@@ -943,6 +927,11 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
+		return diags
+	}
+	config.USBs, tmpDiags = usb.SDK(d)
 	diags = append(diags, tmpDiags...)
 	if tmpDiags.HasError() {
 		return diags
@@ -1151,11 +1140,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(fmt.Errorf("error while processing HostPCI configuration: %v", err))
 	}
 
-	qemuUsbs, err := ExpandDevicesList(d.Get("usb").([]interface{}))
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("error while processing Usb configuration: %v", err))
-	}
-
 	d.Partial(true)
 	if d.HasChange("target_node") {
 		// Update target node when it must be migrated manually. Don't if it has been migrated by the proxmox high availability system.
@@ -1188,7 +1172,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Args:           d.Get("args").(string),
 		Serials:        mapToSDK_Serials(d),
 		QemuPCIDevices: qemuPCIDevices,
-		QemuUsbs:       qemuUsbs,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:      mapToSDK_CloudInit(d),
 	}
@@ -1202,6 +1185,11 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
+		return diags
+	}
+	config.USBs, tmpDiags = usb.SDK(d)
 	diags = append(diags, tmpDiags...)
 	if tmpDiags.HasError() {
 		return diags
@@ -1484,6 +1472,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if len(config.Serials) != 0 {
 		d.Set("serial", mapToTerraform_Serials(config.Serials))
 	}
+	if len(config.USBs) != 0 {
+		usb.Terraform(config.USBs, d)
+	}
 
 	// Some dirty hacks to populate undefined keys with default values.
 	checkedKeys := []string{"force_create", "define_connection_info"}
@@ -1509,14 +1500,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	logger.Debug().Int("vmid", vmID).Msgf("Hostpci Block Processed '%v'", config.QemuPCIDevices)
 	if err = d.Set("hostpci", qemuPCIDevices); err != nil {
 		return diag.FromErr(fmt.Errorf("unable to set hostpci: %w", err))
-	}
-
-	// read in the qemu hostpci
-	qemuUsbsDevices, _ := FlattenDevicesList(config.QemuUsbs)
-	qemuUsbsDevices, _ = DropElementsFromMap([]string{"id"}, qemuUsbsDevices)
-	logger.Debug().Int("vmid", vmID).Msgf("Usb Block Processed '%v'", config.QemuUsbs)
-	if err = d.Set("usb", qemuUsbsDevices); err != nil {
-		return diag.FromErr(err)
 	}
 
 	// read in the unused disks
