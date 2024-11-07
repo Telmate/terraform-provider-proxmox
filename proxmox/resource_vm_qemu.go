@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -207,6 +208,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional:      true,
 				ForceNew:      true,
 				ConflictsWith: []string{"pxe"},
+			},
+			"clone_id": {
+				Type:          schema.TypeInt,
+				Optional:      true,
+				ForceNew:      true,
+				ConflictsWith: []string{"clone", "pxe"},
 			},
 			"full_clone": {
 				Type:     schema.TypeBool,
@@ -869,6 +876,27 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
+func getSourceVmr(client *pxapi.Client, name string, id int, targetNode string) (*pxapi.VmRef, error) {
+	if name != "" {
+		sourceVmrs, err := client.GetVmRefsByName(name)
+		if err != nil {
+			return nil, err
+		}
+		// Prefer source VM on the same node
+		sourceVmr := sourceVmrs[0]
+		for _, candVmr := range sourceVmrs {
+			if candVmr.Node() == targetNode {
+				sourceVmr = candVmr
+			}
+		}
+		return sourceVmr, nil
+	} else if id != 0 {
+		return client.GetVmRefById(id)
+	}
+
+	return nil, errors.New("either 'clone' name or 'clone_id' must be specified")
+}
+
 func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_create")
@@ -997,24 +1025,16 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		vmr.SetPool(d.Get("pool").(string))
 
 		// check if clone, or PXE boot
-		if d.Get("clone").(string) != "" {
+		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 {
 			fullClone := 1
 			if !d.Get("full_clone").(bool) {
 				fullClone = 0
 			}
 			config.FullClone = &fullClone
 
-			sourceVmrs, err := client.GetVmRefsByName(d.Get("clone").(string))
+			sourceVmr, err := getSourceVmr(client, d.Get("clone").(string), d.Get("clone_id").(int), vmr.Node())
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
-			}
-
-			// prefer source Vm located on same node
-			sourceVmr := sourceVmrs[0]
-			for _, candVmr := range sourceVmrs {
-				if candVmr.Node() == vmr.Node() {
-					sourceVmr = candVmr
-				}
 			}
 
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
