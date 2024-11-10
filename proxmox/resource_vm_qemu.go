@@ -28,6 +28,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
@@ -436,40 +437,7 @@ func resourceVmQemu() *schema.Resource {
 			disk.RootDisk:  disk.SchemaDisk(),
 			disk.RootDisks: disk.SchemaDisks(),
 			// Other
-			"serial": {
-				Type:     schema.TypeSet,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"id": {
-							Type:     schema.TypeInt,
-							Required: true,
-							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
-								v := i.(int)
-								if err := pxapi.SerialID(v).Validate(); err != nil {
-									return diag.Errorf("serial id must be between 0 and 3, got: %d", v)
-								}
-								return nil
-							},
-						},
-						"type": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "socket",
-							ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
-								v := i.(string)
-								if v == "socket" {
-									return nil
-								}
-								if err := pxapi.SerialPath(v).Validate(); err != nil {
-									return diag.Errorf("serial type must be 'socket' or match the following regex `/dev/.+`, got: %s", v)
-								}
-								return nil
-							},
-						},
-					},
-				},
-			},
+			serial.Root:  serial.Schema(),
 			usb.RootUSB:  usb.SchemaUSB(),
 			usb.RootUSBs: usb.SchemaUSBs(),
 			"os_type": {
@@ -749,7 +717,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuOs:         d.Get("qemu_os").(string),
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
-		Serials:        mapToSDK_Serials(d),
+		Serials:        serial.SDK(d),
 		QemuPCIDevices: qemuPCIDevices,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:      mapToSDK_CloudInit(d),
@@ -1004,7 +972,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		QemuOs:         d.Get("qemu_os").(string),
 		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
 		Args:           d.Get("args").(string),
-		Serials:        mapToSDK_Serials(d),
+		Serials:        serial.SDK(d),
 		QemuPCIDevices: qemuPCIDevices,
 		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:      mapToSDK_CloudInit(d),
@@ -1304,7 +1272,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		network.Terraform(config.Networks, d)
 	}
 	if len(config.Serials) != 0 {
-		d.Set("serial", mapToTerraform_Serials(config.Serials))
+		serial.Terraform(config.Serials, d)
 	}
 	if len(config.USBs) != 0 {
 		usb.Terraform(config.USBs, d)
@@ -1842,22 +1810,6 @@ func mapFromStruct_QemuGuestAgent(d *schema.ResourceData, config *pxapi.QemuGues
 	}
 }
 
-func mapToTerraform_Serials(config pxapi.SerialInterfaces) []interface{} {
-	var index int
-	serials := make([]interface{}, len(config))
-	for i, e := range config {
-		localMap := map[string]interface{}{"id": int(i)}
-		if e.Socket {
-			localMap["type"] = "socket"
-		} else {
-			localMap["type"] = string(e.Path)
-		}
-		serials[index] = localMap
-		index++
-	}
-	return serials
-}
-
 // Map the terraform schema to sdk struct
 
 func mapToSDK_CloudInit(d *schema.ResourceData) *pxapi.CloudInit {
@@ -1969,25 +1921,4 @@ func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pxapi.QemuGuestAgent {
 	return &pxapi.QemuGuestAgent{
 		Enable: &tmpEnable,
 	}
-}
-
-func mapToSDK_Serials(d *schema.ResourceData) pxapi.SerialInterfaces {
-	serials := pxapi.SerialInterfaces{
-		pxapi.SerialID0: pxapi.SerialInterface{Delete: true},
-		pxapi.SerialID1: pxapi.SerialInterface{Delete: true},
-		pxapi.SerialID2: pxapi.SerialInterface{Delete: true},
-		pxapi.SerialID3: pxapi.SerialInterface{Delete: true}}
-	serialsMap := d.Get("serial").(*schema.Set)
-	for _, serial := range serialsMap.List() {
-		serialMap := serial.(map[string]interface{})
-		newSerial := pxapi.SerialInterface{Delete: false}
-		serialType := serialMap["type"].(string)
-		if serialType == "socket" {
-			newSerial.Socket = true
-		} else {
-			newSerial.Path = pxapi.SerialPath(serialType)
-		}
-		serials[pxapi.SerialID(serialMap["id"].(int))] = newSerial
-	}
-	return serials
 }
