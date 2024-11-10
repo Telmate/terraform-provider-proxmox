@@ -21,17 +21,17 @@ const (
 
 	schemaID string = "id"
 
-	legacySchemaHost = "host"
+	legacySchemaHost string = "host"
 
-	schemaDevice    = "device"
-	schemaDeviceID  = "device_id"
-	schemaMapping   = "mapping"
-	schemaMappingID = "mapping_id"
-	schemaPort      = "port"
-	schemaPortID    = "port_id"
-	schemaSpice     = "spice"
+	schemaDevice    string = "device"
+	schemaDeviceID  string = "device_id"
+	schemaMapping   string = "mapping"
+	schemaMappingID string = "mapping_id"
+	schemaPort      string = "port"
+	schemaPortID    string = "port_id"
+	schemaSpice     string = "spice"
 
-	schemaUSB3 = "usb3"
+	schemaUSB3 string = "usb3"
 )
 
 func SchemaUSB() *schema.Schema {
