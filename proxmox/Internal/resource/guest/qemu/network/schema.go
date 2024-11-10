@@ -3,7 +3,7 @@ package network
 import (
 	"net"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -13,7 +13,7 @@ import (
 const (
 	Root string = "network"
 
-	maximumNetworkInterfaces int = int(pxapi.QemuNetworkInterfacesAmount)
+	maximumNetworkInterfaces int = int(pveAPI.QemuNetworkInterfacesAmount)
 
 	schemaID string = "id"
 
@@ -41,11 +41,11 @@ func Schema() *schema.Schema {
 					ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 						v := i.(int)
 						if v < 0 {
-							return diag.Errorf("%s must be in the range 0 - %d, got: %d", schemaID, pxapi.QemuNetworkInterfaceIDMaximum, v)
+							return diag.Errorf("%s must be in the range 0 - %d, got: %d", schemaID, pveAPI.QemuNetworkInterfaceIDMaximum, v)
 						}
-						err := pxapi.QemuNetworkInterfaceID(v).Validate()
+						err := pveAPI.QemuNetworkInterfaceID(v).Validate()
 						if err != nil {
-							return diag.Errorf("%s must be in the range 0 - %d, got: %d", schemaID, pxapi.QemuNetworkInterfaceIDMaximum, v)
+							return diag.Errorf("%s must be in the range 0 - %d, got: %d", schemaID, pveAPI.QemuNetworkInterfaceIDMaximum, v)
 						}
 						return nil
 					}},
@@ -88,7 +88,7 @@ func Schema() *schema.Schema {
 						if v < 0 {
 							return diag.Errorf("%s must be equal or greater than 0, got: %d", schemaMTU, v)
 						}
-						if err := pxapi.MTU(v).Validate(); err != nil {
+						if err := pveAPI.MTU(v).Validate(); err != nil {
 							return diag.Errorf("%s must be in the range 576 - 65520, or 1 got: %d", schemaMTU, v)
 						}
 						return nil
@@ -99,7 +99,7 @@ func Schema() *schema.Schema {
 					ForceNew: false,
 					ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 						v := i.(string)
-						if err := pxapi.QemuNetworkModel(v).Validate(); err != nil {
+						if err := pveAPI.QemuNetworkModel(v).Validate(); err != nil {
 							return diag.Errorf("invalid network %s: %s", schemaModel, v)
 						}
 						return nil
@@ -123,8 +123,8 @@ func Schema() *schema.Schema {
 						if v < 0 {
 							return diag.Errorf("%s must be equal or greater than 0, got: %d", schemaQueues, v)
 						}
-						if err := pxapi.QemuNetworkQueue(v).Validate(); err != nil {
-							return diag.Errorf("%s must be in the range 0 - %d, got: %d", schemaQueues, pxapi.QemuNetworkQueueMaximum, v)
+						if err := pveAPI.QemuNetworkQueue(v).Validate(); err != nil {
+							return diag.Errorf("%s must be in the range 0 - %d, got: %d", schemaQueues, pveAPI.QemuNetworkQueueMaximum, v)
 						}
 						return nil
 					}},
