@@ -6,27 +6,27 @@ import (
 )
 
 func sdk_Disk_QemuCdRom(slot string, schema map[string]interface{}) (*pveAPI.QemuCdRom, diag.Diagnostics) {
-	diags := warningsCdromAndCloudinit(slot, "cdrom", schema)
-	if schema["storage"].(string) != "" {
-		diags = append(diags, warningDisk(slot, "storage", "type", "cdrom", ""))
+	diags := warningsCdromAndCloudinit(slot, schemaCdRom, schema)
+	if schema[schemaStorage].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaStorage, schemaType, schemaCdRom, ""))
 	}
-	if schema["passthrough"].(bool) {
+	if schema[schemaPassthrough].(bool) {
 		return &pveAPI.QemuCdRom{Passthrough: true}, diags
 	}
-	return &pveAPI.QemuCdRom{Iso: sdkIsoFile(schema["iso"].(string))}, diags
+	return &pveAPI.QemuCdRom{Iso: sdkIsoFile(schema[schemaISO].(string))}, diags
 }
 
 func sdk_Disk_QemuCloudInit(slot string, schema map[string]interface{}) (*pveAPI.QemuCloudInitDisk, diag.Diagnostics) {
-	diags := warningsCdromAndCloudinit(slot, "cloudinit", schema)
-	if schema["iso"].(string) != "" {
-		diags = append(diags, warningDisk(slot, "iso", "type", "cloudinit", ""))
+	diags := warningsCdromAndCloudinit(slot, schemaCloudInit, schema)
+	if schema[schemaISO].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaISO, schemaType, schemaCloudInit, ""))
 	}
-	if schema["passthrough"].(bool) {
-		diags = append(diags, warningDisk(slot, "passthrough", "type", "cloudinit", ""))
+	if schema[schemaPassthrough].(bool) {
+		diags = append(diags, warningDisk(slot, schemaPassthrough, schemaType, schemaCloudInit, ""))
 	}
 	return &pveAPI.QemuCloudInitDisk{
 		Format:  pveAPI.QemuDiskFormat_Raw,
-		Storage: schema["storage"].(string),
+		Storage: schema[schemaStorage].(string),
 	}, diags
 }
 
@@ -34,20 +34,20 @@ func sdk_Disk_QemuDiskBandwidth(schema map[string]interface{}) pveAPI.QemuDiskBa
 	return pveAPI.QemuDiskBandwidth{
 		MBps: pveAPI.QemuDiskBandwidthMBps{
 			ReadLimit: pveAPI.QemuDiskBandwidthMBpsLimit{
-				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema["mbps_r_burst"].(float64)),
-				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema["mbps_r_concurrent"].(float64))},
+				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema[schemaMBPSrBurst].(float64)),
+				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema[schemaMBPSrConcurrent].(float64))},
 			WriteLimit: pveAPI.QemuDiskBandwidthMBpsLimit{
-				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema["mbps_wr_burst"].(float64)),
-				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema["mbps_wr_concurrent"].(float64))}},
+				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema[schemaMBPSwrBurst].(float64)),
+				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema[schemaMBPSwrConcurrent].(float64))}},
 		Iops: pveAPI.QemuDiskBandwidthIops{
 			ReadLimit: pveAPI.QemuDiskBandwidthIopsLimit{
-				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema["iops_r_burst"].(int)),
-				BurstDuration: uint(schema["iops_r_burst_length"].(int)),
-				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema["iops_r_concurrent"].(int))},
+				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema[schemaIOPSrBurst].(int)),
+				BurstDuration: uint(schema[schemaIOPSrBurstLength].(int)),
+				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema[schemaIOPSrConcurrent].(int))},
 			WriteLimit: pveAPI.QemuDiskBandwidthIopsLimit{
-				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema["iops_wr_burst"].(int)),
-				BurstDuration: uint(schema["iops_wr_burst_length"].(int)),
-				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema["iops_wr_concurrent"].(int))}},
+				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema[schemaIOPSwrBurst].(int)),
+				BurstDuration: uint(schema[schemaIOPSwrBurstLength].(int)),
+				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema[schemaIOPSwrConcurrent].(int))}},
 	}
 }
 
@@ -66,58 +66,58 @@ func sdk_Disk_QemuIdeDisks(ide *pveAPI.QemuIdeDisks, id string, schema map[strin
 }
 
 func sdk_Disk_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
-	slot := "ide" + id
+	slot := schemaIDE + id
 	if ide.CdRom != nil || ide.Disk != nil || ide.Passthrough != nil || ide.CloudInit != nil {
 		return errorDiskSlotDuplicate(slot)
 	}
-	switch schema["type"].(string) {
-	case "disk":
-		if schema["iothread"].(bool) {
-			diags = append(diags, warningDisk(slot, "iothread", "slot", slot, ""))
+	switch schema[schemaType].(string) {
+	case schemaDisk:
+		if schema[schemaIOthread].(bool) {
+			diags = append(diags, warningDisk(slot, schemaIOthread, schemaSlot, slot, ""))
 		}
-		if schema["iso"].(string) != "" {
-			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+		if schema[schemaISO].(string) != "" {
+			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
 		}
-		if schema["readonly"].(bool) {
-			diags = append(diags, warningDisk(slot, "readonly", "slot", slot, ""))
+		if schema[schemaReadOnly].(bool) {
+			diags = append(diags, warningDisk(slot, schemaReadOnly, schemaSlot, slot, ""))
 		}
-		if schema["passthrough"].(bool) { // passthrough disk
+		if schema[schemaPassthrough].(bool) { // passthrough disk
 			ide.Passthrough = &pveAPI.QemuIdePassthrough{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				EmulateSSD:    schema["emulatessd"].(bool),
-				File:          schema["disk_file"].(string),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				EmulateSSD:    schema[schemaEmulateSSD].(bool),
+				File:          schema[schemaDiskFile].(string),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			diags = append(diags, warningsDiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			ide.Disk = &pveAPI.QemuIdeDisk{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				EmulateSSD:    schema["emulatessd"].(bool),
-				Format:        default_format(schema["format"].(string)),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				EmulateSSD:    schema[schemaEmulateSSD].(bool),
+				Format:        default_format(schema[schemaFormat].(string)),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			var tmpDiags diag.Diagnostics
 			ide.Disk.SizeInKibibytes, tmpDiags = sdk_Disk_Size(slot, schema)
 			diags = append(diags, tmpDiags...)
 			ide.Disk.Storage, tmpDiags = sdk_Disk_Storage(slot, schema)
 			diags = append(diags, tmpDiags...)
-			if schema["disk_file"].(string) != "" {
-				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			if schema[schemaDiskFile].(string) != "" {
+				diags = append(diags, warningDisk(slot, schemaDiskFile, schemaType, schemaDisk, ""))
 			}
 		}
-	case "cdrom":
+	case schemaCdRom:
 		ide.CdRom, diags = sdk_Disk_QemuCdRom(slot, schema)
-	case "cloudinit":
+	case schemaCloudInit:
 		ide.CloudInit, diags = sdk_Disk_QemuCloudInit(slot, schema)
 	}
 	return
@@ -142,58 +142,58 @@ func sdk_Disk_QemuSataDisks(sata *pveAPI.QemuSataDisks, id string, schema map[st
 }
 
 func sdk_Disk_QemuSataStorage(sata *pveAPI.QemuSataStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
-	slot := "sata" + id
+	slot := schemaSata + id
 	if sata.CdRom != nil || sata.Disk != nil || sata.Passthrough != nil || sata.CloudInit != nil {
 		return errorDiskSlotDuplicate(slot)
 	}
-	switch schema["type"].(string) {
-	case "disk":
-		if schema["iothread"].(bool) {
-			diags = append(diags, warningDisk(slot, "iothread", "slot", slot, ""))
+	switch schema[schemaType].(string) {
+	case schemaDisk:
+		if schema[schemaIOthread].(bool) {
+			diags = append(diags, warningDisk(slot, schemaIOthread, schemaSlot, slot, ""))
 		}
-		if schema["iso"].(string) != "" {
-			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+		if schema[schemaISO].(string) != "" {
+			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
 		}
-		if schema["readonly"].(bool) {
-			diags = append(diags, warningDisk(slot, "readonly", "slot", slot, ""))
+		if schema[schemaReadOnly].(bool) {
+			diags = append(diags, warningDisk(slot, schemaReadOnly, schemaSlot, slot, ""))
 		}
-		if schema["passthrough"].(bool) { // passthrough disk
+		if schema[schemaPassthrough].(bool) { // passthrough disk
 			sata.Passthrough = &pveAPI.QemuSataPassthrough{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				EmulateSSD:    schema["emulatessd"].(bool),
-				File:          schema["disk_file"].(string),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				EmulateSSD:    schema[schemaEmulateSSD].(bool),
+				File:          schema[schemaDiskFile].(string),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			diags = append(diags, warningsDiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			sata.Disk = &pveAPI.QemuSataDisk{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				EmulateSSD:    schema["emulatessd"].(bool),
-				Format:        default_format(schema["format"].(string)),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				EmulateSSD:    schema[schemaEmulateSSD].(bool),
+				Format:        default_format(schema[schemaFormat].(string)),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			var tmpDiags diag.Diagnostics
 			sata.Disk.SizeInKibibytes, tmpDiags = sdk_Disk_Size(slot, schema)
 			diags = append(diags, tmpDiags...)
 			sata.Disk.Storage, tmpDiags = sdk_Disk_Storage(slot, schema)
 			diags = append(diags, tmpDiags...)
-			if schema["disk_file"].(string) != "" {
-				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			if schema[schemaDiskFile].(string) != "" {
+				diags = append(diags, warningDisk(slot, schemaDiskFile, schemaType, schemaDisk, ""))
 			}
 		}
-	case "cdrom":
+	case schemaCdRom:
 		sata.CdRom, diags = sdk_Disk_QemuCdRom(slot, schema)
-	case "cloudinit":
+	case schemaCloudInit:
 		sata.CloudInit, diags = sdk_Disk_QemuCloudInit(slot, schema)
 	}
 	return
@@ -268,116 +268,116 @@ func sdk_Disk_QemuScsiDisks(scsi *pveAPI.QemuScsiDisks, id string, schema map[st
 }
 
 func sdk_Disk_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
-	slot := "scsi" + id
+	slot := schemaScsi + id
 	if scsi.CdRom != nil || scsi.Disk != nil || scsi.Passthrough != nil || scsi.CloudInit != nil {
 		return errorDiskSlotDuplicate(slot)
 	}
-	switch schema["type"].(string) {
-	case "disk":
-		if schema["iso"].(string) != "" {
-			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+	switch schema[schemaType].(string) {
+	case schemaDisk:
+		if schema[schemaISO].(string) != "" {
+			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
 		}
-		if schema["passthrough"].(bool) { // passthrough disk
+		if schema[schemaPassthrough].(bool) { // passthrough disk
 			scsi.Passthrough = &pveAPI.QemuScsiPassthrough{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				EmulateSSD:    schema["emulatessd"].(bool),
-				File:          schema["disk_file"].(string),
-				IOThread:      schema["iothread"].(bool),
-				ReadOnly:      schema["readonly"].(bool),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				EmulateSSD:    schema[schemaEmulateSSD].(bool),
+				File:          schema[schemaDiskFile].(string),
+				IOThread:      schema[schemaIOthread].(bool),
+				ReadOnly:      schema[schemaReadOnly].(bool),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			diags = append(diags, warningsDiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			scsi.Disk = &pveAPI.QemuScsiDisk{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				EmulateSSD:    schema["emulatessd"].(bool),
-				Format:        default_format(schema["format"].(string)),
-				IOThread:      schema["iothread"].(bool),
-				ReadOnly:      schema["readonly"].(bool),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				EmulateSSD:    schema[schemaEmulateSSD].(bool),
+				Format:        default_format(schema[schemaFormat].(string)),
+				IOThread:      schema[schemaIOthread].(bool),
+				ReadOnly:      schema[schemaReadOnly].(bool),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			var tmpDiags diag.Diagnostics
 			scsi.Disk.SizeInKibibytes, tmpDiags = sdk_Disk_Size(slot, schema)
 			diags = append(diags, tmpDiags...)
 			scsi.Disk.Storage, tmpDiags = sdk_Disk_Storage(slot, schema)
 			diags = append(diags, tmpDiags...)
-			if schema["disk_file"].(string) != "" {
-				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			if schema[schemaDiskFile].(string) != "" {
+				diags = append(diags, warningDisk(slot, schemaDiskFile, schemaType, schemaDisk, ""))
 			}
 		}
-	case "cdrom":
+	case schemaCdRom:
 		scsi.CdRom, diags = sdk_Disk_QemuCdRom(slot, schema)
-	case "cloudinit":
+	case schemaCloudInit:
 		scsi.CloudInit, diags = sdk_Disk_QemuCloudInit(slot, schema)
 	}
 	return
 }
 
 func sdk_Disk_QemuVirtIOStorage(virtio *pveAPI.QemuVirtIOStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
-	slot := "virtio" + id
+	slot := schemaVirtIO + id
 	if virtio.CdRom != nil || virtio.Disk != nil || virtio.Passthrough != nil || virtio.CloudInit != nil {
 		return errorDiskSlotDuplicate(slot)
 	}
-	switch schema["type"].(string) {
-	case "disk":
-		if schema["emulatessd"].(bool) {
-			diags = append(diags, warningDisk(slot, "emulatessd", "slot", slot, ""))
+	switch schema[schemaType].(string) {
+	case schemaDisk:
+		if schema[schemaEmulateSSD].(bool) {
+			diags = append(diags, warningDisk(slot, schemaEmulateSSD, schemaSlot, slot, ""))
 		}
-		if schema["iso"].(string) != "" {
-			diags = append(diags, warningDisk(slot, "iso", "slot", slot, ""))
+		if schema[schemaISO].(string) != "" {
+			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
 		}
-		if schema["passthrough"].(bool) { // passthrough disk
+		if schema[schemaPassthrough].(bool) { // passthrough disk
 			virtio.Passthrough = &pveAPI.QemuVirtIOPassthrough{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				File:          schema["disk_file"].(string),
-				IOThread:      schema["iothread"].(bool),
-				ReadOnly:      schema["readonly"].(bool),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				File:          schema[schemaDiskFile].(string),
+				IOThread:      schema[schemaIOthread].(bool),
+				ReadOnly:      schema[schemaReadOnly].(bool),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			diags = append(diags, warningsDiskPassthrough(slot, schema)...)
 		} else { // normal disk
 			virtio.Disk = &pveAPI.QemuVirtIODisk{
-				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema["asyncio"].(string)),
-				Backup:        schema["backup"].(bool),
+				AsyncIO:       pveAPI.QemuDiskAsyncIO(schema[schemaAsyncIO].(string)),
+				Backup:        schema[schemaBackup].(bool),
 				Bandwidth:     sdk_Disk_QemuDiskBandwidth(schema),
-				Cache:         pveAPI.QemuDiskCache(schema["cache"].(string)),
-				Discard:       schema["discard"].(bool),
-				Format:        default_format(schema["format"].(string)),
-				IOThread:      schema["iothread"].(bool),
-				ReadOnly:      schema["readonly"].(bool),
-				Replicate:     schema["replicate"].(bool),
-				Serial:        pveAPI.QemuDiskSerial(schema["serial"].(string)),
-				WorldWideName: pveAPI.QemuWorldWideName(schema["wwn"].(string))}
+				Cache:         pveAPI.QemuDiskCache(schema[schemaCache].(string)),
+				Discard:       schema[schemaDiscard].(bool),
+				Format:        default_format(schema[schemaFormat].(string)),
+				IOThread:      schema[schemaIOthread].(bool),
+				ReadOnly:      schema[schemaReadOnly].(bool),
+				Replicate:     schema[schemaReplicate].(bool),
+				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
+				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
 			var tmpDiags diag.Diagnostics
 			virtio.Disk.SizeInKibibytes, tmpDiags = sdk_Disk_Size(slot, schema)
 			diags = append(diags, tmpDiags...)
 			virtio.Disk.Storage, tmpDiags = sdk_Disk_Storage(slot, schema)
 			diags = append(diags, tmpDiags...)
-			if schema["disk_file"].(string) != "" {
-				diags = append(diags, warningDisk(slot, "disk_file", "type", "disk", ""))
+			if schema[schemaDiskFile].(string) != "" {
+				diags = append(diags, warningDisk(slot, schemaDiskFile, schemaType, schemaDisk, ""))
 			}
 		}
-	case "cdrom":
+	case schemaCdRom:
 		virtio.CdRom, diags = sdk_Disk_QemuCdRom(slot, schema)
-	case "cloudinit":
+	case schemaCloudInit:
 		return diag.Diagnostics{{
 			Severity: diag.Error,
-			Summary:  "virtio can't have cloudinit disk"}}
+			Summary:  schemaVirtIO + " can't have " + schemaCloudInit + " disk"}}
 	}
 	return
 }
@@ -421,23 +421,23 @@ func sdk_Disk_QemuVirtIODisks(virtio *pveAPI.QemuVirtIODisks, id string, schema 
 }
 
 func sdk_Disk_Size(slot string, schema map[string]interface{}) (pveAPI.QemuDiskSize, diag.Diagnostics) {
-	size := convert_SizeStringToKibibytes_Unsafe(schema["size"].(string))
+	size := convert_SizeStringToKibibytes_Unsafe(schema[schemaSize].(string))
 	if size == 0 {
 		return 0, diag.Diagnostics{{
 			Severity: diag.Error,
-			Summary:  "slot: " + slot + " size is required for disk",
-			Detail:   "slot: " + slot + " size must be greater than 0 when type is disk and passthrough is false"}}
+			Summary:  schemaSlot + ": " + slot + " " + schemaSize + " is required for " + enumDisk,
+			Detail:   schemaSlot + ": " + slot + " " + schemaSize + " must be greater than 0 when " + schemaType + " is " + enumDisk + " and " + schemaPassthrough + " is false"}}
 	}
 	return pveAPI.QemuDiskSize(size), nil
 }
 
 func sdk_Disk_Storage(slot string, schema map[string]interface{}) (string, diag.Diagnostics) {
-	v := schema["storage"].(string)
+	v := schema[schemaStorage].(string)
 	if v == "" {
 		return "", diag.Diagnostics{{
 			Severity: diag.Error,
-			Summary:  "slot: " + slot + " storage is required for disk",
-			Detail:   "slot: " + slot + " storage may not be empty when type is disk and passthrough is false"}}
+			Summary:  schemaSlot + ": " + slot + " " + schemaStorage + " is required for " + enumDisk,
+			Detail:   schemaSlot + ": " + slot + " " + schemaStorage + " may not be empty when " + schemaType + " is " + enumDisk + " and " + schemaPassthrough + " is false"}}
 	}
 	return v, nil
 }

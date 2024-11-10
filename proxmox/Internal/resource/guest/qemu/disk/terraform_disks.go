@@ -8,19 +8,19 @@ func terraform_Disks_QemuCdRom(config *pveAPI.QemuCdRom) []interface{} {
 	}
 	return []interface{}{
 		map[string]interface{}{
-			"cdrom": []interface{}{
+			schemaCdRom: []interface{}{
 				map[string]interface{}{
-					"iso":         terraformIsoFile(config.Iso),
-					"passthrough": config.Passthrough}}}}
+					schemaISO:         terraformIsoFile(config.Iso),
+					schemaPassthrough: config.Passthrough}}}}
 }
 
 // nil pointer check is done by the caller
 func terraform_Disks_QemuCloudInit_unsafe(config *pveAPI.QemuCloudInitDisk) []interface{} {
 	return []interface{}{
 		map[string]interface{}{
-			"cloudinit": []interface{}{
+			schemaCloudInit: []interface{}{
 				map[string]interface{}{
-					"storage": string(config.Storage)}}}}
+					schemaStorage: string(config.Storage)}}}}
 }
 
 func terraform_Disks_QemuDisks(config pveAPI.QemuStorages) []interface{} {
@@ -32,10 +32,10 @@ func terraform_Disks_QemuDisks(config pveAPI.QemuStorages) []interface{} {
 		return nil
 	}
 	return []interface{}{map[string]interface{}{
-		"ide":    ide,
-		"sata":   sata,
-		"scsi":   scsi,
-		"virtio": virtio}}
+		schemaIDE:    ide,
+		schemaSata:   sata,
+		schemaScsi:   scsi,
+		schemaVirtIO: virtio}}
 }
 
 func terraform_Disks_QemuIdeDisks(config *pveAPI.QemuIdeDisks) []interface{} {
@@ -43,10 +43,10 @@ func terraform_Disks_QemuIdeDisks(config *pveAPI.QemuIdeDisks) []interface{} {
 		return nil
 	}
 	return []interface{}{map[string]interface{}{
-		"ide0": terraform_Disks_QemuIdeStorage(config.Disk_0),
-		"ide1": terraform_Disks_QemuIdeStorage(config.Disk_1),
-		"ide2": terraform_Disks_QemuIdeStorage(config.Disk_2),
-		"ide3": terraform_Disks_QemuIdeStorage(config.Disk_3)}}
+		schemaIDE + "0": terraform_Disks_QemuIdeStorage(config.Disk_0),
+		schemaIDE + "1": terraform_Disks_QemuIdeStorage(config.Disk_1),
+		schemaIDE + "2": terraform_Disks_QemuIdeStorage(config.Disk_2),
+		schemaIDE + "3": terraform_Disks_QemuIdeStorage(config.Disk_3)}}
 }
 
 func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage) []interface{} {
@@ -55,37 +55,37 @@ func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage) []interface{}
 	}
 	if config.Disk != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":        string(config.Disk.AsyncIO),
-			"backup":         config.Disk.Backup,
-			"cache":          string(config.Disk.Cache),
-			"discard":        config.Disk.Discard,
-			"emulatessd":     config.Disk.EmulateSSD,
-			"format":         string(config.Disk.Format),
-			"id":             int(config.Disk.Id),
-			"linked_disk_id": terraformLinkedCloneId(config.Disk.LinkedDiskId),
-			"replicate":      config.Disk.Replicate,
-			"serial":         string(config.Disk.Serial),
-			"size":           convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
-			"storage":        string(config.Disk.Storage)}
+			schemaAsyncIO:      string(config.Disk.AsyncIO),
+			schemaBackup:       config.Disk.Backup,
+			schemaCache:        string(config.Disk.Cache),
+			schemaDiscard:      config.Disk.Discard,
+			schemaEmulateSSD:   config.Disk.EmulateSSD,
+			schemaFormat:       string(config.Disk.Format),
+			schemaID:           int(config.Disk.Id),
+			schemaLinkedDiskId: terraformLinkedCloneId(config.Disk.LinkedDiskId),
+			schemaReplicate:    config.Disk.Replicate,
+			schemaSerial:       string(config.Disk.Serial),
+			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"disk": []interface{}{mapParams}}}
+			schemaDisk: []interface{}{mapParams}}}
 	}
 	if config.Passthrough != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":    string(config.Passthrough.AsyncIO),
-			"backup":     config.Passthrough.Backup,
-			"cache":      string(config.Passthrough.Cache),
-			"discard":    config.Passthrough.Discard,
-			"emulatessd": config.Passthrough.EmulateSSD,
-			"file":       config.Passthrough.File,
-			"replicate":  config.Passthrough.Replicate,
-			"serial":     string(config.Passthrough.Serial),
-			"size":       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes)),
+			schemaAsyncIO:    string(config.Passthrough.AsyncIO),
+			schemaBackup:     config.Passthrough.Backup,
+			schemaCache:      string(config.Passthrough.Cache),
+			schemaDiscard:    config.Passthrough.Discard,
+			schemaEmulateSSD: config.Passthrough.EmulateSSD,
+			schemaFile:       config.Passthrough.File,
+			schemaReplicate:  config.Passthrough.Replicate,
+			schemaSerial:     string(config.Passthrough.Serial),
+			schemaSize:       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes)),
 		}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"passthrough": []interface{}{mapParams}}}
+			schemaPassthrough: []interface{}{mapParams}}}
 	}
 	if config.CloudInit != nil {
 		return terraform_Disks_QemuCloudInit_unsafe(config.CloudInit)
@@ -98,12 +98,12 @@ func terraform_Disks_QemuSataDisks(config *pveAPI.QemuSataDisks) []interface{} {
 		return nil
 	}
 	return []interface{}{map[string]interface{}{
-		"sata0": terraform_Disks_QemuSataStorage(config.Disk_0),
-		"sata1": terraform_Disks_QemuSataStorage(config.Disk_1),
-		"sata2": terraform_Disks_QemuSataStorage(config.Disk_2),
-		"sata3": terraform_Disks_QemuSataStorage(config.Disk_3),
-		"sata4": terraform_Disks_QemuSataStorage(config.Disk_4),
-		"sata5": terraform_Disks_QemuSataStorage(config.Disk_5)}}
+		schemaSata + "0": terraform_Disks_QemuSataStorage(config.Disk_0),
+		schemaSata + "1": terraform_Disks_QemuSataStorage(config.Disk_1),
+		schemaSata + "2": terraform_Disks_QemuSataStorage(config.Disk_2),
+		schemaSata + "3": terraform_Disks_QemuSataStorage(config.Disk_3),
+		schemaSata + "4": terraform_Disks_QemuSataStorage(config.Disk_4),
+		schemaSata + "5": terraform_Disks_QemuSataStorage(config.Disk_5)}}
 }
 
 func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage) []interface{} {
@@ -112,37 +112,37 @@ func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage) []interface
 	}
 	if config.Disk != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":        string(config.Disk.AsyncIO),
-			"backup":         config.Disk.Backup,
-			"cache":          string(config.Disk.Cache),
-			"discard":        config.Disk.Discard,
-			"emulatessd":     config.Disk.EmulateSSD,
-			"format":         string(config.Disk.Format),
-			"id":             int(config.Disk.Id),
-			"linked_disk_id": terraformLinkedCloneId(config.Disk.LinkedDiskId),
-			"replicate":      config.Disk.Replicate,
-			"serial":         string(config.Disk.Serial),
-			"size":           convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
-			"storage":        string(config.Disk.Storage)}
+			schemaAsyncIO:      string(config.Disk.AsyncIO),
+			schemaBackup:       config.Disk.Backup,
+			schemaCache:        string(config.Disk.Cache),
+			schemaDiscard:      config.Disk.Discard,
+			schemaEmulateSSD:   config.Disk.EmulateSSD,
+			schemaFormat:       string(config.Disk.Format),
+			schemaID:           int(config.Disk.Id),
+			schemaLinkedDiskId: terraformLinkedCloneId(config.Disk.LinkedDiskId),
+			schemaReplicate:    config.Disk.Replicate,
+			schemaSerial:       string(config.Disk.Serial),
+			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"disk": []interface{}{mapParams}}}
+			schemaDisk: []interface{}{mapParams}}}
 	}
 	if config.Passthrough != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":    string(config.Passthrough.AsyncIO),
-			"backup":     config.Passthrough.Backup,
-			"cache":      string(config.Passthrough.Cache),
-			"discard":    config.Passthrough.Discard,
-			"emulatessd": config.Passthrough.EmulateSSD,
-			"file":       config.Passthrough.File,
-			"replicate":  config.Passthrough.Replicate,
-			"serial":     string(config.Passthrough.Serial),
-			"size":       convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaAsyncIO:    string(config.Passthrough.AsyncIO),
+			schemaBackup:     config.Passthrough.Backup,
+			schemaCache:      string(config.Passthrough.Cache),
+			schemaDiscard:    config.Passthrough.Discard,
+			schemaEmulateSSD: config.Passthrough.EmulateSSD,
+			schemaFile:       config.Passthrough.File,
+			schemaReplicate:  config.Passthrough.Replicate,
+			schemaSerial:     string(config.Passthrough.Serial),
+			schemaSize:       convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
 		}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"passthrough": []interface{}{mapParams}}}
+			schemaPassthrough: []interface{}{mapParams}}}
 	}
 	if config.CloudInit != nil {
 		return terraform_Disks_QemuCloudInit_unsafe(config.CloudInit)
@@ -155,37 +155,37 @@ func terraform_Disks_QemuScsiDisks(config *pveAPI.QemuScsiDisks) []interface{} {
 		return nil
 	}
 	return []interface{}{map[string]interface{}{
-		"scsi0":  terraform_Disks_QemuScsiStorage(config.Disk_0),
-		"scsi1":  terraform_Disks_QemuScsiStorage(config.Disk_1),
-		"scsi2":  terraform_Disks_QemuScsiStorage(config.Disk_2),
-		"scsi3":  terraform_Disks_QemuScsiStorage(config.Disk_3),
-		"scsi4":  terraform_Disks_QemuScsiStorage(config.Disk_4),
-		"scsi5":  terraform_Disks_QemuScsiStorage(config.Disk_5),
-		"scsi6":  terraform_Disks_QemuScsiStorage(config.Disk_6),
-		"scsi7":  terraform_Disks_QemuScsiStorage(config.Disk_7),
-		"scsi8":  terraform_Disks_QemuScsiStorage(config.Disk_8),
-		"scsi9":  terraform_Disks_QemuScsiStorage(config.Disk_9),
-		"scsi10": terraform_Disks_QemuScsiStorage(config.Disk_10),
-		"scsi11": terraform_Disks_QemuScsiStorage(config.Disk_11),
-		"scsi12": terraform_Disks_QemuScsiStorage(config.Disk_12),
-		"scsi13": terraform_Disks_QemuScsiStorage(config.Disk_13),
-		"scsi14": terraform_Disks_QemuScsiStorage(config.Disk_14),
-		"scsi15": terraform_Disks_QemuScsiStorage(config.Disk_15),
-		"scsi16": terraform_Disks_QemuScsiStorage(config.Disk_16),
-		"scsi17": terraform_Disks_QemuScsiStorage(config.Disk_17),
-		"scsi18": terraform_Disks_QemuScsiStorage(config.Disk_18),
-		"scsi19": terraform_Disks_QemuScsiStorage(config.Disk_19),
-		"scsi20": terraform_Disks_QemuScsiStorage(config.Disk_20),
-		"scsi21": terraform_Disks_QemuScsiStorage(config.Disk_21),
-		"scsi22": terraform_Disks_QemuScsiStorage(config.Disk_22),
-		"scsi23": terraform_Disks_QemuScsiStorage(config.Disk_23),
-		"scsi24": terraform_Disks_QemuScsiStorage(config.Disk_24),
-		"scsi25": terraform_Disks_QemuScsiStorage(config.Disk_25),
-		"scsi26": terraform_Disks_QemuScsiStorage(config.Disk_26),
-		"scsi27": terraform_Disks_QemuScsiStorage(config.Disk_27),
-		"scsi28": terraform_Disks_QemuScsiStorage(config.Disk_28),
-		"scsi29": terraform_Disks_QemuScsiStorage(config.Disk_29),
-		"scsi30": terraform_Disks_QemuScsiStorage(config.Disk_30)}}
+		schemaScsi + "0":  terraform_Disks_QemuScsiStorage(config.Disk_0),
+		schemaScsi + "1":  terraform_Disks_QemuScsiStorage(config.Disk_1),
+		schemaScsi + "2":  terraform_Disks_QemuScsiStorage(config.Disk_2),
+		schemaScsi + "3":  terraform_Disks_QemuScsiStorage(config.Disk_3),
+		schemaScsi + "4":  terraform_Disks_QemuScsiStorage(config.Disk_4),
+		schemaScsi + "5":  terraform_Disks_QemuScsiStorage(config.Disk_5),
+		schemaScsi + "6":  terraform_Disks_QemuScsiStorage(config.Disk_6),
+		schemaScsi + "7":  terraform_Disks_QemuScsiStorage(config.Disk_7),
+		schemaScsi + "8":  terraform_Disks_QemuScsiStorage(config.Disk_8),
+		schemaScsi + "9":  terraform_Disks_QemuScsiStorage(config.Disk_9),
+		schemaScsi + "10": terraform_Disks_QemuScsiStorage(config.Disk_10),
+		schemaScsi + "11": terraform_Disks_QemuScsiStorage(config.Disk_11),
+		schemaScsi + "12": terraform_Disks_QemuScsiStorage(config.Disk_12),
+		schemaScsi + "13": terraform_Disks_QemuScsiStorage(config.Disk_13),
+		schemaScsi + "14": terraform_Disks_QemuScsiStorage(config.Disk_14),
+		schemaScsi + "15": terraform_Disks_QemuScsiStorage(config.Disk_15),
+		schemaScsi + "16": terraform_Disks_QemuScsiStorage(config.Disk_16),
+		schemaScsi + "17": terraform_Disks_QemuScsiStorage(config.Disk_17),
+		schemaScsi + "18": terraform_Disks_QemuScsiStorage(config.Disk_18),
+		schemaScsi + "19": terraform_Disks_QemuScsiStorage(config.Disk_19),
+		schemaScsi + "20": terraform_Disks_QemuScsiStorage(config.Disk_20),
+		schemaScsi + "21": terraform_Disks_QemuScsiStorage(config.Disk_21),
+		schemaScsi + "22": terraform_Disks_QemuScsiStorage(config.Disk_22),
+		schemaScsi + "23": terraform_Disks_QemuScsiStorage(config.Disk_23),
+		schemaScsi + "24": terraform_Disks_QemuScsiStorage(config.Disk_24),
+		schemaScsi + "25": terraform_Disks_QemuScsiStorage(config.Disk_25),
+		schemaScsi + "26": terraform_Disks_QemuScsiStorage(config.Disk_26),
+		schemaScsi + "27": terraform_Disks_QemuScsiStorage(config.Disk_27),
+		schemaScsi + "28": terraform_Disks_QemuScsiStorage(config.Disk_28),
+		schemaScsi + "29": terraform_Disks_QemuScsiStorage(config.Disk_29),
+		schemaScsi + "30": terraform_Disks_QemuScsiStorage(config.Disk_30)}}
 }
 
 func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage) []interface{} {
@@ -194,40 +194,40 @@ func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage) []interface
 	}
 	if config.Disk != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":        string(config.Disk.AsyncIO),
-			"backup":         config.Disk.Backup,
-			"cache":          string(config.Disk.Cache),
-			"discard":        config.Disk.Discard,
-			"emulatessd":     config.Disk.EmulateSSD,
-			"format":         string(config.Disk.Format),
-			"id":             int(config.Disk.Id),
-			"iothread":       config.Disk.IOThread,
-			"linked_disk_id": terraformLinkedCloneId(config.Disk.LinkedDiskId),
-			"readonly":       config.Disk.ReadOnly,
-			"replicate":      config.Disk.Replicate,
-			"serial":         string(config.Disk.Serial),
-			"size":           convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
-			"storage":        string(config.Disk.Storage)}
+			schemaAsyncIO:      string(config.Disk.AsyncIO),
+			schemaBackup:       config.Disk.Backup,
+			schemaCache:        string(config.Disk.Cache),
+			schemaDiscard:      config.Disk.Discard,
+			schemaEmulateSSD:   config.Disk.EmulateSSD,
+			schemaFormat:       string(config.Disk.Format),
+			schemaID:           int(config.Disk.Id),
+			schemaIOthread:     config.Disk.IOThread,
+			schemaLinkedDiskId: terraformLinkedCloneId(config.Disk.LinkedDiskId),
+			schemaReadOnly:     config.Disk.ReadOnly,
+			schemaReplicate:    config.Disk.Replicate,
+			schemaSerial:       string(config.Disk.Serial),
+			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"disk": []interface{}{mapParams}}}
+			schemaDisk: []interface{}{mapParams}}}
 	}
 	if config.Passthrough != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":    string(config.Passthrough.AsyncIO),
-			"backup":     config.Passthrough.Backup,
-			"cache":      string(config.Passthrough.Cache),
-			"discard":    config.Passthrough.Discard,
-			"emulatessd": config.Passthrough.EmulateSSD,
-			"file":       config.Passthrough.File,
-			"iothread":   config.Passthrough.IOThread,
-			"readonly":   config.Passthrough.ReadOnly,
-			"replicate":  config.Passthrough.Replicate,
-			"serial":     string(config.Passthrough.Serial),
-			"size":       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes))}
+			schemaAsyncIO:    string(config.Passthrough.AsyncIO),
+			schemaBackup:     config.Passthrough.Backup,
+			schemaCache:      string(config.Passthrough.Cache),
+			schemaDiscard:    config.Passthrough.Discard,
+			schemaEmulateSSD: config.Passthrough.EmulateSSD,
+			schemaFile:       config.Passthrough.File,
+			schemaIOthread:   config.Passthrough.IOThread,
+			schemaReadOnly:   config.Passthrough.ReadOnly,
+			schemaReplicate:  config.Passthrough.Replicate,
+			schemaSerial:     string(config.Passthrough.Serial),
+			schemaSize:       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes))}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"passthrough": []interface{}{mapParams}}}
+			schemaPassthrough: []interface{}{mapParams}}}
 	}
 	if config.CloudInit != nil {
 		return terraform_Disks_QemuCloudInit_unsafe(config.CloudInit)
@@ -240,22 +240,22 @@ func terraform_Disks_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks) []interface
 		return nil
 	}
 	return []interface{}{map[string]interface{}{
-		"virtio0":  terraform_Disks_QemuVirtIOStorage(config.Disk_0),
-		"virtio1":  terraform_Disks_QemuVirtIOStorage(config.Disk_1),
-		"virtio2":  terraform_Disks_QemuVirtIOStorage(config.Disk_2),
-		"virtio3":  terraform_Disks_QemuVirtIOStorage(config.Disk_3),
-		"virtio4":  terraform_Disks_QemuVirtIOStorage(config.Disk_4),
-		"virtio5":  terraform_Disks_QemuVirtIOStorage(config.Disk_5),
-		"virtio6":  terraform_Disks_QemuVirtIOStorage(config.Disk_6),
-		"virtio7":  terraform_Disks_QemuVirtIOStorage(config.Disk_7),
-		"virtio8":  terraform_Disks_QemuVirtIOStorage(config.Disk_8),
-		"virtio9":  terraform_Disks_QemuVirtIOStorage(config.Disk_9),
-		"virtio10": terraform_Disks_QemuVirtIOStorage(config.Disk_10),
-		"virtio11": terraform_Disks_QemuVirtIOStorage(config.Disk_11),
-		"virtio12": terraform_Disks_QemuVirtIOStorage(config.Disk_12),
-		"virtio13": terraform_Disks_QemuVirtIOStorage(config.Disk_13),
-		"virtio14": terraform_Disks_QemuVirtIOStorage(config.Disk_14),
-		"virtio15": terraform_Disks_QemuVirtIOStorage(config.Disk_15)}}
+		schemaVirtIO + "0":  terraform_Disks_QemuVirtIOStorage(config.Disk_0),
+		schemaVirtIO + "1":  terraform_Disks_QemuVirtIOStorage(config.Disk_1),
+		schemaVirtIO + "2":  terraform_Disks_QemuVirtIOStorage(config.Disk_2),
+		schemaVirtIO + "3":  terraform_Disks_QemuVirtIOStorage(config.Disk_3),
+		schemaVirtIO + "4":  terraform_Disks_QemuVirtIOStorage(config.Disk_4),
+		schemaVirtIO + "5":  terraform_Disks_QemuVirtIOStorage(config.Disk_5),
+		schemaVirtIO + "6":  terraform_Disks_QemuVirtIOStorage(config.Disk_6),
+		schemaVirtIO + "7":  terraform_Disks_QemuVirtIOStorage(config.Disk_7),
+		schemaVirtIO + "8":  terraform_Disks_QemuVirtIOStorage(config.Disk_8),
+		schemaVirtIO + "9":  terraform_Disks_QemuVirtIOStorage(config.Disk_9),
+		schemaVirtIO + "10": terraform_Disks_QemuVirtIOStorage(config.Disk_10),
+		schemaVirtIO + "11": terraform_Disks_QemuVirtIOStorage(config.Disk_11),
+		schemaVirtIO + "12": terraform_Disks_QemuVirtIOStorage(config.Disk_12),
+		schemaVirtIO + "13": terraform_Disks_QemuVirtIOStorage(config.Disk_13),
+		schemaVirtIO + "14": terraform_Disks_QemuVirtIOStorage(config.Disk_14),
+		schemaVirtIO + "15": terraform_Disks_QemuVirtIOStorage(config.Disk_15)}}
 }
 
 func terraform_Disks_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage) []interface{} {
@@ -265,38 +265,38 @@ func terraform_Disks_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage) []inter
 	terraform_Disks_QemuCdRom(config.CdRom)
 	if config.Disk != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":        string(config.Disk.AsyncIO),
-			"backup":         config.Disk.Backup,
-			"cache":          string(config.Disk.Cache),
-			"discard":        config.Disk.Discard,
-			"format":         string(config.Disk.Format),
-			"id":             int(config.Disk.Id),
-			"iothread":       config.Disk.IOThread,
-			"linked_disk_id": terraformLinkedCloneId(config.Disk.LinkedDiskId),
-			"readonly":       config.Disk.ReadOnly,
-			"replicate":      config.Disk.Replicate,
-			"serial":         string(config.Disk.Serial),
-			"size":           convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
-			"storage":        string(config.Disk.Storage)}
+			schemaAsyncIO:      string(config.Disk.AsyncIO),
+			schemaBackup:       config.Disk.Backup,
+			schemaCache:        string(config.Disk.Cache),
+			schemaDiscard:      config.Disk.Discard,
+			schemaFormat:       string(config.Disk.Format),
+			schemaID:           int(config.Disk.Id),
+			schemaIOthread:     config.Disk.IOThread,
+			schemaLinkedDiskId: terraformLinkedCloneId(config.Disk.LinkedDiskId),
+			schemaReadOnly:     config.Disk.ReadOnly,
+			schemaReplicate:    config.Disk.Replicate,
+			schemaSerial:       string(config.Disk.Serial),
+			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"disk": []interface{}{mapParams}}}
+			schemaDisk: []interface{}{mapParams}}}
 	}
 	if config.Passthrough != nil {
 		mapParams := map[string]interface{}{
-			"asyncio":   string(config.Passthrough.AsyncIO),
-			"backup":    config.Passthrough.Backup,
-			"cache":     string(config.Passthrough.Cache),
-			"discard":   config.Passthrough.Discard,
-			"file":      config.Passthrough.File,
-			"iothread":  config.Passthrough.IOThread,
-			"readonly":  config.Passthrough.ReadOnly,
-			"replicate": config.Passthrough.Replicate,
-			"serial":    string(config.Passthrough.Serial),
-			"size":      convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes))}
+			schemaAsyncIO:   string(config.Passthrough.AsyncIO),
+			schemaBackup:    config.Passthrough.Backup,
+			schemaCache:     string(config.Passthrough.Cache),
+			schemaDiscard:   config.Passthrough.Discard,
+			schemaFile:      config.Passthrough.File,
+			schemaIOthread:  config.Passthrough.IOThread,
+			schemaReadOnly:  config.Passthrough.ReadOnly,
+			schemaReplicate: config.Passthrough.Replicate,
+			schemaSerial:    string(config.Passthrough.Serial),
+			schemaSize:      convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes))}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
-			"passthrough": []interface{}{mapParams}}}
+			schemaPassthrough: []interface{}{mapParams}}}
 	}
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }

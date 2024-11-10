@@ -5,7 +5,7 @@ import (
 )
 
 func sdk_Disks_QemuCdRom(schema map[string]interface{}) (cdRom *pveAPI.QemuCdRom) {
-	schemaItem, ok := schema["cdrom"].([]interface{})
+	schemaItem, ok := schema[schemaCdRom].([]interface{})
 	if !ok {
 		return
 	}
@@ -14,8 +14,8 @@ func sdk_Disks_QemuCdRom(schema map[string]interface{}) (cdRom *pveAPI.QemuCdRom
 	}
 	cdRomSchema := schemaItem[0].(map[string]interface{})
 	return &pveAPI.QemuCdRom{
-		Iso:         sdkIsoFile(cdRomSchema["iso"].(string)),
-		Passthrough: cdRomSchema["passthrough"].(bool),
+		Iso:         sdkIsoFile(cdRomSchema[schemaISO].(string)),
+		Passthrough: cdRomSchema[schemaPassthrough].(bool),
 	}
 }
 
@@ -23,7 +23,7 @@ func sdk_Disks_QemuCloudInit(schemaItem []interface{}) (ci *pveAPI.QemuCloudInit
 	ciSchema := schemaItem[0].(map[string]interface{})
 	return &pveAPI.QemuCloudInitDisk{
 		Format:  pveAPI.QemuDiskFormat_Raw,
-		Storage: ciSchema["storage"].(string),
+		Storage: ciSchema[schemaStorage].(string),
 	}
 }
 
@@ -31,39 +31,39 @@ func sdk_Disks_QemuDiskBandwidth(schema map[string]interface{}) pveAPI.QemuDiskB
 	return pveAPI.QemuDiskBandwidth{
 		MBps: pveAPI.QemuDiskBandwidthMBps{
 			ReadLimit: pveAPI.QemuDiskBandwidthMBpsLimit{
-				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema["mbps_r_burst"].(float64)),
-				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema["mbps_r_concurrent"].(float64)),
+				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema[schemaMBPSrBurst].(float64)),
+				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema[schemaMBPSrConcurrent].(float64)),
 			},
 			WriteLimit: pveAPI.QemuDiskBandwidthMBpsLimit{
-				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema["mbps_wr_burst"].(float64)),
-				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema["mbps_wr_concurrent"].(float64)),
+				Burst:      pveAPI.QemuDiskBandwidthMBpsLimitBurst(schema[schemaMBPSwrBurst].(float64)),
+				Concurrent: pveAPI.QemuDiskBandwidthMBpsLimitConcurrent(schema[schemaMBPSwrConcurrent].(float64)),
 			},
 		},
 		Iops: pveAPI.QemuDiskBandwidthIops{
 			ReadLimit: pveAPI.QemuDiskBandwidthIopsLimit{
-				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema["iops_r_burst"].(int)),
-				BurstDuration: uint(schema["iops_r_burst_length"].(int)),
-				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema["iops_r_concurrent"].(int)),
+				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema[schemaIOPSrBurst].(int)),
+				BurstDuration: uint(schema[schemaIOPSrBurstLength].(int)),
+				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema[schemaIOPSrConcurrent].(int)),
 			},
 			WriteLimit: pveAPI.QemuDiskBandwidthIopsLimit{
-				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema["iops_wr_burst"].(int)),
-				BurstDuration: uint(schema["iops_wr_burst_length"].(int)),
-				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema["iops_wr_concurrent"].(int)),
+				Burst:         pveAPI.QemuDiskBandwidthIopsLimitBurst(schema[schemaIOPSwrBurst].(int)),
+				BurstDuration: uint(schema[schemaIOPSwrBurstLength].(int)),
+				Concurrent:    pveAPI.QemuDiskBandwidthIopsLimitConcurrent(schema[schemaIOPSwrConcurrent].(int)),
 			},
 		},
 	}
 }
 
 func sdk_Disks_QemuIdeDisks(ide *pveAPI.QemuIdeDisks, schema map[string]interface{}) {
-	schemaItem, ok := schema["ide"].([]interface{})
+	schemaItem, ok := schema[schemaIDE].([]interface{})
 	if !ok || len(schemaItem) != 1 || schemaItem[0] == nil {
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	sdk_Disks_QemuIdeStorage(ide.Disk_0, "ide0", disks)
-	sdk_Disks_QemuIdeStorage(ide.Disk_1, "ide1", disks)
-	sdk_Disks_QemuIdeStorage(ide.Disk_2, "ide2", disks)
-	sdk_Disks_QemuIdeStorage(ide.Disk_3, "ide3", disks)
+	sdk_Disks_QemuIdeStorage(ide.Disk_0, schemaIDE+"0", disks)
+	sdk_Disks_QemuIdeStorage(ide.Disk_1, schemaIDE+"1", disks)
+	sdk_Disks_QemuIdeStorage(ide.Disk_2, schemaIDE+"2", disks)
+	sdk_Disks_QemuIdeStorage(ide.Disk_3, schemaIDE+"3", disks)
 }
 
 func sdk_Disks_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, key string, schema map[string]interface{}) {
@@ -72,53 +72,53 @@ func sdk_Disks_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, key string, schema map
 		return
 	}
 	storageSchema := schemaItem[0].(map[string]interface{})
-	tmpDisk, ok := storageSchema["disk"].([]interface{})
+	tmpDisk, ok := storageSchema[schemaDisk].([]interface{})
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		ide.Disk = &pveAPI.QemuIdeDisk{
-			Backup:          disk["backup"].(bool),
+			Backup:          disk[schemaBackup].(bool),
 			Bandwidth:       sdk_Disks_QemuDiskBandwidth(disk),
-			Discard:         disk["discard"].(bool),
-			EmulateSSD:      disk["emulatessd"].(bool),
-			Format:          pveAPI.QemuDiskFormat(disk["format"].(string)),
-			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk["size"].(string))),
-			Storage:         disk["storage"].(string),
+			Discard:         disk[schemaDiscard].(bool),
+			EmulateSSD:      disk[schemaEmulateSSD].(bool),
+			Format:          pveAPI.QemuDiskFormat(disk[schemaFormat].(string)),
+			Replicate:       disk[schemaReplicate].(bool),
+			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk[schemaSize].(string))),
+			Storage:         disk[schemaStorage].(string),
 		}
-		if asyncIO, ok := disk["asyncio"].(string); ok {
+		if asyncIO, ok := disk[schemaAsyncIO].(string); ok {
 			ide.Disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := disk["cache"].(string); ok {
+		if cache, ok := disk[schemaCache].(string); ok {
 			ide.Disk.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := disk["serial"].(string); ok {
+		if serial, ok := disk[schemaSerial].(string); ok {
 			ide.Disk.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return
 	}
-	tmpPassthrough, ok := storageSchema["passthrough"].([]interface{})
+	tmpPassthrough, ok := storageSchema[schemaPassthrough].([]interface{})
 	if ok && len(tmpPassthrough) == 1 && tmpPassthrough[0] != nil {
 		passthrough := tmpPassthrough[0].(map[string]interface{})
 		ide.Passthrough = &pveAPI.QemuIdePassthrough{
-			Backup:     passthrough["backup"].(bool),
+			Backup:     passthrough[schemaBackup].(bool),
 			Bandwidth:  sdk_Disks_QemuDiskBandwidth(passthrough),
-			Discard:    passthrough["discard"].(bool),
-			EmulateSSD: passthrough["emulatessd"].(bool),
-			File:       passthrough["file"].(string),
-			Replicate:  passthrough["replicate"].(bool),
+			Discard:    passthrough[schemaDiscard].(bool),
+			EmulateSSD: passthrough[schemaEmulateSSD].(bool),
+			File:       passthrough[schemaFile].(string),
+			Replicate:  passthrough[schemaReplicate].(bool),
 		}
-		if asyncIO, ok := passthrough["asyncio"].(string); ok {
+		if asyncIO, ok := passthrough[schemaAsyncIO].(string); ok {
 			ide.Passthrough.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := passthrough["cache"].(string); ok {
+		if cache, ok := passthrough[schemaCache].(string); ok {
 			ide.Passthrough.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := passthrough["serial"].(string); ok {
+		if serial, ok := passthrough[schemaSerial].(string); ok {
 			ide.Passthrough.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return
 	}
-	if v, ok := storageSchema["cloudinit"].([]interface{}); ok && len(v) == 1 && v[0] != nil {
+	if v, ok := storageSchema[schemaCloudInit].([]interface{}); ok && len(v) == 1 && v[0] != nil {
 		ide.CloudInit = sdk_Disks_QemuCloudInit(v)
 		return
 	}
@@ -126,17 +126,17 @@ func sdk_Disks_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, key string, schema map
 }
 
 func sdk_Disks_QemuSataDisks(sata *pveAPI.QemuSataDisks, schema map[string]interface{}) {
-	schemaItem, ok := schema["sata"].([]interface{})
+	schemaItem, ok := schema[schemaSata].([]interface{})
 	if !ok || len(schemaItem) != 1 || schemaItem[0] == nil {
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	sdk_Disks_QemuSataStorage(sata.Disk_0, "sata0", disks)
-	sdk_Disks_QemuSataStorage(sata.Disk_1, "sata1", disks)
-	sdk_Disks_QemuSataStorage(sata.Disk_2, "sata2", disks)
-	sdk_Disks_QemuSataStorage(sata.Disk_3, "sata3", disks)
-	sdk_Disks_QemuSataStorage(sata.Disk_4, "sata4", disks)
-	sdk_Disks_QemuSataStorage(sata.Disk_5, "sata5", disks)
+	sdk_Disks_QemuSataStorage(sata.Disk_0, schemaSata+"0", disks)
+	sdk_Disks_QemuSataStorage(sata.Disk_1, schemaSata+"1", disks)
+	sdk_Disks_QemuSataStorage(sata.Disk_2, schemaSata+"2", disks)
+	sdk_Disks_QemuSataStorage(sata.Disk_3, schemaSata+"3", disks)
+	sdk_Disks_QemuSataStorage(sata.Disk_4, schemaSata+"4", disks)
+	sdk_Disks_QemuSataStorage(sata.Disk_5, schemaSata+"5", disks)
 }
 
 func sdk_Disks_QemuSataStorage(sata *pveAPI.QemuSataStorage, key string, schema map[string]interface{}) {
@@ -145,53 +145,53 @@ func sdk_Disks_QemuSataStorage(sata *pveAPI.QemuSataStorage, key string, schema 
 		return
 	}
 	storageSchema := schemaItem[0].(map[string]interface{})
-	tmpDisk, ok := storageSchema["disk"].([]interface{})
+	tmpDisk, ok := storageSchema[schemaDisk].([]interface{})
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		sata.Disk = &pveAPI.QemuSataDisk{
-			Backup:          disk["backup"].(bool),
+			Backup:          disk[schemaBackup].(bool),
 			Bandwidth:       sdk_Disks_QemuDiskBandwidth(disk),
-			Discard:         disk["discard"].(bool),
-			EmulateSSD:      disk["emulatessd"].(bool),
-			Format:          pveAPI.QemuDiskFormat(disk["format"].(string)),
-			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk["size"].(string))),
-			Storage:         disk["storage"].(string),
+			Discard:         disk[schemaDiscard].(bool),
+			EmulateSSD:      disk[schemaEmulateSSD].(bool),
+			Format:          pveAPI.QemuDiskFormat(disk[schemaFormat].(string)),
+			Replicate:       disk[schemaReplicate].(bool),
+			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk[schemaSize].(string))),
+			Storage:         disk[schemaStorage].(string),
 		}
-		if asyncIO, ok := disk["asyncio"].(string); ok {
+		if asyncIO, ok := disk[schemaAsyncIO].(string); ok {
 			sata.Disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := disk["cache"].(string); ok {
+		if cache, ok := disk[schemaCache].(string); ok {
 			sata.Disk.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := disk["serial"].(string); ok {
+		if serial, ok := disk[schemaSerial].(string); ok {
 			sata.Disk.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return
 	}
-	tmpPassthrough, ok := storageSchema["passthrough"].([]interface{})
+	tmpPassthrough, ok := storageSchema[schemaPassthrough].([]interface{})
 	if ok && len(tmpPassthrough) == 1 && tmpPassthrough[0] != nil {
 		passthrough := tmpPassthrough[0].(map[string]interface{})
 		sata.Passthrough = &pveAPI.QemuSataPassthrough{
-			Backup:     passthrough["backup"].(bool),
+			Backup:     passthrough[schemaBackup].(bool),
 			Bandwidth:  sdk_Disks_QemuDiskBandwidth(passthrough),
-			Discard:    passthrough["discard"].(bool),
-			EmulateSSD: passthrough["emulatessd"].(bool),
-			File:       passthrough["file"].(string),
-			Replicate:  passthrough["replicate"].(bool),
+			Discard:    passthrough[schemaDiscard].(bool),
+			EmulateSSD: passthrough[schemaEmulateSSD].(bool),
+			File:       passthrough[schemaFile].(string),
+			Replicate:  passthrough[schemaReplicate].(bool),
 		}
-		if asyncIO, ok := passthrough["asyncio"].(string); ok {
+		if asyncIO, ok := passthrough[schemaAsyncIO].(string); ok {
 			sata.Passthrough.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := passthrough["cache"].(string); ok {
+		if cache, ok := passthrough[schemaCache].(string); ok {
 			sata.Passthrough.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := passthrough["serial"].(string); ok {
+		if serial, ok := passthrough[schemaSerial].(string); ok {
 			sata.Passthrough.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return
 	}
-	if v, ok := storageSchema["cloudinit"].([]interface{}); ok && len(v) == 1 && v[0] != nil {
+	if v, ok := storageSchema[schemaCloudInit].([]interface{}); ok && len(v) == 1 && v[0] != nil {
 		sata.CloudInit = sdk_Disks_QemuCloudInit(v)
 		return
 	}
@@ -199,42 +199,42 @@ func sdk_Disks_QemuSataStorage(sata *pveAPI.QemuSataStorage, key string, schema 
 }
 
 func sdk_Disks_QemuScsiDisks(scsi *pveAPI.QemuScsiDisks, schema map[string]interface{}) {
-	schemaItem, ok := schema["scsi"].([]interface{})
+	schemaItem, ok := schema[schemaScsi].([]interface{})
 	if !ok || len(schemaItem) != 1 || schemaItem[0] == nil {
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	sdk_Disks_QemuScsiStorage(scsi.Disk_0, "scsi0", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_1, "scsi1", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_2, "scsi2", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_3, "scsi3", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_4, "scsi4", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_5, "scsi5", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_6, "scsi6", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_7, "scsi7", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_8, "scsi8", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_9, "scsi9", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_10, "scsi10", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_11, "scsi11", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_12, "scsi12", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_13, "scsi13", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_14, "scsi14", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_15, "scsi15", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_16, "scsi16", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_17, "scsi17", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_18, "scsi18", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_19, "scsi19", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_20, "scsi20", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_21, "scsi21", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_22, "scsi22", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_23, "scsi23", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_24, "scsi24", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_25, "scsi25", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_26, "scsi26", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_27, "scsi27", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_28, "scsi28", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_29, "scsi29", disks)
-	sdk_Disks_QemuScsiStorage(scsi.Disk_30, "scsi30", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_0, schemaScsi+"0", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_1, schemaScsi+"1", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_2, schemaScsi+"2", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_3, schemaScsi+"3", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_4, schemaScsi+"4", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_5, schemaScsi+"5", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_6, schemaScsi+"6", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_7, schemaScsi+"7", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_8, schemaScsi+"8", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_9, schemaScsi+"9", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_10, schemaScsi+"10", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_11, schemaScsi+"11", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_12, schemaScsi+"12", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_13, schemaScsi+"13", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_14, schemaScsi+"14", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_15, schemaScsi+"15", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_16, schemaScsi+"16", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_17, schemaScsi+"17", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_18, schemaScsi+"18", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_19, schemaScsi+"19", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_20, schemaScsi+"20", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_21, schemaScsi+"21", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_22, schemaScsi+"22", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_23, schemaScsi+"23", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_24, schemaScsi+"24", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_25, schemaScsi+"25", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_26, schemaScsi+"26", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_27, schemaScsi+"27", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_28, schemaScsi+"28", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_29, schemaScsi+"29", disks)
+	sdk_Disks_QemuScsiStorage(scsi.Disk_30, schemaScsi+"30", disks)
 }
 
 func sdk_Disks_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, key string, schema map[string]interface{}) {
@@ -243,57 +243,57 @@ func sdk_Disks_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, key string, schema 
 		return
 	}
 	storageSchema := schemaItem[0].(map[string]interface{})
-	tmpDisk, ok := storageSchema["disk"].([]interface{})
+	tmpDisk, ok := storageSchema[schemaDisk].([]interface{})
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		scsi.Disk = &pveAPI.QemuScsiDisk{
-			Backup:          disk["backup"].(bool),
+			Backup:          disk[schemaBackup].(bool),
 			Bandwidth:       sdk_Disks_QemuDiskBandwidth(disk),
-			Discard:         disk["discard"].(bool),
-			EmulateSSD:      disk["emulatessd"].(bool),
-			Format:          pveAPI.QemuDiskFormat(disk["format"].(string)),
-			IOThread:        disk["iothread"].(bool),
-			ReadOnly:        disk["readonly"].(bool),
-			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk["size"].(string))),
-			Storage:         disk["storage"].(string),
+			Discard:         disk[schemaDiscard].(bool),
+			EmulateSSD:      disk[schemaEmulateSSD].(bool),
+			Format:          pveAPI.QemuDiskFormat(disk[schemaFormat].(string)),
+			IOThread:        disk[schemaIOthread].(bool),
+			ReadOnly:        disk[schemaReadOnly].(bool),
+			Replicate:       disk[schemaReplicate].(bool),
+			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk[schemaSize].(string))),
+			Storage:         disk[schemaStorage].(string),
 		}
-		if asyncIO, ok := disk["asyncio"].(string); ok {
+		if asyncIO, ok := disk[schemaAsyncIO].(string); ok {
 			scsi.Disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := disk["cache"].(string); ok {
+		if cache, ok := disk[schemaCache].(string); ok {
 			scsi.Disk.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := disk["serial"].(string); ok {
+		if serial, ok := disk[schemaSerial].(string); ok {
 			scsi.Disk.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return
 	}
-	tmpPassthrough, ok := storageSchema["passthrough"].([]interface{})
+	tmpPassthrough, ok := storageSchema[schemaPassthrough].([]interface{})
 	if ok && len(tmpPassthrough) == 1 && tmpPassthrough[0] != nil {
 		passthrough := tmpPassthrough[0].(map[string]interface{})
 		scsi.Passthrough = &pveAPI.QemuScsiPassthrough{
-			Backup:     passthrough["backup"].(bool),
+			Backup:     passthrough[schemaBackup].(bool),
 			Bandwidth:  sdk_Disks_QemuDiskBandwidth(passthrough),
-			Discard:    passthrough["discard"].(bool),
-			EmulateSSD: passthrough["emulatessd"].(bool),
-			File:       passthrough["file"].(string),
-			IOThread:   passthrough["iothread"].(bool),
-			ReadOnly:   passthrough["readonly"].(bool),
-			Replicate:  passthrough["replicate"].(bool),
+			Discard:    passthrough[schemaDiscard].(bool),
+			EmulateSSD: passthrough[schemaEmulateSSD].(bool),
+			File:       passthrough[schemaFile].(string),
+			IOThread:   passthrough[schemaIOthread].(bool),
+			ReadOnly:   passthrough[schemaReadOnly].(bool),
+			Replicate:  passthrough[schemaReplicate].(bool),
 		}
-		if asyncIO, ok := passthrough["asyncio"].(string); ok {
+		if asyncIO, ok := passthrough[schemaAsyncIO].(string); ok {
 			scsi.Passthrough.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := passthrough["cache"].(string); ok {
+		if cache, ok := passthrough[schemaCache].(string); ok {
 			scsi.Passthrough.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := passthrough["serial"].(string); ok {
+		if serial, ok := passthrough[schemaSerial].(string); ok {
 			scsi.Passthrough.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return
 	}
-	if v, ok := storageSchema["cloudinit"].([]interface{}); ok && len(v) == 1 && v[0] != nil {
+	if v, ok := storageSchema[schemaCloudInit].([]interface{}); ok && len(v) == 1 && v[0] != nil {
 		scsi.CloudInit = sdk_Disks_QemuCloudInit(v)
 		return
 	}
@@ -301,27 +301,27 @@ func sdk_Disks_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, key string, schema 
 }
 
 func sdk_Disks_QemuVirtIODisks(virtio *pveAPI.QemuVirtIODisks, schema map[string]interface{}) {
-	schemaItem, ok := schema["virtio"].([]interface{})
+	schemaItem, ok := schema[schemaVirtIO].([]interface{})
 	if !ok || len(schemaItem) != 1 || schemaItem[0] == nil {
 		return
 	}
 	disks := schemaItem[0].(map[string]interface{})
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_0, "virtio0", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_1, "virtio1", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_2, "virtio2", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_3, "virtio3", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_4, "virtio4", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_5, "virtio5", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_6, "virtio6", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_7, "virtio7", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_8, "virtio8", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_9, "virtio9", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_10, "virtio10", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_11, "virtio11", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_12, "virtio12", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_13, "virtio13", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_14, "virtio14", disks)
-	sdk_Disks_QemuVirtIOStorage(virtio.Disk_15, "virtio15", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_0, schemaVirtIO+"0", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_1, schemaVirtIO+"1", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_2, schemaVirtIO+"2", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_3, schemaVirtIO+"3", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_4, schemaVirtIO+"4", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_5, schemaVirtIO+"5", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_6, schemaVirtIO+"6", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_7, schemaVirtIO+"7", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_8, schemaVirtIO+"8", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_9, schemaVirtIO+"9", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_10, schemaVirtIO+"10", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_11, schemaVirtIO+"11", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_12, schemaVirtIO+"12", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_13, schemaVirtIO+"13", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_14, schemaVirtIO+"14", disks)
+	sdk_Disks_QemuVirtIOStorage(virtio.Disk_15, schemaVirtIO+"15", disks)
 }
 
 func sdk_Disks_QemuVirtIOStorage(virtio *pveAPI.QemuVirtIOStorage, key string, schema map[string]interface{}) {
@@ -330,50 +330,50 @@ func sdk_Disks_QemuVirtIOStorage(virtio *pveAPI.QemuVirtIOStorage, key string, s
 		return
 	}
 	storageSchema := schemaItem[0].(map[string]interface{})
-	tmpDisk, ok := storageSchema["disk"].([]interface{})
+	tmpDisk, ok := storageSchema[schemaDisk].([]interface{})
 	if ok && len(tmpDisk) == 1 && tmpDisk[0] != nil {
 		disk := tmpDisk[0].(map[string]interface{})
 		virtio.Disk = &pveAPI.QemuVirtIODisk{
-			Backup:          disk["backup"].(bool),
+			Backup:          disk[schemaBackup].(bool),
 			Bandwidth:       sdk_Disks_QemuDiskBandwidth(disk),
-			Discard:         disk["discard"].(bool),
-			Format:          pveAPI.QemuDiskFormat(disk["format"].(string)),
-			IOThread:        disk["iothread"].(bool),
-			ReadOnly:        disk["readonly"].(bool),
-			Replicate:       disk["replicate"].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk["size"].(string))),
-			Storage:         disk["storage"].(string),
+			Discard:         disk[schemaDiscard].(bool),
+			Format:          pveAPI.QemuDiskFormat(disk[schemaFormat].(string)),
+			IOThread:        disk[schemaIOthread].(bool),
+			ReadOnly:        disk[schemaReadOnly].(bool),
+			Replicate:       disk[schemaReplicate].(bool),
+			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(disk[schemaSize].(string))),
+			Storage:         disk[schemaStorage].(string),
 		}
-		if asyncIO, ok := disk["asyncio"].(string); ok {
+		if asyncIO, ok := disk[schemaAsyncIO].(string); ok {
 			virtio.Disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := disk["cache"].(string); ok {
+		if cache, ok := disk[schemaCache].(string); ok {
 			virtio.Disk.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := disk["serial"].(string); ok {
+		if serial, ok := disk[schemaSerial].(string); ok {
 			virtio.Disk.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return
 	}
-	tmpPassthrough, ok := storageSchema["passthrough"].([]interface{})
+	tmpPassthrough, ok := storageSchema[schemaPassthrough].([]interface{})
 	if ok && len(tmpPassthrough) == 1 && tmpPassthrough[0] != nil {
 		passthrough := tmpPassthrough[0].(map[string]interface{})
 		virtio.Passthrough = &pveAPI.QemuVirtIOPassthrough{
-			Backup:    passthrough["backup"].(bool),
+			Backup:    passthrough[schemaBackup].(bool),
 			Bandwidth: sdk_Disks_QemuDiskBandwidth(passthrough),
-			Discard:   passthrough["discard"].(bool),
-			File:      passthrough["file"].(string),
-			IOThread:  passthrough["iothread"].(bool),
-			ReadOnly:  passthrough["readonly"].(bool),
-			Replicate: passthrough["replicate"].(bool),
+			Discard:   passthrough[schemaDiscard].(bool),
+			File:      passthrough[schemaFile].(string),
+			IOThread:  passthrough[schemaIOthread].(bool),
+			ReadOnly:  passthrough[schemaReadOnly].(bool),
+			Replicate: passthrough[schemaReplicate].(bool),
 		}
-		if asyncIO, ok := passthrough["asyncio"].(string); ok {
+		if asyncIO, ok := passthrough[schemaAsyncIO].(string); ok {
 			virtio.Passthrough.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
 		}
-		if cache, ok := passthrough["cache"].(string); ok {
+		if cache, ok := passthrough[schemaCache].(string); ok {
 			virtio.Passthrough.Cache = pveAPI.QemuDiskCache(cache)
 		}
-		if serial, ok := passthrough["serial"].(string); ok {
+		if serial, ok := passthrough[schemaSerial].(string); ok {
 			virtio.Passthrough.Serial = pveAPI.QemuDiskSerial(serial)
 		}
 		return

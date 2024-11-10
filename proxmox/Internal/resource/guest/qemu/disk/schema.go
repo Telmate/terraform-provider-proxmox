@@ -14,6 +14,61 @@ import (
 const (
 	RootDisk  string = "disk"
 	RootDisks string = "disks"
+
+	schemaAsyncIO           string = "asyncio"
+	schemaBackup            string = "backup"
+	schemaCache             string = "cache"
+	schemaCdRom             string = "cdrom"
+	schemaCdRomISO          string = "iso"
+	schemaCdRomPassthrough  string = "passthrough"
+	schemaCloudInit         string = "cloudinit"
+	schemaDiscard           string = "discard"
+	schemaDisk              string = "disk"
+	schemaDiskFile          string = "disk_file"
+	schemaEmulateSSD        string = "emulatessd"
+	schemaFile              string = "file"
+	schemaFormat            string = "format"
+	schemaID                string = "id"
+	schemaIDE               string = "ide"
+	schemaIOPSrBurst        string = "iops_r_burst"
+	schemaIOPSrBurstLength  string = "iops_r_burst_length"
+	schemaIOPSrConcurrent   string = "iops_r_concurrent"
+	schemaIOPSwrBurst       string = "iops_wr_burst"
+	schemaIOPSwrBurstLength string = "iops_wr_burst_length"
+	schemaIOPSwrConcurrent  string = "iops_wr_concurrent"
+	schemaIOthread          string = "iothread"
+	schemaISO               string = "iso"
+	schemaLinkedDiskId      string = "linked_disk_id"
+	schemaMBPSrBurst        string = "mbps_r_burst"
+	schemaMBPSrConcurrent   string = "mbps_r_concurrent"
+	schemaMBPSwrBurst       string = "mbps_wr_burst"
+	schemaMBPSwrConcurrent  string = "mbps_wr_concurrent"
+	schemaPassthrough       string = "passthrough"
+	schemaReadOnly          string = "readonly"
+	schemaReplicate         string = "replicate"
+	schemaSata              string = "sata"
+	schemaScsi              string = "scsi"
+	schemaSerial            string = "serial"
+	schemaSize              string = "size"
+	schemaSlot              string = "slot"
+	schemaStorage           string = "storage"
+	schemaType              string = "type"
+	schemaVirtIO            string = "virtio"
+	schemaWorldWideName     string = "wwn"
+
+	pathIDE    string = RootDisks + ".0." + schemaIDE + ".0."
+	pathSata   string = RootDisks + ".0." + schemaSata + ".0."
+	pathScsi   string = RootDisks + ".0." + schemaScsi + ".0."
+	pathVirtIO string = RootDisks + ".0." + schemaVirtIO + ".0."
+
+	enumCdRom     string = "cdrom"
+	enumCloudInit string = "cloudinit"
+	enumDisk      string = "disk"
+
+	slotIDE    string = schemaIDE
+	slotSata   string = schemaSata
+	slotScsi   string = schemaScsi
+	slotVirtIO string = schemaVirtIO
 )
 
 func SchemaDisk() *schema.Schema {
@@ -23,33 +78,33 @@ func SchemaDisk() *schema.Schema {
 		ConflictsWith: []string{RootDisks},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"asyncio":              subSchemaDiskAsyncIO(),
-				"backup":               subSchemaDiskBackup(),
-				"cache":                subSchemaDiskCache(),
-				"discard":              {Type: schema.TypeBool, Optional: true},
-				"disk_file":            subSchemaPassthroughFile(schema.Schema{Optional: true}),
-				"emulatessd":           {Type: schema.TypeBool, Optional: true},
-				"format":               subSchemaDiskFormat(schema.Schema{}),
-				"id":                   subSchemaDiskId(),
-				"iops_r_burst":         subSchemaDiskBandwidthIopsBurst(),
-				"iops_r_burst_length":  subSchemaDiskBandwidthIopsBurstLength(),
-				"iops_r_concurrent":    subSchemaDiskBandwidthIopsConcurrent(),
-				"iops_wr_burst":        subSchemaDiskBandwidthIopsBurst(),
-				"iops_wr_burst_length": subSchemaDiskBandwidthIopsBurstLength(),
-				"iops_wr_concurrent":   subSchemaDiskBandwidthIopsConcurrent(),
-				"iothread":             {Type: schema.TypeBool, Optional: true},
-				"iso":                  subSchemaIsoPath(schema.Schema{}),
-				"linked_disk_id":       subSchemaLinkedDiskId(),
-				"mbps_r_burst":         subSchemaDiskBandwidthMBpsBurst(),
-				"mbps_r_concurrent":    subSchemaDiskBandwidthMBpsConcurrent(),
-				"mbps_wr_burst":        subSchemaDiskBandwidthMBpsBurst(),
-				"mbps_wr_concurrent":   subSchemaDiskBandwidthMBpsConcurrent(),
-				"passthrough":          {Type: schema.TypeBool, Default: false, Optional: true},
-				"readonly":             {Type: schema.TypeBool, Optional: true},
-				"replicate":            {Type: schema.TypeBool, Optional: true},
-				"serial":               subSchemaDiskSerial(),
-				"size":                 subSchemaDiskSize(schema.Schema{Computed: true, Optional: true}),
-				"slot": {
+				schemaAsyncIO:           subSchemaDiskAsyncIO(),
+				schemaBackup:            subSchemaDiskBackup(),
+				schemaCache:             subSchemaDiskCache(),
+				schemaDiscard:           {Type: schema.TypeBool, Optional: true},
+				schemaDiskFile:          subSchemaPassthroughFile(schema.Schema{Optional: true}),
+				schemaEmulateSSD:        {Type: schema.TypeBool, Optional: true},
+				schemaFormat:            subSchemaDiskFormat(schema.Schema{}),
+				schemaID:                subSchemaDiskId(),
+				schemaIOPSrBurst:        subSchemaDiskBandwidthIopsBurst(),
+				schemaIOPSrBurstLength:  subSchemaDiskBandwidthIopsBurstLength(),
+				schemaIOPSrConcurrent:   subSchemaDiskBandwidthIopsConcurrent(),
+				schemaIOPSwrBurst:       subSchemaDiskBandwidthIopsBurst(),
+				schemaIOPSwrBurstLength: subSchemaDiskBandwidthIopsBurstLength(),
+				schemaIOPSwrConcurrent:  subSchemaDiskBandwidthIopsConcurrent(),
+				schemaIOthread:          {Type: schema.TypeBool, Optional: true},
+				schemaISO:               subSchemaIsoPath(schema.Schema{}),
+				schemaLinkedDiskId:      subSchemaLinkedDiskId(),
+				schemaMBPSrBurst:        subSchemaDiskBandwidthMBpsBurst(),
+				schemaMBPSrConcurrent:   subSchemaDiskBandwidthMBpsConcurrent(),
+				schemaMBPSwrBurst:       subSchemaDiskBandwidthMBpsBurst(),
+				schemaMBPSwrConcurrent:  subSchemaDiskBandwidthMBpsConcurrent(),
+				schemaPassthrough:       {Type: schema.TypeBool, Default: false, Optional: true},
+				schemaReadOnly:          {Type: schema.TypeBool, Optional: true},
+				schemaReplicate:         {Type: schema.TypeBool, Optional: true},
+				schemaSerial:            subSchemaDiskSerial(),
+				schemaSize:              subSchemaDiskSize(schema.Schema{Computed: true, Optional: true}),
+				schemaSlot: {
 					Type:     schema.TypeString,
 					Required: true,
 					ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
@@ -58,31 +113,31 @@ func SchemaDisk() *schema.Schema {
 							return diag.Errorf(errorMSG.String, k)
 						}
 						switch v {
-						case "ide0", "ide1", "ide2",
-							"sata0", "sata1", "sata2", "sata3", "sata4", "sata5",
-							"scsi0", "scsi1", "scsi2", "scsi3", "scsi4", "scsi5", "scsi6", "scsi7", "scsi8", "scsi9", "scsi10", "scsi11", "scsi12", "scsi13", "scsi14", "scsi15", "scsi16", "scsi17", "scsi18", "scsi19", "scsi20", "scsi21", "scsi22", "scsi23", "scsi24", "scsi25", "scsi26", "scsi27", "scsi28", "scsi29", "scsi30",
-							"virtio0", "virtio1", "virtio2", "virtio3", "virtio4", "virtio5", "virtio6", "virtio7", "virtio8", "virtio9", "virtio10", "virtio11", "virtio12", "virtio13", "virtio14", "virtio15":
+						case slotIDE + "0", slotIDE + "1", slotIDE + "2",
+							slotSata + "0", slotSata + "1", slotSata + "2", slotSata + "3", slotSata + "4", slotSata + "5",
+							slotScsi + "0", slotScsi + "1", slotScsi + "2", slotScsi + "3", slotScsi + "4", slotScsi + "5", slotScsi + "6", slotScsi + "7", slotScsi + "8", slotScsi + "9", slotScsi + "10", slotScsi + "11", slotScsi + "12", slotScsi + "13", slotScsi + "14", slotScsi + "15", slotScsi + "16", slotScsi + "17", slotScsi + "18", slotScsi + "19", slotScsi + "20", slotScsi + "21", slotScsi + "22", slotScsi + "23", slotScsi + "24", slotScsi + "25", slotScsi + "26", slotScsi + "27", slotScsi + "28", slotScsi + "29", slotScsi + "30",
+							slotVirtIO + "0", slotVirtIO + "1", slotVirtIO + "2", slotVirtIO + "3", slotVirtIO + "4", slotVirtIO + "5", slotVirtIO + "6", slotVirtIO + "7", slotVirtIO + "8", slotVirtIO + "9", slotVirtIO + "10", slotVirtIO + "11", slotVirtIO + "12", slotVirtIO + "13", slotVirtIO + "14", slotVirtIO + "15":
 							return nil
 						}
-						return diag.Errorf("slot must be one of 'ide0', 'ide1', 'ide2', 'sata0', 'sata1', 'sata2', 'sata3', 'sata4', 'sata5', 'scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'scsi7', 'scsi8', 'scsi9', 'scsi10', 'scsi11', 'scsi12', 'scsi13', 'scsi14', 'scsi15', 'scsi16', 'scsi17', 'scsi18', 'scsi19', 'scsi20', 'scsi21', 'scsi22', 'scsi23', 'scsi24', 'scsi25', 'scsi26', 'scsi27', 'scsi28', 'scsi29', 'scsi30', 'virtio0', 'virtio1', 'virtio2', 'virtio3', 'virtio4', 'virtio5', 'virtio6', 'virtio7', 'virtio8', 'virtio9', 'virtio10', 'virtio11', 'virtio12', 'virtio13', 'virtio14', 'virtio15'")
+						return diag.Errorf(schemaSlot + " must be one of '" + slotIDE + "0', '" + slotIDE + "1', '" + slotIDE + "2', '" + slotSata + "0', '" + slotSata + "1', '" + slotSata + "2', '" + slotSata + "3', '" + slotSata + "4', '" + slotSata + "5', '" + slotScsi + "0', '" + slotScsi + "1', '" + slotScsi + "2', '" + slotScsi + "3', '" + slotScsi + "4', '" + slotScsi + "5', '" + slotScsi + "6', '" + slotScsi + "7', '" + slotScsi + "8', '" + slotScsi + "9', '" + slotScsi + "10', '" + slotScsi + "11', '" + slotScsi + "12', '" + slotScsi + "13', '" + slotScsi + "14', '" + slotScsi + "15', '" + slotScsi + "16', '" + slotScsi + "17', '" + slotScsi + "18', '" + slotScsi + "19', '" + slotScsi + "20', '" + slotScsi + "21', '" + slotScsi + "22', '" + slotScsi + "23', '" + slotScsi + "24', '" + slotScsi + "25', '" + slotScsi + "26', '" + slotScsi + "27', '" + slotScsi + "28', '" + slotScsi + "29', '" + slotScsi + "30', '" + slotVirtIO + "0', '" + slotVirtIO + "1', '" + slotVirtIO + "2', '" + slotVirtIO + "3', '" + slotVirtIO + "4', '" + slotVirtIO + "5', '" + slotVirtIO + "6', '" + slotVirtIO + "7', '" + slotVirtIO + "8', '" + slotVirtIO + "9', '" + slotVirtIO + "10', '" + slotVirtIO + "11', '" + slotVirtIO + "12', '" + slotVirtIO + "13', '" + slotVirtIO + "14', '" + slotVirtIO + "15'")
 					}},
-				"storage": subSchemaDiskStorage(schema.Schema{Optional: true}),
-				"type": {
+				schemaStorage: subSchemaDiskStorage(schema.Schema{Optional: true}),
+				schemaType: {
 					Type:     schema.TypeString,
 					Optional: true,
-					Default:  "disk",
+					Default:  schemaDisk,
 					ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 						v, ok := i.(string)
 						if !ok {
 							return diag.Errorf(errorMSG.String, k)
 						}
 						switch v {
-						case "disk", "cdrom", "cloudinit":
+						case schemaDisk, schemaCdRom, schemaCloudInit:
 							return nil
 						}
-						return diag.Errorf("type must be one of 'disk', 'cdrom', 'cloudinit'")
+						return diag.Errorf(schemaType + " must be one of '" + enumDisk + "', '" + enumCdRom + "', '" + enumCloudInit + "'")
 					}},
-				"wwn": subSchemaDiskWWN(),
+				schemaWorldWideName: subSchemaDiskWWN(),
 			}}}
 }
 
@@ -93,95 +148,95 @@ func SchemaDisks() *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"ide": {
+				schemaIDE: {
 					Type:     schema.TypeList,
 					Optional: true,
 					MaxItems: 1,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
-							"ide0": subSchemaIde("ide0"),
-							"ide1": subSchemaIde("ide1"),
-							"ide2": subSchemaIde("ide2"),
-							"ide3": subSchemaIde("ide3")}}},
-				"sata": {
+							schemaIDE + "0": subSchemaIde(schemaIDE + "0"),
+							schemaIDE + "1": subSchemaIde(schemaIDE + "1"),
+							schemaIDE + "2": subSchemaIde(schemaIDE + "2"),
+							schemaIDE + "3": subSchemaIde(schemaIDE + "3")}}},
+				schemaSata: {
 					Type:     schema.TypeList,
 					Optional: true,
 					MaxItems: 1,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
-							"sata0": subSchemaSata("sata0"),
-							"sata1": subSchemaSata("sata1"),
-							"sata2": subSchemaSata("sata2"),
-							"sata3": subSchemaSata("sata3"),
-							"sata4": subSchemaSata("sata4"),
-							"sata5": subSchemaSata("sata5")}}},
-				"scsi": {
+							schemaSata + "0": subSchemaSata(schemaSata + "0"),
+							schemaSata + "1": subSchemaSata(schemaSata + "1"),
+							schemaSata + "2": subSchemaSata(schemaSata + "2"),
+							schemaSata + "3": subSchemaSata(schemaSata + "3"),
+							schemaSata + "4": subSchemaSata(schemaSata + "4"),
+							schemaSata + "5": subSchemaSata(schemaSata + "5")}}},
+				schemaScsi: {
 					Type:     schema.TypeList,
 					Optional: true,
 					MaxItems: 1,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
-							"scsi0":  subSchemaScsi("scsi0"),
-							"scsi1":  subSchemaScsi("scsi1"),
-							"scsi2":  subSchemaScsi("scsi2"),
-							"scsi3":  subSchemaScsi("scsi3"),
-							"scsi4":  subSchemaScsi("scsi4"),
-							"scsi5":  subSchemaScsi("scsi5"),
-							"scsi6":  subSchemaScsi("scsi6"),
-							"scsi7":  subSchemaScsi("scsi7"),
-							"scsi8":  subSchemaScsi("scsi8"),
-							"scsi9":  subSchemaScsi("scsi9"),
-							"scsi10": subSchemaScsi("scsi10"),
-							"scsi11": subSchemaScsi("scsi11"),
-							"scsi12": subSchemaScsi("scsi12"),
-							"scsi13": subSchemaScsi("scsi13"),
-							"scsi14": subSchemaScsi("scsi14"),
-							"scsi15": subSchemaScsi("scsi15"),
-							"scsi16": subSchemaScsi("scsi16"),
-							"scsi17": subSchemaScsi("scsi17"),
-							"scsi18": subSchemaScsi("scsi18"),
-							"scsi19": subSchemaScsi("scsi19"),
-							"scsi20": subSchemaScsi("scsi20"),
-							"scsi21": subSchemaScsi("scsi21"),
-							"scsi22": subSchemaScsi("scsi22"),
-							"scsi23": subSchemaScsi("scsi23"),
-							"scsi24": subSchemaScsi("scsi24"),
-							"scsi25": subSchemaScsi("scsi25"),
-							"scsi26": subSchemaScsi("scsi26"),
-							"scsi27": subSchemaScsi("scsi27"),
-							"scsi28": subSchemaScsi("scsi28"),
-							"scsi29": subSchemaScsi("scsi29"),
-							"scsi30": subSchemaScsi("scsi30")}}},
-				"virtio": {
+							schemaScsi + "0":  subSchemaScsi(schemaScsi + "0"),
+							schemaScsi + "1":  subSchemaScsi(schemaScsi + "1"),
+							schemaScsi + "2":  subSchemaScsi(schemaScsi + "2"),
+							schemaScsi + "3":  subSchemaScsi(schemaScsi + "3"),
+							schemaScsi + "4":  subSchemaScsi(schemaScsi + "4"),
+							schemaScsi + "5":  subSchemaScsi(schemaScsi + "5"),
+							schemaScsi + "6":  subSchemaScsi(schemaScsi + "6"),
+							schemaScsi + "7":  subSchemaScsi(schemaScsi + "7"),
+							schemaScsi + "8":  subSchemaScsi(schemaScsi + "8"),
+							schemaScsi + "9":  subSchemaScsi(schemaScsi + "9"),
+							schemaScsi + "10": subSchemaScsi(schemaScsi + "10"),
+							schemaScsi + "11": subSchemaScsi(schemaScsi + "11"),
+							schemaScsi + "12": subSchemaScsi(schemaScsi + "12"),
+							schemaScsi + "13": subSchemaScsi(schemaScsi + "13"),
+							schemaScsi + "14": subSchemaScsi(schemaScsi + "14"),
+							schemaScsi + "15": subSchemaScsi(schemaScsi + "15"),
+							schemaScsi + "16": subSchemaScsi(schemaScsi + "16"),
+							schemaScsi + "17": subSchemaScsi(schemaScsi + "17"),
+							schemaScsi + "18": subSchemaScsi(schemaScsi + "18"),
+							schemaScsi + "19": subSchemaScsi(schemaScsi + "19"),
+							schemaScsi + "20": subSchemaScsi(schemaScsi + "20"),
+							schemaScsi + "21": subSchemaScsi(schemaScsi + "21"),
+							schemaScsi + "22": subSchemaScsi(schemaScsi + "22"),
+							schemaScsi + "23": subSchemaScsi(schemaScsi + "23"),
+							schemaScsi + "24": subSchemaScsi(schemaScsi + "24"),
+							schemaScsi + "25": subSchemaScsi(schemaScsi + "25"),
+							schemaScsi + "26": subSchemaScsi(schemaScsi + "26"),
+							schemaScsi + "27": subSchemaScsi(schemaScsi + "27"),
+							schemaScsi + "28": subSchemaScsi(schemaScsi + "28"),
+							schemaScsi + "29": subSchemaScsi(schemaScsi + "29"),
+							schemaScsi + "30": subSchemaScsi(schemaScsi + "30")}}},
+				schemaVirtIO: {
 					Type:     schema.TypeList,
 					Optional: true,
 					MaxItems: 1,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
-							"virtio0":  subSchemaVirtio("virtio0"),
-							"virtio1":  subSchemaVirtio("virtio1"),
-							"virtio2":  subSchemaVirtio("virtio2"),
-							"virtio3":  subSchemaVirtio("virtio3"),
-							"virtio4":  subSchemaVirtio("virtio4"),
-							"virtio5":  subSchemaVirtio("virtio5"),
-							"virtio6":  subSchemaVirtio("virtio6"),
-							"virtio7":  subSchemaVirtio("virtio7"),
-							"virtio8":  subSchemaVirtio("virtio8"),
-							"virtio9":  subSchemaVirtio("virtio9"),
-							"virtio10": subSchemaVirtio("virtio10"),
-							"virtio11": subSchemaVirtio("virtio11"),
-							"virtio12": subSchemaVirtio("virtio12"),
-							"virtio13": subSchemaVirtio("virtio13"),
-							"virtio14": subSchemaVirtio("virtio14"),
-							"virtio15": subSchemaVirtio("virtio15")}}}}}}
+							schemaVirtIO + "0":  subSchemaVirtio(schemaVirtIO + "0"),
+							schemaVirtIO + "1":  subSchemaVirtio(schemaVirtIO + "1"),
+							schemaVirtIO + "2":  subSchemaVirtio(schemaVirtIO + "2"),
+							schemaVirtIO + "3":  subSchemaVirtio(schemaVirtIO + "3"),
+							schemaVirtIO + "4":  subSchemaVirtio(schemaVirtIO + "4"),
+							schemaVirtIO + "5":  subSchemaVirtio(schemaVirtIO + "5"),
+							schemaVirtIO + "6":  subSchemaVirtio(schemaVirtIO + "6"),
+							schemaVirtIO + "7":  subSchemaVirtio(schemaVirtIO + "7"),
+							schemaVirtIO + "8":  subSchemaVirtio(schemaVirtIO + "8"),
+							schemaVirtIO + "9":  subSchemaVirtio(schemaVirtIO + "9"),
+							schemaVirtIO + "10": subSchemaVirtio(schemaVirtIO + "10"),
+							schemaVirtIO + "11": subSchemaVirtio(schemaVirtIO + "11"),
+							schemaVirtIO + "12": subSchemaVirtio(schemaVirtIO + "12"),
+							schemaVirtIO + "13": subSchemaVirtio(schemaVirtIO + "13"),
+							schemaVirtIO + "14": subSchemaVirtio(schemaVirtIO + "14"),
+							schemaVirtIO + "15": subSchemaVirtio(schemaVirtIO + "15")}}}}}}
 }
 
 func subSchemaCdRom(path string, ci bool) *schema.Schema {
 	var conflicts []string
 	if ci {
-		conflicts = []string{path + ".cloudinit", path + ".disk", path + ".passthrough"}
+		conflicts = []string{path + "." + schemaCloudInit, path + "." + schemaDisk, path + "." + schemaPassthrough}
 	} else {
-		conflicts = []string{path + ".disk", path + ".passthrough"}
+		conflicts = []string{path + "." + schemaDisk, path + "." + schemaPassthrough}
 	}
 	return &schema.Schema{
 		Type:          schema.TypeList,
@@ -190,139 +245,139 @@ func subSchemaCdRom(path string, ci bool) *schema.Schema {
 		ConflictsWith: conflicts,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"iso": subSchemaIsoPath(schema.Schema{ConflictsWith: []string{path + ".cdrom.0.passthrough"}}),
-				"passthrough": {
+				schemaCdRomISO: subSchemaIsoPath(schema.Schema{ConflictsWith: []string{path + "." + schemaCdRom + ".0." + schemaCdRomPassthrough}}),
+				schemaCdRomPassthrough: {
 					Type:          schema.TypeBool,
 					Optional:      true,
-					ConflictsWith: []string{path + ".cdrom.0.iso"}}}}}
+					ConflictsWith: []string{path + "." + schemaCdRom + ".0." + schemaCdRomISO}}}}}
 }
 
 func subSchemaCloudInit(path, slot string) *schema.Schema {
 	// 41 is all the disk slots for cloudinit
 	// 3 are the conflicts within the same disk slot
-	c := append(make([]string, 0, 44), path+".cdrom", path+".disk", path+".passthrough")
-	if slot != "ide0" {
-		c = append(c, "disks.0.ide.0.ide0.0.cloudinit")
+	c := append(make([]string, 0, 44), path+"."+schemaCdRom, path+"."+schemaDisk, path+"."+schemaPassthrough)
+	if slot != schemaIDE+"0" {
+		c = append(c, pathIDE+schemaIDE+"0.0."+schemaCloudInit)
 	}
-	if slot != "ide1" {
-		c = append(c, "disks.0.ide.0.ide1.0.cloudinit")
+	if slot != schemaIDE+"1" {
+		c = append(c, pathIDE+schemaIDE+"1.0."+schemaCloudInit)
 	}
-	if slot != "ide2" {
-		c = append(c, "disks.0.ide.0.ide2.0.cloudinit")
+	if slot != schemaIDE+"2" {
+		c = append(c, pathIDE+schemaIDE+"2.0."+schemaCloudInit)
 	}
-	if slot != "ide3" {
-		c = append(c, "disks.0.ide.0.ide3.0.cloudinit")
+	if slot != schemaIDE+"3" {
+		c = append(c, pathIDE+schemaIDE+"3.0."+schemaCloudInit)
 	}
-	if slot != "sata0" {
-		c = append(c, "disks.0.sata.0.sata0.0.cloudinit")
+	if slot != schemaSata+"0" {
+		c = append(c, pathSata+schemaSata+"0.0."+schemaCloudInit)
 	}
-	if slot != "sata1" {
-		c = append(c, "disks.0.sata.0.sata1.0.cloudinit")
+	if slot != schemaSata+"1" {
+		c = append(c, pathSata+schemaSata+"1.0."+schemaCloudInit)
 	}
-	if slot != "sata2" {
-		c = append(c, "disks.0.sata.0.sata2.0.cloudinit")
+	if slot != schemaSata+"2" {
+		c = append(c, pathSata+schemaSata+"2.0."+schemaCloudInit)
 	}
-	if slot != "sata3" {
-		c = append(c, "disks.0.sata.0.sata3.0.cloudinit")
+	if slot != schemaSata+"3" {
+		c = append(c, pathSata+schemaSata+"3.0."+schemaCloudInit)
 	}
-	if slot != "sata4" {
-		c = append(c, "disks.0.sata.0.sata4.0.cloudinit")
+	if slot != schemaSata+"4" {
+		c = append(c, pathSata+schemaSata+"4.0."+schemaCloudInit)
 	}
-	if slot != "sata5" {
-		c = append(c, "disks.0.sata.0.sata5.0.cloudinit")
+	if slot != schemaSata+"5" {
+		c = append(c, pathSata+schemaSata+"5.0."+schemaCloudInit)
 	}
-	if slot != "scsi0" {
-		c = append(c, "disks.0.scsi.0.scsi0.0.cloudinit")
+	if slot != schemaScsi+"0" {
+		c = append(c, pathScsi+schemaScsi+"0.0."+schemaCloudInit)
 	}
-	if slot != "scsi1" {
-		c = append(c, "disks.0.scsi.0.scsi1.0.cloudinit")
+	if slot != schemaScsi+"1" {
+		c = append(c, pathScsi+schemaScsi+"1.0."+schemaCloudInit)
 	}
-	if slot != "scsi2" {
-		c = append(c, "disks.0.scsi.0.scsi2.0.cloudinit")
+	if slot != schemaScsi+"2" {
+		c = append(c, pathScsi+schemaScsi+"2.0."+schemaCloudInit)
 	}
-	if slot != "scsi3" {
-		c = append(c, "disks.0.scsi.0.scsi3.0.cloudinit")
+	if slot != schemaScsi+"3" {
+		c = append(c, pathScsi+schemaScsi+"3.0."+schemaCloudInit)
 	}
-	if slot != "scsi4" {
-		c = append(c, "disks.0.scsi.0.scsi4.0.cloudinit")
+	if slot != schemaScsi+"4" {
+		c = append(c, pathScsi+schemaScsi+"4.0."+schemaCloudInit)
 	}
-	if slot != "scsi5" {
-		c = append(c, "disks.0.scsi.0.scsi5.0.cloudinit")
+	if slot != schemaScsi+"5" {
+		c = append(c, pathScsi+schemaScsi+"5.0."+schemaCloudInit)
 	}
-	if slot != "scsi6" {
-		c = append(c, "disks.0.scsi.0.scsi6.0.cloudinit")
+	if slot != schemaScsi+"6" {
+		c = append(c, pathScsi+schemaScsi+"6.0."+schemaCloudInit)
 	}
-	if slot != "scsi7" {
-		c = append(c, "disks.0.scsi.0.scsi7.0.cloudinit")
+	if slot != schemaScsi+"7" {
+		c = append(c, pathScsi+schemaScsi+"7.0."+schemaCloudInit)
 	}
-	if slot != "scsi8" {
-		c = append(c, "disks.0.scsi.0.scsi8.0.cloudinit")
+	if slot != schemaScsi+"8" {
+		c = append(c, pathScsi+schemaScsi+"8.0."+schemaCloudInit)
 	}
-	if slot != "scsi9" {
-		c = append(c, "disks.0.scsi.0.scsi9.0.cloudinit")
+	if slot != schemaScsi+"9" {
+		c = append(c, pathScsi+schemaScsi+"9.0."+schemaCloudInit)
 	}
-	if slot != "scsi10" {
-		c = append(c, "disks.0.scsi.0.scsi10.0.cloudinit")
+	if slot != schemaScsi+"10" {
+		c = append(c, pathScsi+schemaScsi+"10.0."+schemaCloudInit)
 	}
-	if slot != "scsi11" {
-		c = append(c, "disks.0.scsi.0.scsi11.0.cloudinit")
+	if slot != schemaScsi+"11" {
+		c = append(c, pathScsi+schemaScsi+"11.0."+schemaCloudInit)
 	}
-	if slot != "scsi12" {
-		c = append(c, "disks.0.scsi.0.scsi12.0.cloudinit")
+	if slot != schemaScsi+"12" {
+		c = append(c, pathScsi+schemaScsi+"12.0."+schemaCloudInit)
 	}
-	if slot != "scsi13" {
-		c = append(c, "disks.0.scsi.0.scsi13.0.cloudinit")
+	if slot != schemaScsi+"13" {
+		c = append(c, pathScsi+schemaScsi+"13.0."+schemaCloudInit)
 	}
-	if slot != "scsi14" {
-		c = append(c, "disks.0.scsi.0.scsi14.0.cloudinit")
+	if slot != schemaScsi+"14" {
+		c = append(c, pathScsi+schemaScsi+"14.0."+schemaCloudInit)
 	}
-	if slot != "scsi15" {
-		c = append(c, "disks.0.scsi.0.scsi15.0.cloudinit")
+	if slot != schemaScsi+"15" {
+		c = append(c, pathScsi+schemaScsi+"15.0."+schemaCloudInit)
 	}
-	if slot != "scsi16" {
-		c = append(c, "disks.0.scsi.0.scsi16.0.cloudinit")
+	if slot != schemaScsi+"16" {
+		c = append(c, pathScsi+schemaScsi+"16.0."+schemaCloudInit)
 	}
-	if slot != "scsi17" {
-		c = append(c, "disks.0.scsi.0.scsi17.0.cloudinit")
+	if slot != schemaScsi+"17" {
+		c = append(c, pathScsi+schemaScsi+"17.0."+schemaCloudInit)
 	}
-	if slot != "scsi18" {
-		c = append(c, "disks.0.scsi.0.scsi18.0.cloudinit")
+	if slot != schemaScsi+"18" {
+		c = append(c, pathScsi+schemaScsi+"18.0."+schemaCloudInit)
 	}
-	if slot != "scsi19" {
-		c = append(c, "disks.0.scsi.0.scsi19.0.cloudinit")
+	if slot != schemaScsi+"19" {
+		c = append(c, pathScsi+schemaScsi+"19.0."+schemaCloudInit)
 	}
-	if slot != "scsi20" {
-		c = append(c, "disks.0.scsi.0.scsi20.0.cloudinit")
+	if slot != schemaScsi+"20" {
+		c = append(c, pathScsi+schemaScsi+"20.0."+schemaCloudInit)
 	}
-	if slot != "scsi21" {
-		c = append(c, "disks.0.scsi.0.scsi21.0.cloudinit")
+	if slot != schemaScsi+"21" {
+		c = append(c, pathScsi+schemaScsi+"21.0."+schemaCloudInit)
 	}
-	if slot != "scsi22" {
-		c = append(c, "disks.0.scsi.0.scsi22.0.cloudinit")
+	if slot != schemaScsi+"22" {
+		c = append(c, pathScsi+schemaScsi+"22.0."+schemaCloudInit)
 	}
-	if slot != "scsi23" {
-		c = append(c, "disks.0.scsi.0.scsi23.0.cloudinit")
+	if slot != schemaScsi+"23" {
+		c = append(c, pathScsi+schemaScsi+"23.0."+schemaCloudInit)
 	}
-	if slot != "scsi24" {
-		c = append(c, "disks.0.scsi.0.scsi24.0.cloudinit")
+	if slot != schemaScsi+"24" {
+		c = append(c, pathScsi+schemaScsi+"24.0."+schemaCloudInit)
 	}
-	if slot != "scsi25" {
-		c = append(c, "disks.0.scsi.0.scsi25.0.cloudinit")
+	if slot != schemaScsi+"25" {
+		c = append(c, pathScsi+schemaScsi+"25.0."+schemaCloudInit)
 	}
-	if slot != "scsi26" {
-		c = append(c, "disks.0.scsi.0.scsi26.0.cloudinit")
+	if slot != schemaScsi+"26" {
+		c = append(c, pathScsi+schemaScsi+"26.0."+schemaCloudInit)
 	}
-	if slot != "scsi27" {
-		c = append(c, "disks.0.scsi.0.scsi27.0.cloudinit")
+	if slot != schemaScsi+"27" {
+		c = append(c, pathScsi+schemaScsi+"27.0."+schemaCloudInit)
 	}
-	if slot != "scsi28" {
-		c = append(c, "disks.0.scsi.0.scsi28.0.cloudinit")
+	if slot != schemaScsi+"28" {
+		c = append(c, pathScsi+schemaScsi+"28.0."+schemaCloudInit)
 	}
-	if slot != "scsi29" {
-		c = append(c, "disks.0.scsi.0.scsi29.0.cloudinit")
+	if slot != schemaScsi+"29" {
+		c = append(c, pathScsi+schemaScsi+"29.0."+schemaCloudInit)
 	}
-	if slot != "scsi30" {
-		c = append(c, "disks.0.scsi.0.scsi30.0.cloudinit")
+	if slot != schemaScsi+"30" {
+		c = append(c, pathScsi+schemaScsi+"30.0."+schemaCloudInit)
 	}
 	return &schema.Schema{
 		Type:          schema.TypeList,
@@ -331,7 +386,7 @@ func subSchemaCloudInit(path, slot string) *schema.Schema {
 		ConflictsWith: c,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"storage": subSchemaDiskStorage(schema.Schema{Required: true})}}}
+				schemaStorage: subSchemaDiskStorage(schema.Schema{Required: true})}}}
 }
 
 func subSchemaDiskAsyncIO() *schema.Schema {
@@ -434,16 +489,16 @@ func subSchemaDiskBandwidthMBpsConcurrent() *schema.Schema {
 }
 
 func subSchemaDiskBandwidth(params map[string]*schema.Schema) map[string]*schema.Schema {
-	params["mbps_r_burst"] = subSchemaDiskBandwidthMBpsBurst()
-	params["mbps_r_concurrent"] = subSchemaDiskBandwidthMBpsConcurrent()
-	params["mbps_wr_burst"] = subSchemaDiskBandwidthMBpsBurst()
-	params["mbps_wr_concurrent"] = subSchemaDiskBandwidthMBpsConcurrent()
-	params["iops_r_burst"] = subSchemaDiskBandwidthIopsBurst()
-	params["iops_r_burst_length"] = subSchemaDiskBandwidthIopsBurstLength()
-	params["iops_r_concurrent"] = subSchemaDiskBandwidthIopsConcurrent()
-	params["iops_wr_burst"] = subSchemaDiskBandwidthIopsBurst()
-	params["iops_wr_burst_length"] = subSchemaDiskBandwidthIopsBurstLength()
-	params["iops_wr_concurrent"] = subSchemaDiskBandwidthIopsConcurrent()
+	params[schemaMBPSrBurst] = subSchemaDiskBandwidthMBpsBurst()
+	params[schemaMBPSrConcurrent] = subSchemaDiskBandwidthMBpsConcurrent()
+	params[schemaMBPSwrBurst] = subSchemaDiskBandwidthMBpsBurst()
+	params[schemaMBPSwrConcurrent] = subSchemaDiskBandwidthMBpsConcurrent()
+	params[schemaIOPSrBurst] = subSchemaDiskBandwidthIopsBurst()
+	params[schemaIOPSrBurstLength] = subSchemaDiskBandwidthIopsBurstLength()
+	params[schemaIOPSrConcurrent] = subSchemaDiskBandwidthIopsConcurrent()
+	params[schemaIOPSwrBurst] = subSchemaDiskBandwidthIopsBurst()
+	params[schemaIOPSwrBurstLength] = subSchemaDiskBandwidthIopsBurstLength()
+	params[schemaIOPSwrConcurrent] = subSchemaDiskBandwidthIopsConcurrent()
 	return params
 }
 
@@ -543,52 +598,52 @@ func subSchemaDiskWWN() *schema.Schema {
 }
 
 func subSchemaIde(slot string) *schema.Schema {
-	path := "disks.0.ide.0." + slot + ".0"
+	path := pathIDE + slot + ".0"
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom":     subSchemaCdRom(path, true),
-				"cloudinit": subSchemaCloudInit(path, slot),
-				"disk": {
+				schemaCdRom:     subSchemaCdRom(path, true),
+				schemaCloudInit: subSchemaCloudInit(path, slot),
+				schemaDisk: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".passthrough"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaCloudInit, path + "." + schemaPassthrough},
 					Elem: &schema.Resource{
 						Schema: subSchemaDiskBandwidth(map[string]*schema.Schema{
-							"asyncio":        subSchemaDiskAsyncIO(),
-							"backup":         subSchemaDiskBackup(),
-							"cache":          subSchemaDiskCache(),
-							"discard":        {Type: schema.TypeBool, Optional: true},
-							"emulatessd":     {Type: schema.TypeBool, Optional: true},
-							"format":         subSchemaDiskFormat(schema.Schema{Default: "raw"}),
-							"id":             subSchemaDiskId(),
-							"linked_disk_id": subSchemaLinkedDiskId(),
-							"replicate":      {Type: schema.TypeBool, Optional: true},
-							"serial":         subSchemaDiskSerial(),
-							"size":           subSchemaDiskSize(schema.Schema{Required: true}),
-							"storage":        subSchemaDiskStorage(schema.Schema{Required: true}),
-							"wwn":            subSchemaDiskWWN()})}},
-				"passthrough": {
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
+							schemaFormat:        subSchemaDiskFormat(schema.Schema{Default: "raw"}),
+							schemaID:            subSchemaDiskId(),
+							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaDiskSize(schema.Schema{Required: true}),
+							schemaStorage:       subSchemaDiskStorage(schema.Schema{Required: true}),
+							schemaWorldWideName: subSchemaDiskWWN()})}},
+				schemaPassthrough: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".disk"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaCloudInit, path + "." + schemaDisk},
 					Elem: &schema.Resource{
 						Schema: subSchemaDiskBandwidth(map[string]*schema.Schema{
-							"asyncio":    subSchemaDiskAsyncIO(),
-							"backup":     subSchemaDiskBackup(),
-							"cache":      subSchemaDiskCache(),
-							"discard":    {Type: schema.TypeBool, Optional: true},
-							"emulatessd": {Type: schema.TypeBool, Optional: true},
-							"file":       subSchemaPassthroughFile(schema.Schema{Required: true}),
-							"replicate":  {Type: schema.TypeBool, Optional: true},
-							"serial":     subSchemaDiskSerial(),
-							"size":       subSchemaPassthroughSize(),
-							"wwn":        subSchemaDiskWWN()})}}}}}
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
+							schemaFile:          subSchemaPassthroughFile(schema.Schema{Required: true}),
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaPassthroughSize(),
+							schemaWorldWideName: subSchemaDiskWWN()})}}}}}
 }
 
 func subSchemaIsoPath(s schema.Schema) *schema.Schema {
@@ -615,153 +670,153 @@ func subSchemaPassthroughSize() *schema.Schema {
 }
 
 func subSchemaSata(slot string) *schema.Schema {
-	path := "disks.0.sata.0." + slot + ".0"
+	path := pathSata + slot + ".0"
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom":     subSchemaCdRom(path, true),
-				"cloudinit": subSchemaCloudInit(path, slot),
-				"disk": {
+				schemaCdRom:     subSchemaCdRom(path, true),
+				schemaCloudInit: subSchemaCloudInit(path, slot),
+				schemaDisk: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".passthrough"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaCloudInit, path + "." + schemaPassthrough},
 					Elem: &schema.Resource{
 						Schema: subSchemaDiskBandwidth(map[string]*schema.Schema{
-							"asyncio":        subSchemaDiskAsyncIO(),
-							"backup":         subSchemaDiskBackup(),
-							"cache":          subSchemaDiskCache(),
-							"discard":        {Type: schema.TypeBool, Optional: true},
-							"emulatessd":     {Type: schema.TypeBool, Optional: true},
-							"format":         subSchemaDiskFormat(schema.Schema{Default: "raw"}),
-							"id":             subSchemaDiskId(),
-							"linked_disk_id": subSchemaLinkedDiskId(),
-							"replicate":      {Type: schema.TypeBool, Optional: true},
-							"serial":         subSchemaDiskSerial(),
-							"size":           subSchemaDiskSize(schema.Schema{Required: true}),
-							"storage":        subSchemaDiskStorage(schema.Schema{Required: true}),
-							"wwn":            subSchemaDiskWWN()})}},
-				"passthrough": {
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
+							schemaFormat:        subSchemaDiskFormat(schema.Schema{Default: "raw"}),
+							schemaID:            subSchemaDiskId(),
+							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaDiskSize(schema.Schema{Required: true}),
+							schemaStorage:       subSchemaDiskStorage(schema.Schema{Required: true}),
+							schemaWorldWideName: subSchemaDiskWWN()})}},
+				schemaPassthrough: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".disk"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaCloudInit, path + "." + schemaDisk},
 					Elem: &schema.Resource{
 						Schema: subSchemaDiskBandwidth(map[string]*schema.Schema{
-							"asyncio":    subSchemaDiskAsyncIO(),
-							"backup":     subSchemaDiskBackup(),
-							"cache":      subSchemaDiskCache(),
-							"discard":    {Type: schema.TypeBool, Optional: true},
-							"emulatessd": {Type: schema.TypeBool, Optional: true},
-							"file":       subSchemaPassthroughFile(schema.Schema{Required: true}),
-							"replicate":  {Type: schema.TypeBool, Optional: true},
-							"serial":     subSchemaDiskSerial(),
-							"size":       subSchemaPassthroughSize(),
-							"wwn":        subSchemaDiskWWN()})}}}}}
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
+							schemaFile:          subSchemaPassthroughFile(schema.Schema{Required: true}),
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaPassthroughSize(),
+							schemaWorldWideName: subSchemaDiskWWN()})}}}}}
 }
 
 func subSchemaScsi(slot string) *schema.Schema {
-	path := "disks.0.scsi.0." + slot + ".0"
+	path := pathScsi + slot + ".0"
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom":     subSchemaCdRom(path, true),
-				"cloudinit": subSchemaCloudInit(path, slot),
-				"disk": {
+				schemaCdRom:     subSchemaCdRom(path, true),
+				schemaCloudInit: subSchemaCloudInit(path, slot),
+				schemaDisk: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".passthrough"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaCloudInit, path + "." + schemaPassthrough},
 					Elem: &schema.Resource{
 						Schema: subSchemaDiskBandwidth(map[string]*schema.Schema{
-							"asyncio":        subSchemaDiskAsyncIO(),
-							"backup":         subSchemaDiskBackup(),
-							"cache":          subSchemaDiskCache(),
-							"discard":        {Type: schema.TypeBool, Optional: true},
-							"emulatessd":     {Type: schema.TypeBool, Optional: true},
-							"format":         subSchemaDiskFormat(schema.Schema{Default: "raw"}),
-							"id":             subSchemaDiskId(),
-							"iothread":       {Type: schema.TypeBool, Optional: true},
-							"linked_disk_id": subSchemaLinkedDiskId(),
-							"readonly":       {Type: schema.TypeBool, Optional: true},
-							"replicate":      {Type: schema.TypeBool, Optional: true},
-							"serial":         subSchemaDiskSerial(),
-							"size":           subSchemaDiskSize(schema.Schema{Required: true}),
-							"storage":        subSchemaDiskStorage(schema.Schema{Required: true}),
-							"wwn":            subSchemaDiskWWN()})}},
-				"passthrough": {
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
+							schemaFormat:        subSchemaDiskFormat(schema.Schema{Default: "raw"}),
+							schemaID:            subSchemaDiskId(),
+							schemaIOthread:      {Type: schema.TypeBool, Optional: true},
+							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
+							schemaReadOnly:      {Type: schema.TypeBool, Optional: true},
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaDiskSize(schema.Schema{Required: true}),
+							schemaStorage:       subSchemaDiskStorage(schema.Schema{Required: true}),
+							schemaWorldWideName: subSchemaDiskWWN()})}},
+				schemaPassthrough: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".cloudinit", path + ".disk"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaCloudInit, path + "." + schemaDisk},
 					Elem: &schema.Resource{
 						Schema: subSchemaDiskBandwidth(map[string]*schema.Schema{
-							"asyncio":    subSchemaDiskAsyncIO(),
-							"backup":     subSchemaDiskBackup(),
-							"cache":      subSchemaDiskCache(),
-							"discard":    {Type: schema.TypeBool, Optional: true},
-							"emulatessd": {Type: schema.TypeBool, Optional: true},
-							"file":       subSchemaPassthroughFile(schema.Schema{Required: true}),
-							"iothread":   {Type: schema.TypeBool, Optional: true},
-							"readonly":   {Type: schema.TypeBool, Optional: true},
-							"replicate":  {Type: schema.TypeBool, Optional: true},
-							"serial":     subSchemaDiskSerial(),
-							"size":       subSchemaPassthroughSize(),
-							"wwn":        subSchemaDiskWWN()})}}}}}
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
+							schemaFile:          subSchemaPassthroughFile(schema.Schema{Required: true}),
+							schemaIOthread:      {Type: schema.TypeBool, Optional: true},
+							schemaReadOnly:      {Type: schema.TypeBool, Optional: true},
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaPassthroughSize(),
+							schemaWorldWideName: subSchemaDiskWWN()})}}}}}
 }
 
 func subSchemaVirtio(setting string) *schema.Schema {
-	path := "disks.0.virtio.0." + setting + ".0"
+	path := pathVirtIO + setting + ".0"
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"cdrom": subSchemaCdRom(path, false),
-				"disk": {
+				schemaCdRom: subSchemaCdRom(path, false),
+				schemaDisk: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".passthrough"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaPassthrough},
 					Elem: &schema.Resource{
 						Schema: subSchemaDiskBandwidth(map[string]*schema.Schema{
-							"asyncio":        subSchemaDiskAsyncIO(),
-							"backup":         subSchemaDiskBackup(),
-							"cache":          subSchemaDiskCache(),
-							"discard":        {Type: schema.TypeBool, Optional: true},
-							"format":         subSchemaDiskFormat(schema.Schema{Default: "raw"}),
-							"id":             subSchemaDiskId(),
-							"iothread":       {Type: schema.TypeBool, Optional: true},
-							"linked_disk_id": subSchemaLinkedDiskId(),
-							"readonly":       {Type: schema.TypeBool, Optional: true},
-							"replicate":      {Type: schema.TypeBool, Optional: true},
-							"serial":         subSchemaDiskSerial(),
-							"size":           subSchemaDiskSize(schema.Schema{Required: true}),
-							"storage":        subSchemaDiskStorage(schema.Schema{Required: true}),
-							"wwn":            subSchemaDiskWWN()})}},
-				"passthrough": {
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaFormat:        subSchemaDiskFormat(schema.Schema{Default: "raw"}),
+							schemaID:            subSchemaDiskId(),
+							schemaIOthread:      {Type: schema.TypeBool, Optional: true},
+							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
+							schemaReadOnly:      {Type: schema.TypeBool, Optional: true},
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaDiskSize(schema.Schema{Required: true}),
+							schemaStorage:       subSchemaDiskStorage(schema.Schema{Required: true}),
+							schemaWorldWideName: subSchemaDiskWWN()})}},
+				schemaPassthrough: {
 					Type:          schema.TypeList,
 					Optional:      true,
 					MaxItems:      1,
-					ConflictsWith: []string{path + ".cdrom", path + ".disk"},
+					ConflictsWith: []string{path + "." + schemaCdRom, path + "." + schemaDisk},
 					Elem: &schema.Resource{Schema: subSchemaDiskBandwidth(
 						map[string]*schema.Schema{
-							"asyncio":   subSchemaDiskAsyncIO(),
-							"backup":    subSchemaDiskBackup(),
-							"cache":     subSchemaDiskCache(),
-							"discard":   {Type: schema.TypeBool, Optional: true},
-							"file":      subSchemaPassthroughFile(schema.Schema{Required: true}),
-							"iothread":  {Type: schema.TypeBool, Optional: true},
-							"readonly":  {Type: schema.TypeBool, Optional: true},
-							"replicate": {Type: schema.TypeBool, Optional: true},
-							"serial":    subSchemaDiskSerial(),
-							"size":      subSchemaPassthroughSize(),
-							"wwn":       subSchemaDiskWWN()})}}}}}
+							schemaAsyncIO:       subSchemaDiskAsyncIO(),
+							schemaBackup:        subSchemaDiskBackup(),
+							schemaCache:         subSchemaDiskCache(),
+							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
+							schemaFile:          subSchemaPassthroughFile(schema.Schema{Required: true}),
+							schemaIOthread:      {Type: schema.TypeBool, Optional: true},
+							schemaReadOnly:      {Type: schema.TypeBool, Optional: true},
+							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
+							schemaSerial:        subSchemaDiskSerial(),
+							schemaSize:          subSchemaPassthroughSize(),
+							schemaWorldWideName: subSchemaDiskWWN()})}}}}}
 }
