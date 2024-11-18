@@ -415,6 +415,11 @@ func resourceVmQemu() *schema.Resource {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
+                                                "x-vga": {
+                                                        Type:     schema.TypeString,
+                                                        Optional: true,
+                                                },
+
 					},
 				},
 			},
