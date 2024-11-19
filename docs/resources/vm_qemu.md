@@ -107,7 +107,8 @@ The following arguments are supported in the top level resource block.
 | `bootdisk`                    | `str`    |                      | Enable booting from specified disk. You shouldn't need to change it under most circumstances. |
 | `agent`                       | `int`    | `0`                  | Set to `1` to enable the QEMU Guest Agent. Note, you must run the [`qemu-guest-agent`](https://pve.proxmox.com/wiki/Qemu-guest-agent) daemon in the guest for this to have any effect. |
 | `pxe`                         | `bool`   | `false`              | If set to `true`, enable PXE boot of the VM.  Also requires a `boot` order be set with Network included (eg `boot = "order=scsi0;net0"`).  Note that `pxe` is mutually exclusive with `clone` modes. |
-| `clone`                       | `str`    |                      | The base VM from which to clone to create the new VM.  Note that `clone` is mutually exclusive with `pxe` modes. |
+| `clone`                       | `str`    |                      | The base VM name from which to clone to create the new VM.  Note that `clone` is mutually exclusive with `clone_id` and `pxe` modes. |
+| `clone_id`                    | `int`    |                      | The base VM id from which to clone to create the new VM.  Note that `clone_id` is mutually exclusive with `clone` and `pxe` modes. |
 | `full_clone`                  | `bool`   | `true`               | Set to `true` to create a full clone, or `false` to create a linked clone. See the [docs about cloning](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_copy_and_clone) for more info. Only applies when `clone` is set. |
 | `hastate`                     | `str`    |                      | Requested HA state for the resource. One of "started", "stopped", "enabled", "disabled", or "ignored". See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info. |
 | `hagroup`                     | `str`    |                      | The HA group identifier the resource belongs to (requires `hastate` to be set!). See the [docs about HA](https://pve.proxmox.com/pve-docs/chapter-ha-manager.html#ha_manager_resource_config) for more info. |
@@ -138,7 +139,7 @@ The following arguments are supported in the top level resource block.
 | `searchdomain`                | `str`    |                      | Sets default DNS search domain suffix. |
 | `nameserver`                  | `str`    |                      | Sets default DNS server for guest. |
 | `sshkeys`                     | `str`    |                      | Newline delimited list of SSH public keys to add to authorized keys file for the cloud-init user. |
-| `ipconfig0`                   | `str`    | `''`                 | The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`. When `os_type` is `cloud-init` not setting `ip=` is equivalent to `skip_ipv4` == `true` and `ip6=` to `skip_ipv4` == `true` .|
+| `ipconfig0`                   | `str`    | `''`                 | The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`. When `os_type` is `cloud-init` not setting `ip=` is equivalent to `skip_ipv4` == `true` and `ip6=` to `skip_ipv6` == `true` .|
 | `ipconfig1` to `ipconfig15`   | `str`    |                      | The second IP address to assign to the guest. Same format as `ipconfig0`. |
 | `automatic_reboot`            | `bool`   | `true`               | Automatically reboot the VM when parameter changes require this. If disabled the provider will emit a warning when the VM needs to be rebooted. |
 | `skip_ipv4`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv4 address from the qemu guest agent isn't required, it will still return an ipv4 address if it could obtain one. Useful for reducing retries in environments without ipv4.|
@@ -560,17 +561,89 @@ details.
 
 ### USB Block
 
-The `usb` block is used to configure USB devices. It may be specified multiple times. The order in which the
-blocks are specified determines the ID for each net device. i.e. The first `usb` block will become `usb0`, the
-second will be `usb1` etc...
+The `usb` block is used to configure USB devices. It may be specified multiple times. When no `device_id`, `mapping_id`, or `port_id` is specified, it will be a `spice` device.
+In order to have a normal diff put the `usb` blocks in alphanumeric order based on the value of `id`.
+Don't need it in a module? Use the [USBs](#usbs-block) instead.
 
 See the [docs about USB passthrough](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_usb_passthrough) for more
 details.
 
-| Argument | Type   | Default Value | Description                                                                                                         |
-| -------- | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `host`   | `str`  |               | **Required** USB device host. This can either be done via the vendor- and product-id, or via the host bus and port. |
-| `usb3`   | `bool` | `false`       | Specifies whether if given host option is a USB3 device or port.                                                    |
+| Argument     | Type     | Default Value | Description |
+| ------------ | -------- | ------------- | ----------- |
+| `id`         | `int`    |               | **Required** The ID of the USB device. Must be unique, and between `0-4`. |
+| `device_id`  | `string` |               | The USB device ID, mutually exclusive with `mapping_id` and `port_id`. |
+| `mapping_id` | `string` |               | The USB mapping ID, mutually exclusive with `device_id` and `port_id`. |
+| `port_id`    | `string` |               | The USB port ID, mutually exclusive with `device_id` and `mapping_id`. |
+| `usb3`       | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs Block
+
+The `usbs` block is used to configure USB devices.
+There are four types of USB devices `device`, `mapping`, `port`, and `spice`. Configuration for these sub types can be found in their respective chapters:
+
+* `device`: [USBs.x.Device Block](#usbsxdevice-block).
+* `mapping`: [USBs.x.Mapping Block](#usbsxmapping-block).
+* `port`: [USBs.x.Port Block](#usbsxport-block).
+* `spice`: [USBs.x.Spice Block](#usbsxspice-block).
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  //<arguments omitted for brevity...>
+
+  usbs {
+    usb0 {
+      device {
+        device_id = "e0bc:40a9"
+        usb3 = true
+      }
+    }
+    usb1 {
+      mapping {
+        mapping_id = "mapped-device"
+        usb3 = true
+      }
+    }
+    usb2 {
+      port {
+        port_id = "1-1"
+        usb3 = true
+      }
+    }
+    usb4 {
+      spice {
+        usb3 = true
+      }
+    }
+  }
+}
+```
+
+### USBs.x.Device Block
+
+| Argument    | Type     | Default Value | Description |
+| ----------- | -------- | ------------- | ----------- |
+| `device_id` | `string` |               | **Required** The USB device ID, mutually exclusive with `mapping_id` and `port_id`. |
+| `usb3`      | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs.x.Mapping Block
+
+| Argument     | Type     | Default Value | Description |
+| ------------ | -------- | ------------- | ----------- |
+| `mapping_id` | `string` |               | **Required** The USB mapping ID, mutually exclusive with `device_id` and `port_id`. |
+| `usb3`       | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs.x.Port Block
+
+| Argument  | Type     | Default Value | Description |
+| --------- | -------- | ------------- | ----------- |
+| `port_id` | `string` |               | **Required** The USB port ID, mutually exclusive with `device_id` and `mapping_id`. |
+| `usb3`    | `bool`   | `false`       | Specifies whether the USB device or port is USB3. |
+
+### USBs.x.Spice Block
+
+| Argument | Type   | Default Value | Description |
+| -------- | ------ | ------------- | ----------- |
+| `usb3`   | `bool` | `false`       | Specifies whether the USB device or port is USB3. |
 
 ## SMBIOS Block
 

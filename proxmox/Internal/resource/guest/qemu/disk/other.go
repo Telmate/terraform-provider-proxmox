@@ -1,8 +1,17 @@
-package proxmox
+package disk
 
 import (
 	"strconv"
+
+	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 )
+
+func default_format(rawFormat string) pveAPI.QemuDiskFormat {
+	if rawFormat == "" {
+		return pveAPI.QemuDiskFormat("raw")
+	}
+	return pveAPI.QemuDiskFormat(rawFormat)
+}
 
 const (
 	kibibyte int64 = 1

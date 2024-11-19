@@ -1,15 +1,15 @@
 package network
 
 import (
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // Converts the SDK configuration to the Terraform configuration
-func Terraform(config pxapi.QemuNetworkInterfaces, d *schema.ResourceData) {
+func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
 	paramMap := make([]interface{}, 0, len(config))
 	for i := 0; i < MaximumNetworkInterfaces; i++ {
-		v, ok := config[pxapi.QemuNetworkInterfaceID(i)]
+		v, ok := config[pveAPI.QemuNetworkInterfaceID(i)]
 		if !ok {
 			continue
 		}
