@@ -1248,7 +1248,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	var ciDisk bool
 	if config.Disks != nil {
-		ciDisk = mapToTerraform_QemuStorage(d, *config.Disks)
+		disk.Terraform(d, *config.Disks, &ciDisk)
 	}
 
 	vmState, err := client.GetVmState(vmr)
@@ -1294,9 +1294,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("args", config.Args)
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
-	if config.Disks != nil {
-		disk.Terraform(d, *config.Disks)
-	}
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
 	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
