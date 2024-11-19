@@ -27,6 +27,7 @@ func usbTerraform(config pveAPI.QemuUSBs, schema []interface{}) []map[string]int
 	}
 
 	usbDevices := make([]map[string]interface{}, len(config))
+	var index int
 	for i := 0; i < maximumUSBs; i++ {
 		v, ok := config[pveAPI.QemuUsbID(i)]
 		if !ok {
@@ -39,7 +40,8 @@ func usbTerraform(config pveAPI.QemuUSBs, schema []interface{}) []map[string]int
 				break
 			}
 		}
-		usbDevices[i] = usbTerraformSubroutine(pveAPI.QemuUsbID(i), v, legacyHostSet)
+		usbDevices[index] = usbTerraformSubroutine(pveAPI.QemuUsbID(i), v, legacyHostSet)
+		index++
 	}
 	return usbDevices
 }
