@@ -8,7 +8,7 @@ import (
 // Converts the SDK configuration to the Terraform configuration
 func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
 	paramMap := make([]interface{}, 0, len(config))
-	for i := 0; i < maximumNetworkInterfaces; i++ {
+	for i := 0; i < MaximumNetworkInterfaces; i++ {
 		v, ok := config[pveAPI.QemuNetworkInterfaceID(i)]
 		if !ok {
 			continue

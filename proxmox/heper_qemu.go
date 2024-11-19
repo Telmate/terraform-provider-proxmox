@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"net"
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
@@ -53,13 +54,13 @@ func (conn connectionInfo) agentDiagnostics() diag.Diagnostics {
 			return diag.Diagnostics{diag.Diagnostic{
 				Severity: diag.Warning,
 				Summary:  errorGuestAgentNoIPSummary,
-				Detail:   "Qemu Guest Agent is enabled in your configuration but no IP address was found before the time ran out, increasing 'agent_timeout' could resolve this issue."}}
+				Detail:   "Qemu Guest Agent is enabled in your configuration but no IP address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue."}}
 		}
 		if !conn.SkipIPv4 {
 			return diag.Diagnostics{diag.Diagnostic{
 				Severity: diag.Warning,
 				Summary:  errorGuestAgentNoIPv4Summary,
-				Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv4 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv4' to true."}}
+				Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv4 address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue. To suppress this warning set '" + schemaSkipIPv4 + "' to true."}}
 		}
 		return diag.Diagnostics{}
 	}
@@ -67,7 +68,7 @@ func (conn connectionInfo) agentDiagnostics() diag.Diagnostics {
 		return diag.Diagnostics{diag.Diagnostic{
 			Severity: diag.Warning,
 			Summary:  errorGuestAgentNoIPv6Summary,
-			Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing 'agent_timeout' could resolve this issue. To suppress this warning set 'skip_ipv6' to true."}}
+			Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue. To suppress this warning set '" + schemaSkipIPv6 + "' to true."}}
 	}
 	return diag.Diagnostics{}
 }
@@ -79,10 +80,10 @@ func (conn connectionInfo) hasRequiredIP() bool {
 	return true
 }
 
-func (conn connectionInfo) parsePrimaryIPs(interfaces []pxapi.AgentNetworkInterface, mac string) connectionInfo {
-	lowerCaseMac := strings.ToLower(mac)
+func (conn connectionInfo) parsePrimaryIPs(interfaces []pxapi.AgentNetworkInterface, mac net.HardwareAddr) connectionInfo {
+	macString := mac.String()
 	for _, iFace := range interfaces {
-		if iFace.MacAddress.String() == lowerCaseMac {
+		if iFace.MacAddress.String() == macString {
 			for _, addr := range iFace.IpAddresses {
 				if addr.IsGlobalUnicast() {
 					if addr.To4() != nil {

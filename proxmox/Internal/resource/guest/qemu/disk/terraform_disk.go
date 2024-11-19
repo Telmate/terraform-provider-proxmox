@@ -19,15 +19,15 @@ func terraform_Disk_QemuCloudInit_unsafe(config *pveAPI.QemuCloudInitDisk) map[s
 		schemaType:    schemaCloudInit}
 }
 
-func terraform_Disk_QemuDisks(config pveAPI.QemuStorages) []map[string]interface{} {
+func terraform_Disk_QemuDisks(config pveAPI.QemuStorages, ciDisk *bool) []map[string]interface{} {
 	disks := make([]map[string]interface{}, 0, 56) // max is sum of underlying arrays
-	if ideDisks := terraform_Disk_QemuIdeDisks(config.Ide); ideDisks != nil {
+	if ideDisks := terraform_Disk_QemuIdeDisks(config.Ide, ciDisk); ideDisks != nil {
 		disks = append(disks, ideDisks...)
 	}
-	if sataDisks := terraform_Disk_QemuSataDisks(config.Sata); sataDisks != nil {
+	if sataDisks := terraform_Disk_QemuSataDisks(config.Sata, ciDisk); sataDisks != nil {
 		disks = append(disks, sataDisks...)
 	}
-	if scsiDisks := terraform_Disk_QemuScsiDisks(config.Scsi); scsiDisks != nil {
+	if scsiDisks := terraform_Disk_QemuScsiDisks(config.Scsi, ciDisk); scsiDisks != nil {
 		disks = append(disks, scsiDisks...)
 	}
 	if virtioDisks := terraform_Disk_QemuVirtIODisks(config.VirtIO); virtioDisks != nil {
@@ -39,18 +39,18 @@ func terraform_Disk_QemuDisks(config pveAPI.QemuStorages) []map[string]interface
 	return disks
 }
 
-func terraform_Disk_QemuIdeDisks(config *pveAPI.QemuIdeDisks) []map[string]interface{} {
+func terraform_Disk_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool) []map[string]interface{} {
 	if config == nil {
 		return nil
 	}
 	disks := make([]map[string]interface{}, 0, 3)
-	if disk := terraform_Disk_QemuIdeStorage(config.Disk_0, schemaIDE+"0"); disk != nil {
+	if disk := terraform_Disk_QemuIdeStorage(config.Disk_0, schemaIDE+"0", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuIdeStorage(config.Disk_1, schemaIDE+"1"); disk != nil {
+	if disk := terraform_Disk_QemuIdeStorage(config.Disk_1, schemaIDE+"1", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuIdeStorage(config.Disk_2, schemaIDE+"2"); disk != nil {
+	if disk := terraform_Disk_QemuIdeStorage(config.Disk_2, schemaIDE+"2", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
@@ -59,7 +59,7 @@ func terraform_Disk_QemuIdeDisks(config *pveAPI.QemuIdeDisks) []map[string]inter
 	return disks
 }
 
-func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, slot string) (settings map[string]interface{}) {
+func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, slot string, ciDisk *bool) (settings map[string]interface{}) {
 	if config == nil {
 		return nil
 	}
@@ -101,33 +101,34 @@ func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, slot string) (
 		settings = terraform_Disk_QemuCdRom_unsafe(config.CdRom)
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		settings = terraform_Disk_QemuCloudInit_unsafe(config.CloudInit)
 	}
 	settings[schemaSlot] = slot
 	return settings
 }
 
-func terraform_Disk_QemuSataDisks(config *pveAPI.QemuSataDisks) []map[string]interface{} {
+func terraform_Disk_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool) []map[string]interface{} {
 	if config == nil {
 		return nil
 	}
 	disks := make([]map[string]interface{}, 0, 6)
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_0, schemaSata+"0"); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_0, schemaSata+"0", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_1, schemaSata+"1"); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_1, schemaSata+"1", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"2"); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"2", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"3"); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"3", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"4"); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"4", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"5"); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, schemaSata+"5", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
@@ -136,7 +137,7 @@ func terraform_Disk_QemuSataDisks(config *pveAPI.QemuSataDisks) []map[string]int
 	return disks
 }
 
-func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, slot string) (settings map[string]interface{}) {
+func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, slot string, ciDisk *bool) (settings map[string]interface{}) {
 	if config == nil {
 		return nil
 	}
@@ -178,108 +179,109 @@ func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, slot string)
 		settings = terraform_Disk_QemuCdRom_unsafe(config.CdRom)
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		settings = terraform_Disk_QemuCloudInit_unsafe(config.CloudInit)
 	}
 	settings[schemaSlot] = slot
 	return settings
 }
 
-func terraform_Disk_QemuScsiDisks(config *pveAPI.QemuScsiDisks) []map[string]interface{} {
+func terraform_Disk_QemuScsiDisks(config *pveAPI.QemuScsiDisks, ciDisk *bool) []map[string]interface{} {
 	if config == nil {
 		return nil
 	}
 	disks := make([]map[string]interface{}, 0, 31)
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_0, schemaScsi+"0"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_0, schemaScsi+"0", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_1, schemaScsi+"1"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_1, schemaScsi+"1", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_2, schemaScsi+"2"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_2, schemaScsi+"2", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_3, schemaScsi+"3"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_3, schemaScsi+"3", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_4, schemaScsi+"4"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_4, schemaScsi+"4", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_5, schemaScsi+"5"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_5, schemaScsi+"5", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_6, schemaScsi+"6"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_6, schemaScsi+"6", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_7, schemaScsi+"7"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_7, schemaScsi+"7", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_8, schemaScsi+"8"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_8, schemaScsi+"8", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_9, schemaScsi+"9"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_9, schemaScsi+"9", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_10, schemaScsi+"10"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_10, schemaScsi+"10", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_11, schemaScsi+"11"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_11, schemaScsi+"11", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_12, schemaScsi+"12"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_12, schemaScsi+"12", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_13, schemaScsi+"13"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_13, schemaScsi+"13", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_14, schemaScsi+"14"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_14, schemaScsi+"14", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_15, schemaScsi+"15"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_15, schemaScsi+"15", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_16, schemaScsi+"16"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_16, schemaScsi+"16", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_17, schemaScsi+"17"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_17, schemaScsi+"17", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_18, schemaScsi+"18"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_18, schemaScsi+"18", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_19, schemaScsi+"19"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_19, schemaScsi+"19", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_20, schemaScsi+"20"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_20, schemaScsi+"20", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_21, schemaScsi+"21"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_21, schemaScsi+"21", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_22, schemaScsi+"22"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_22, schemaScsi+"22", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_23, schemaScsi+"23"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_23, schemaScsi+"23", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_24, schemaScsi+"24"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_24, schemaScsi+"24", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_25, schemaScsi+"25"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_25, schemaScsi+"25", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_26, schemaScsi+"26"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_26, schemaScsi+"26", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_27, schemaScsi+"27"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_27, schemaScsi+"27", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_28, schemaScsi+"28"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_28, schemaScsi+"28", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_29, schemaScsi+"29"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_29, schemaScsi+"29", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuScsiStorage(config.Disk_30, schemaScsi+"30"); disk != nil {
+	if disk := terraform_Disk_QemuScsiStorage(config.Disk_30, schemaScsi+"30", ciDisk); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
@@ -288,7 +290,7 @@ func terraform_Disk_QemuScsiDisks(config *pveAPI.QemuScsiDisks) []map[string]int
 	return disks
 }
 
-func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, slot string) (settings map[string]interface{}) {
+func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, slot string, ciDisk *bool) (settings map[string]interface{}) {
 	if config == nil {
 		return nil
 	}
@@ -334,6 +336,7 @@ func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, slot string)
 		settings = terraform_Disk_QemuCdRom_unsafe(config.CdRom)
 	}
 	if config.CloudInit != nil {
+		*ciDisk = true
 		settings = terraform_Disk_QemuCloudInit_unsafe(config.CloudInit)
 	}
 	settings[schemaSlot] = slot

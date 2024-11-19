@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/url"
 	"path"
 	"regexp"
@@ -43,6 +44,13 @@ const (
 	stateRunning string = "running"
 	stateStarted string = "started"
 	stateStopped string = "stopped"
+)
+
+const (
+	schemaAdditionalWait = "additional_wait"
+	schemaAgentTimeout   = "agent_timeout"
+	schemaSkipIPv4       = "skip_ipv4"
+	schemaSkipIPv6       = "skip_ipv6"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -81,7 +89,7 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
-			"agent_timeout": {
+			schemaAgentTimeout: {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  60,
@@ -97,7 +105,7 @@ func resourceVmQemu() *schema.Resource {
 					if v > 0 {
 						return nil
 					}
-					return diag.Errorf("agent_timeout must be greater than 0")
+					return diag.Errorf(schemaAgentTimeout + " must be greater than 0")
 				},
 			},
 			"vmid": {
@@ -489,7 +497,7 @@ func resourceVmQemu() *schema.Resource {
 				Default:     10,
 				Description: "Value in second to wait after a VM has been cloned, useful if system is not fast or during I/O intensive parallel terraform tasks",
 			},
-			"additional_wait": {
+			schemaAdditionalWait: {
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Default:     5,
@@ -629,17 +637,17 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
-			"skip_ipv4": {
+			schemaSkipIPv4: {
 				Type:          schema.TypeBool,
 				Optional:      true,
 				Default:       false,
-				ConflictsWith: []string{"skip_ipv6"},
+				ConflictsWith: []string{schemaSkipIPv6},
 			},
-			"skip_ipv6": {
+			schemaSkipIPv6: {
 				Type:          schema.TypeBool,
 				Optional:      true,
 				Default:       false,
-				ConflictsWith: []string{"skip_ipv4"},
+				ConflictsWith: []string{schemaSkipIPv4},
 			},
 			"reboot_required": {
 				Type:        schema.TypeBool,
@@ -907,7 +915,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
-	time.Sleep(time.Duration(d.Get("additional_wait").(int)) * time.Second)
+	time.Sleep(time.Duration(d.Get(schemaAdditionalWait).(int)) * time.Second)
 
 	if d.Get("vm_state").(string) == "running" || d.Get("vm_state").(string) == "started" {
 		log.Print("[DEBUG][QemuVmCreate] starting VM")
@@ -1148,7 +1156,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 						return append(diags, diag.FromErr(err)...)
 					}
 					// give sometime to proxmox to catchup
-					dur := time.Duration(d.Get("additional_wait").(int)) * time.Second
+					dur := time.Duration(d.Get(schemaAdditionalWait).(int)) * time.Second
 					log.Printf("[DEBUG][QemuVmUpdate] waiting for (%v) before starting the VM again", dur)
 					time.Sleep(dur)
 					if _, err := client.StartVm(vmr); err != nil {
@@ -1238,6 +1246,11 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		return diag.FromErr(err)
 	}
 
+	var ciDisk bool
+	if config.Disks != nil {
+		disk.Terraform_Unsafe(d, config.Disks, &ciDisk)
+	}
+
 	vmState, err := client.GetVmState(vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1247,7 +1260,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if vmState["status"] == "running" {
 		log.Printf("[DEBUG] VM is running, checking the IP")
 		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
-		diags = append(diags, initConnInfo(d, client, vmr, config)...)
+		diags = append(diags, initConnInfo(d, client, vmr, config, ciDisk)...)
 	} else {
 		// Optional convenience attributes for provisioners
 		err = d.Set("default_ipv4_address", nil)
@@ -1281,9 +1294,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("args", config.Args)
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
-	if config.Disks != nil {
-		disk.Terraform(d, *config.Disks)
-	}
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
 	mapToTerraform_CPU(config.CPU, d)
 	mapToTerraform_CloudInit(config.CloudInit, d)
@@ -1575,12 +1585,7 @@ func UpdateDevicesSet(
 	return devicesSet
 }
 
-func initConnInfo(
-	d *schema.ResourceData,
-	client *pxapi.Client,
-	vmr *pxapi.VmRef,
-	config *pxapi.ConfigQemu,
-) diag.Diagnostics {
+func initConnInfo(d *schema.ResourceData, client *pxapi.Client, vmr *pxapi.VmRef, config *pxapi.ConfigQemu, hasCiDisk bool) diag.Diagnostics {
 	logger, _ := CreateSubLogger("initConnInfo")
 	var diags diag.Diagnostics
 	// allow user to opt-out of setting the connection info for the resource
@@ -1615,7 +1620,7 @@ func initConnInfo(
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-	IPs, agentDiags := getPrimaryIP(config, vmr, client, guestAgentWaitEnd, d.Get("additional_wait").(int), d.Get("agent_timeout").(int), ciAgentEnabled, d.Get("skip_ipv4").(bool), d.Get("skip_ipv6").(bool))
+	IPs, agentDiags := getPrimaryIP(config.CloudInit, config.Networks, vmr, client, guestAgentWaitEnd, d.Get(schemaAdditionalWait).(int), d.Get(schemaAgentTimeout).(int), ciAgentEnabled, d.Get(schemaSkipIPv4).(bool), d.Get(schemaSkipIPv6).(bool), hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1646,7 +1651,7 @@ func initConnInfo(
 	return diags
 }
 
-func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4 bool, skipIPv6 bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(cloudInit *pxapi.CloudInit, networks pxapi.QemuNetworkInterfaces, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1654,39 +1659,42 @@ func getPrimaryIP(config *pxapi.ConfigQemu, vmr *pxapi.VmRef, client *pxapi.Clie
 		SkipIPv4: skipIPv4,
 		SkipIPv6: skipIPv6,
 	}
-	// check if cloud init is enabled
-	if config.CloudInit != nil {
-		log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
-		logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
-		var cicustom bool
-		if config.CloudInit.Custom != nil && config.CloudInit.Custom.Network != nil {
-			cicustom = true
-		}
-		conn = parseCloudInitInterface(config.CloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
-		// early return, we have all information we wanted
-		if conn.hasRequiredIP() {
-			if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
-				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Cloud-init is enabled but no IP config is set",
-					Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled"}}
+	if hasCiDisk { // Check if we have a Cloud-Init disk, cloud-init setting won't have any effect if without it.
+		if cloudInit != nil { // Check if we have a Cloud-Init configuration
+			log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
+			logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
+			var cicustom bool
+			if cloudInit.Custom != nil && cloudInit.Custom.Network != nil {
+				cicustom = true
 			}
-			return conn.IPs, diag.Diagnostics{}
+			conn = parseCloudInitInterface(cloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
+			// early return, we have all information we wanted
+			if conn.hasRequiredIP() {
+				if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
+					return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+						Severity: diag.Warning,
+						Summary:  "Cloud-init is enabled but no IP config is set",
+						Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled"}}
+				}
+				return conn.IPs, diag.Diagnostics{}
+			}
+		} else {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "VM has a Cloud-init disk but no Cloud-init settings"}}
 		}
 	}
 
 	// get all information we can from qemu agent until the timer runs out
 	if ciAgentEnabled {
-		var waitedTime int
-		// TODO rework this logic when network interfaces are properly handled in the SDK
-		vmConfig, err := client.GetVmConfig(vmr)
-		if err != nil {
-			return primaryIPs{}, diag.FromErr(err)
-		}
-		var primaryMacAddress string
-		for i := 0; i < 16; i++ {
-			if _, ok := vmConfig["net"+strconv.Itoa(i)]; ok {
-				primaryMacAddress = macAddressRegex.FindString(vmConfig["net"+strconv.Itoa(i)].(string))
+		var (
+			waitedTime        int
+			primaryMacAddress net.HardwareAddr
+			err               error
+		)
+		for i := 0; i < network.MaximumNetworkInterfaces; i++ {
+			if v, ok := networks[pxapi.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+				primaryMacAddress = *v.MAC
 				break
 			}
 		}
