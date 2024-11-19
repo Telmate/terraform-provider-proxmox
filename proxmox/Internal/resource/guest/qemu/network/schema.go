@@ -13,7 +13,7 @@ import (
 const (
 	Root string = "network"
 
-	MaximumNetworkInterfaces int = int(pveAPI.QemuNetworkInterfacesAmount)
+	AmountNetworkInterfaces int = int(pveAPI.QemuNetworkInterfacesAmount)
 
 	schemaID string = "id"
 
@@ -32,7 +32,7 @@ func Schema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
-		MaxItems: MaximumNetworkInterfaces,
+		MaxItems: AmountNetworkInterfaces,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				schemaID: {

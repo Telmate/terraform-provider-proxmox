@@ -17,7 +17,7 @@ const (
 
 	prefixSchemaID string = "usb"
 
-	maximumUSBs int = int(pveAPI.QemuUSBsAmount)
+	amountUSBs int = int(pveAPI.QemuUSBsAmount)
 
 	schemaID string = "id"
 
@@ -38,7 +38,7 @@ func SchemaUSB() *schema.Schema {
 	return &schema.Schema{
 		Type:          schema.TypeList,
 		Optional:      true,
-		MaxItems:      maximumUSBs,
+		MaxItems:      amountUSBs,
 		ConflictsWith: []string{RootUSBs},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -71,7 +71,7 @@ func SchemaUSB() *schema.Schema {
 
 func SchemaUSBs() *schema.Schema {
 	schemaItems := make(map[string]*schema.Schema)
-	for i := 0; i < maximumUSBs; i++ {
+	for i := 0; i < amountUSBs; i++ {
 		id := strconv.Itoa(i)
 		schemaItems[prefixSchemaID+id] = usbsSubSchema(prefixSchemaID + id)
 	}

@@ -14,8 +14,8 @@ import (
 
 // Converts the Terraform configuration to the SDK configuration
 func SDK(d *schema.ResourceData) (pveAPI.QemuNetworkInterfaces, diag.Diagnostics) {
-	networks := make(pveAPI.QemuNetworkInterfaces, MaximumNetworkInterfaces)
-	for i := 0; i < MaximumNetworkInterfaces; i++ {
+	networks := make(pveAPI.QemuNetworkInterfaces, AmountNetworkInterfaces)
+	for i := 0; i < AmountNetworkInterfaces; i++ {
 		networks[pveAPI.QemuNetworkInterfaceID(i)] = pveAPI.QemuNetworkInterface{Delete: true}
 	}
 	var diags diag.Diagnostics
