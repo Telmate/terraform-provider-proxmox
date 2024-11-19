@@ -1248,7 +1248,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	var ciDisk bool
 	if config.Disks != nil {
-		disk.Terraform(d, *config.Disks, &ciDisk)
+		disk.Terraform_Unsafe(d, config.Disks, &ciDisk)
 	}
 
 	vmState, err := client.GetVmState(vmr)
