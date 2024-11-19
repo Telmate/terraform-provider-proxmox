@@ -18,10 +18,10 @@ const (
 
 // Converts the Terraform configuration to the SDK configuration
 func SDK(d *schema.ResourceData) (pveAPI.QemuUSBs, diag.Diagnostics) {
-	usbDevices := make(pveAPI.QemuUSBs, maximumUSBs)
+	usbDevices := make(pveAPI.QemuUSBs, amountUSBs)
 	var diags diag.Diagnostics
 	if v, ok := d.GetOk(RootUSB); ok {
-		for i := 0; i < maximumUSBs; i++ {
+		for i := 0; i < amountUSBs; i++ {
 			usbDevices[pveAPI.QemuUsbID(i)] = pveAPI.QemuUSB{Delete: true}
 		}
 		var tmpDiags diag.Diagnostics

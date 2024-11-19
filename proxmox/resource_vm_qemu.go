@@ -1692,7 +1692,7 @@ func getPrimaryIP(cloudInit *pxapi.CloudInit, networks pxapi.QemuNetworkInterfac
 			primaryMacAddress net.HardwareAddr
 			err               error
 		)
-		for i := 0; i < network.MaximumNetworkInterfaces; i++ {
+		for i := 0; i < network.AmountNetworkInterfaces; i++ {
 			if v, ok := networks[pxapi.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
 				primaryMacAddress = *v.MAC
 				break

@@ -9,7 +9,7 @@ import (
 func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
 	paramArray := make([]interface{}, len(config))
 	var index int
-	for i := 0; i < MaximumNetworkInterfaces; i++ {
+	for i := 0; i < AmountNetworkInterfaces; i++ {
 		v, ok := config[pveAPI.QemuNetworkInterfaceID(i)]
 		if !ok {
 			continue
