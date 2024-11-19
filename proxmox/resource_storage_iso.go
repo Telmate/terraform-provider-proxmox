@@ -69,7 +69,7 @@ func resourceStorageIsoCreate(d *schema.ResourceData, meta interface{}) error {
 	node := d.Get("pve_node").(string)
 
 	client := pconf.Client
-	file, err := os.CreateTemp("/tmp", fileName)
+	file, err := os.CreateTemp(os.TempDir(), fileName)
 	if err != nil {
 		return err
 	}
