@@ -7,7 +7,8 @@ import (
 
 // Converts the SDK configuration to the Terraform configuration
 func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
-	paramMap := make([]interface{}, 0, len(config))
+	paramArray := make([]interface{}, len(config))
+	var index int
 	for i := 0; i < MaximumNetworkInterfaces; i++ {
 		v, ok := config[pveAPI.QemuNetworkInterfaceID(i)]
 		if !ok {
@@ -46,7 +47,8 @@ func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
 		if v.NativeVlan != nil {
 			params[schemaNativeVlan] = int(*v.NativeVlan)
 		}
-		paramMap = append(paramMap, params)
+		paramArray[index] = params
+		index++
 	}
-	d.Set(Root, paramMap)
+	d.Set(Root, paramArray)
 }
