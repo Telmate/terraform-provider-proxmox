@@ -1894,11 +1894,12 @@ func mapToSDK_CloudInitNetworkConfig(param string) pxapi.CloudInitNetworkConfig 
 		*config.IPv4.Gateway = pxapi.IPv4Address(v)
 	}
 	if v, isSet := params["ip6"]; isSet {
-		if v == "dhcp" {
+		switch v {
+		case "dhcp":
 			config.IPv6.DHCP = true
-		} else if v == "auto" {
+		case "auto":
 			config.IPv6.SLAAC = true
-		} else {
+		default:
 			*config.IPv6.Address = pxapi.IPv6CIDR(v)
 		}
 	}
