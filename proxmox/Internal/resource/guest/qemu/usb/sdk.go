@@ -1,6 +1,7 @@
 package usb
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -24,13 +25,13 @@ func SDK(d *schema.ResourceData) (pveAPI.QemuUSBs, diag.Diagnostics) {
 		for i := 0; i < amountUSBs; i++ {
 			usbDevices[pveAPI.QemuUsbID(i)] = pveAPI.QemuUSB{Delete: true}
 		}
-		var tmpDiags diag.Diagnostics
+		var err error
 		var id pveAPI.QemuUsbID
 		for _, usb := range v.([]interface{}) {
 			var tmpUSB pveAPI.QemuUSB
-			id, tmpUSB, tmpDiags = usbSDK(usb.(map[string]interface{}))
+			id, tmpUSB, err = usbSDK(usb.(map[string]interface{}))
 			usbDevices[id] = tmpUSB
-			diags = append(diags, tmpDiags...)
+			diags = append(diags, diag.FromErr(err)...)
 		}
 	} else {
 		schemaItem := d.Get(RootUSBs).([]interface{})
@@ -46,18 +47,18 @@ func SDK(d *schema.ResourceData) (pveAPI.QemuUSBs, diag.Diagnostics) {
 	return usbDevices, diags
 }
 
-func usbSDK(schema map[string]interface{}) (pveAPI.QemuUsbID, pveAPI.QemuUSB, diag.Diagnostics) {
+func usbSDK(schema map[string]interface{}) (pveAPI.QemuUsbID, pveAPI.QemuUSB, error) {
 	id := pveAPI.QemuUsbID(schema[schemaID].(int))
 	usb3 := schema[schemaUSB3].(bool)
 	if deviceID := pveAPI.UsbDeviceID(schema[schemaDeviceID].(string)); deviceID != "" {
 		if v := schema[schemaMappingID]; v != "" {
-			return id, pveAPI.QemuUSB{}, diag.Errorf(errorMutualExclusive)
+			return id, pveAPI.QemuUSB{}, errors.New(errorMutualExclusive)
 		}
 		if v := schema[schemaPortID]; v != "" {
-			return id, pveAPI.QemuUSB{}, diag.Errorf(errorMutualExclusive)
+			return id, pveAPI.QemuUSB{}, errors.New(errorMutualExclusive)
 		}
 		if v := schema[legacySchemaHost]; v != "" {
-			return id, pveAPI.QemuUSB{}, diag.Errorf(errorMutualExclusiveLegacy)
+			return id, pveAPI.QemuUSB{}, errors.New(errorMutualExclusiveLegacy)
 		}
 		return id, pveAPI.QemuUSB{
 			Device: &pveAPI.QemuUsbDevice{
@@ -66,10 +67,10 @@ func usbSDK(schema map[string]interface{}) (pveAPI.QemuUsbID, pveAPI.QemuUSB, di
 	}
 	if mappingID := pveAPI.ResourceMappingUsbID(schema[schemaMappingID].(string)); mappingID != "" {
 		if v := schema[schemaPortID]; v != "" {
-			return id, pveAPI.QemuUSB{}, diag.Errorf(errorMutualExclusive)
+			return id, pveAPI.QemuUSB{}, errors.New(errorMutualExclusive)
 		}
 		if v := schema[legacySchemaHost]; v != "" {
-			return id, pveAPI.QemuUSB{}, diag.Errorf(errorMutualExclusiveLegacy)
+			return id, pveAPI.QemuUSB{}, errors.New(errorMutualExclusiveLegacy)
 		}
 		return id, pveAPI.QemuUSB{
 			Mapping: &pveAPI.QemuUsbMapping{
@@ -78,7 +79,7 @@ func usbSDK(schema map[string]interface{}) (pveAPI.QemuUsbID, pveAPI.QemuUSB, di
 	}
 	if portID := pveAPI.UsbPortID(schema[schemaPortID].(string)); portID != "" {
 		if v := schema[legacySchemaHost]; v != "" {
-			return id, pveAPI.QemuUSB{}, diag.Errorf(errorMutualExclusiveLegacy)
+			return id, pveAPI.QemuUSB{}, errors.New(errorMutualExclusiveLegacy)
 		}
 		return id, pveAPI.QemuUSB{
 			Port: &pveAPI.QemuUsbPort{
