@@ -545,6 +545,81 @@ See the [docs about EFI disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#
 | `efitype` | `str` | `"4m"`        | The type of efi disk device to add. Options: `2m`, `4m`               |
 | `storage` | `str` |               | **Required** The name of the storage pool on which to store the disk. |
 
+### PCI Block
+
+The `pci` block is used to configure PCI devices. It may be specified multiple times.
+Don't need it in a module? Use the [PCIs Block](#pcis-block) instead.
+
+| Argument        | Type   | Default Value | Description |
+| :-------------- | :----: | :-----------: | :---------- |
+| `id`            | `str`  |               | **Required** The id of the PCI device. Range `0` - `15`. |
+| `mapping_id`    | `str`  |               | **Required\*** The id of the mapping. Conflicts with `raw_id`.|
+| `raw_id`        | `str`  |               | **Required\*** The id of the raw device. Conflicts with `mapping_id`.|
+| `pcie`          | `bool` | `false`       | Whether this device is a `PCIe` device. |
+| `primary_gpu`   | `bool` | `false`       | Whether this PCI device is the primary GPU. |
+| `rombar`        | `bool` | `true`        | Whether to enable the ROM-BAR. |
+| `device_id`     | `str`  |               | The device id of the PCI device. |
+| `vendor_id`     | `str`  |               | The vendor id of the PCI device. |
+| `sub_device_id` | `str`  |               | The sub device id of the PCI device. |
+| `sub_vendor_id` | `str`  |               | The sub vendor id of the PCI device. |
+
+\* Either `mapping_id` or `raw_id` is required.
+
+### PCIs Block
+
+The `pcis` block is used to configure PCI devices.
+There are two types of PCI devices `mapping`, and `raw`. Each of these types has their own block with their own arguments.
+
+These types share the following arguments, with minor differences:
+
+| Argument        | Type   | Default Value | PCI types        |Description |
+| :-------------- | :----: | :-----------: | :--------------: | :--------- |
+| `mapping_id`    | `str`  |               | `mapping`        | **Required** The id of the mapping. |
+| `raw_id`        | `str`  |               | `raw`            | **Required** The id of the raw device. |
+| `pcie`          | `bool` | `false`       | `mapping`, `raw` | Whether this device is a `PCIe` device. |
+| `primary_gpu`   | `bool` | `false`       | `mapping`, `raw` | Whether this PCI device is the primary GPU. |
+| `rombar`        | `bool` | `true`        | `mapping`, `raw` | Whether to enable the ROM-BAR. |
+| `device_id`     | `str`  |               | `mapping`, `raw` | The device id of the PCI device. |
+| `vendor_id`     | `str`  |               | `mapping`, `raw` | The vendor id of the PCI device. |
+| `sub_device_id` | `str`  |               | `mapping`, `raw` | The sub device id of the PCI device. |
+| `sub_vendor_id` | `str`  |               | `mapping`, `raw` | The sub vendor id of the PCI device. |
+
+The range of pci devices is from `pci0` to `pci15`.
+
+Example:
+
+```hcl
+resource "proxmox_vm_qemu" "resource-name" {
+  // ...
+  pcis {
+    pci0 {
+      mapping {
+        mapping_id = "mapping-id"
+        pcie = true
+        primary_gpu = true
+        rombar = true
+        device_id = "device-id"
+        vendor_id = "vendor-id"
+        sub_device_id = "sub-device-id"
+        sub_vendor_id = "sub-vendor-id"
+      }
+    }
+    pci15 {
+      raw {
+        raw_id = "raw-id"
+        pcie = true
+        primary_gpu = true
+        rombar = true
+        device_id = "device-id"
+        vendor_id = "vendor-id"
+        sub_device_id = "sub-device-id"
+        sub_vendor_id = "sub-vendor-id"
+      }
+    }
+  }
+}
+```
+
 ### Serial Block
 
 Create a serial device inside the VM (up to a maximum of 4 can be specified), and either pass through a host serial device (i.e. /dev/ttyS0), or create a unix socket on the host side. The order in which `serial` blocks are declared does not matter.
