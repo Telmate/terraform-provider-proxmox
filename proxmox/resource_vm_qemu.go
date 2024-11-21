@@ -30,6 +30,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/pci"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
@@ -406,26 +407,9 @@ func resourceVmQemu() *schema.Resource {
 					},
 				},
 			},
-			"hostpci": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"host": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"rombar": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-						"pcie": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-					},
-				},
-			},
+			pci.RootLegacyPCI: pci.SchemaLegacyPCI(),
+			pci.RootPCI:       pci.SchemaPCI(),
+			pci.RootPCIs:      pci.SchemaPCIs(),
 			"efidisk": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -728,35 +712,32 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
-	qemuPCIDevices, _ := ExpandDevicesList(d.Get("hostpci").([]interface{}))
-
 	config := pxapi.ConfigQemu{
-		Name:           vmName,
-		CPU:            mapToSDK_CPU(d),
-		Description:    util.Pointer(d.Get("desc").(string)),
-		Pool:           util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
-		Bios:           d.Get("bios").(string),
-		Onboot:         util.Pointer(d.Get("onboot").(bool)),
-		Startup:        d.Get("startup").(string),
-		Protection:     util.Pointer(d.Get("protection").(bool)),
-		Tablet:         util.Pointer(d.Get("tablet").(bool)),
-		Boot:           d.Get("boot").(string),
-		BootDisk:       d.Get("bootdisk").(string),
-		Agent:          mapToSDK_QemuGuestAgent(d),
-		Memory:         mapToSDK_Memory(d),
-		Machine:        d.Get("machine").(string),
-		QemuKVM:        util.Pointer(d.Get("kvm").(bool)),
-		Hotplug:        d.Get("hotplug").(string),
-		Scsihw:         d.Get("scsihw").(string),
-		HaState:        d.Get("hastate").(string),
-		HaGroup:        d.Get("hagroup").(string),
-		QemuOs:         d.Get("qemu_os").(string),
-		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
-		Args:           d.Get("args").(string),
-		Serials:        serial.SDK(d),
-		QemuPCIDevices: qemuPCIDevices,
-		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		CloudInit:      mapToSDK_CloudInit(d),
+		Name:        vmName,
+		CPU:         mapToSDK_CPU(d),
+		Description: util.Pointer(d.Get("desc").(string)),
+		Pool:        util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
+		Bios:        d.Get("bios").(string),
+		Onboot:      util.Pointer(d.Get("onboot").(bool)),
+		Startup:     d.Get("startup").(string),
+		Protection:  util.Pointer(d.Get("protection").(bool)),
+		Tablet:      util.Pointer(d.Get("tablet").(bool)),
+		Boot:        d.Get("boot").(string),
+		BootDisk:    d.Get("bootdisk").(string),
+		Agent:       mapToSDK_QemuGuestAgent(d),
+		Memory:      mapToSDK_Memory(d),
+		Machine:     d.Get("machine").(string),
+		QemuKVM:     util.Pointer(d.Get("kvm").(bool)),
+		Hotplug:     d.Get("hotplug").(string),
+		Scsihw:      d.Get("scsihw").(string),
+		HaState:     d.Get("hastate").(string),
+		HaGroup:     d.Get("hagroup").(string),
+		QemuOs:      d.Get("qemu_os").(string),
+		Tags:        tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
+		Args:        d.Get("args").(string),
+		Serials:     serial.SDK(d),
+		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
+		CloudInit:   mapToSDK_CloudInit(d),
 	}
 
 	var diags, tmpDiags diag.Diagnostics
@@ -765,6 +746,11 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
+		return diags
+	}
+	config.PciDevices, tmpDiags = pci.SDK(d)
 	diags = append(diags, tmpDiags...)
 	if tmpDiags.HasError() {
 		return diags
@@ -965,11 +951,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
-	qemuPCIDevices, err := ExpandDevicesList(d.Get("hostpci").([]interface{}))
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("error while processing HostPCI configuration: %v", err))
-	}
-
 	d.Partial(true)
 	if d.HasChange("target_node") {
 		// Update target node when it must be migrated manually. Don't if it has been migrated by the proxmox high availability system.
@@ -978,32 +959,31 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	d.Partial(false)
 
 	config := pxapi.ConfigQemu{
-		Name:           d.Get("name").(string),
-		CPU:            mapToSDK_CPU(d),
-		Description:    util.Pointer(d.Get("desc").(string)),
-		Pool:           util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
-		Bios:           d.Get("bios").(string),
-		Onboot:         util.Pointer(d.Get("onboot").(bool)),
-		Startup:        d.Get("startup").(string),
-		Protection:     util.Pointer(d.Get("protection").(bool)),
-		Tablet:         util.Pointer(d.Get("tablet").(bool)),
-		Boot:           d.Get("boot").(string),
-		BootDisk:       d.Get("bootdisk").(string),
-		Agent:          mapToSDK_QemuGuestAgent(d),
-		Memory:         mapToSDK_Memory(d),
-		Machine:        d.Get("machine").(string),
-		QemuKVM:        util.Pointer(d.Get("kvm").(bool)),
-		Hotplug:        d.Get("hotplug").(string),
-		Scsihw:         d.Get("scsihw").(string),
-		HaState:        d.Get("hastate").(string),
-		HaGroup:        d.Get("hagroup").(string),
-		QemuOs:         d.Get("qemu_os").(string),
-		Tags:           tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
-		Args:           d.Get("args").(string),
-		Serials:        serial.SDK(d),
-		QemuPCIDevices: qemuPCIDevices,
-		Smbios1:        BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		CloudInit:      mapToSDK_CloudInit(d),
+		Name:        d.Get("name").(string),
+		CPU:         mapToSDK_CPU(d),
+		Description: util.Pointer(d.Get("desc").(string)),
+		Pool:        util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
+		Bios:        d.Get("bios").(string),
+		Onboot:      util.Pointer(d.Get("onboot").(bool)),
+		Startup:     d.Get("startup").(string),
+		Protection:  util.Pointer(d.Get("protection").(bool)),
+		Tablet:      util.Pointer(d.Get("tablet").(bool)),
+		Boot:        d.Get("boot").(string),
+		BootDisk:    d.Get("bootdisk").(string),
+		Agent:       mapToSDK_QemuGuestAgent(d),
+		Memory:      mapToSDK_Memory(d),
+		Machine:     d.Get("machine").(string),
+		QemuKVM:     util.Pointer(d.Get("kvm").(bool)),
+		Hotplug:     d.Get("hotplug").(string),
+		Scsihw:      d.Get("scsihw").(string),
+		HaState:     d.Get("hastate").(string),
+		HaGroup:     d.Get("hagroup").(string),
+		QemuOs:      d.Get("qemu_os").(string),
+		Tags:        tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
+		Args:        d.Get("args").(string),
+		Serials:     serial.SDK(d),
+		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
+		CloudInit:   mapToSDK_CloudInit(d),
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1015,6 +995,11 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 	config.Networks, tmpDiags = network.SDK(d)
+	diags = append(diags, tmpDiags...)
+	if tmpDiags.HasError() {
+		return diags
+	}
+	config.PciDevices, tmpDiags = pci.SDK(d)
 	diags = append(diags, tmpDiags...)
 	if tmpDiags.HasError() {
 		return diags
@@ -1301,6 +1286,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if len(config.Networks) != 0 {
 		network.Terraform(config.Networks, d)
 	}
+	if len(config.PciDevices) != 0 {
+		pci.Terraform(config.PciDevices, d)
+	}
 	if len(config.Serials) != 0 {
 		serial.Terraform(config.Serials, d)
 	}
@@ -1322,17 +1310,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// Check "full_clone" separately, as it causes issues in loop above due to how GetOk returns values on false booleans.
 	// Since "full_clone" has a default of true, it will always be in the configuration, so no need to verify.
 	d.Set("full_clone", d.Get("full_clone"))
-
-	// read in the qemu hostpci
-	qemuPCIDevices, err := FlattenDevicesList(config.QemuPCIDevices)
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("unable to flatten QEMU PCI devices: %w", err))
-	}
-	qemuPCIDevices, _ = DropElementsFromMap([]string{"id"}, qemuPCIDevices)
-	logger.Debug().Int("vmid", vmID).Msgf("Hostpci Block Processed '%v'", config.QemuPCIDevices)
-	if err = d.Set("hostpci", qemuPCIDevices); err != nil {
-		return diag.FromErr(fmt.Errorf("unable to set hostpci: %w", err))
-	}
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)

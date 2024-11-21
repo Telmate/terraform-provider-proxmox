@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.0
 
 require (
-	github.com/Telmate/proxmox-api-go v0.0.0-20241109120634-0146e30e530a
+	github.com/Telmate/proxmox-api-go v0.0.0-20241121215203-222002bcb5bc
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
