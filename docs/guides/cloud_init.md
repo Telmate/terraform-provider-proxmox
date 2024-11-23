@@ -189,7 +189,7 @@ resource "proxmox_vm_qemu" "preprovision-test" {
   sockets  = 1
   # Same CPU as the Physical host, possible to add cpu flags
   # Ex: "host,flags=+md-clear;+pcid;+spec-ctrl;+ssbd;+pdpe1gb"
-  cpu      = "host"
+  cpu_type = "host"
   numa     = false
   memory   = 2560
   scsihw   = "lsi"

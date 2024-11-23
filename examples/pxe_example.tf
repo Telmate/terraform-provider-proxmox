@@ -32,7 +32,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
 # and future boots will run off the disk
     boot                      = "order=scsi0;net0"
     cores                     = 2
-    cpu                       = "host"
+    cpu_type                  = "host"
     define_connection_info    = true
     force_create              = false
     hotplug                   = "network,disk,usb"

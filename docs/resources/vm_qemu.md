@@ -118,7 +118,7 @@ The following arguments are supported in the top level resource block.
 | `sockets`                     | `int`    | `1`                  | The number of CPU sockets to allocate to the VM. |
 | `cores`                       | `int`    | `1`                  | The number of CPU cores per CPU socket to allocate to the VM. |
 | `vcpus`                       | `int`    | `0`                  | The number of vCPUs plugged into the VM when it starts. If `0`, this is set automatically by Proxmox to `sockets * cores`. |
-| `cpu`                         | `str`    | `"host"`             | The type of CPU to emulate in the Guest. See the [docs about CPU Types](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) for more info. |
+| `cpu_type`                    | `str`    | `"host"`             | The type of CPU to emulate in the Guest. See the [docs about CPU Types](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) for more info. |
 | `numa`                        | `bool`   | `false`              | Whether to enable [Non-Uniform Memory Access](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) in the guest. |
 | `hotplug`                     | `str`    | `"network,disk,usb"` | Comma delimited list of hotplug features to enable. Options: `network`, `disk`, `cpu`, `memory`, `usb`. Set to `0` to disable hotplug. |
 | `scsihw`                      | `str`    | `"lsi"`              | The SCSI controller to emulate. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`. |
