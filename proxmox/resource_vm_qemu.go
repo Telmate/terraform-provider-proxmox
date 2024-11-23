@@ -28,6 +28,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/dns/nameservers"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/pci"
@@ -281,31 +282,16 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
-			"cores": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  1,
-			},
-			"sockets": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  1,
-			},
-			"vcpus": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  0,
-			},
-			"cpu": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "host",
-			},
-			"numa": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				// Default:  false,
-			},
+			cpu.Root: cpu.SchemaType(schema.Schema{
+				ConflictsWith: []string{cpu.RootCpuType},
+				Deprecated:    "use '" + cpu.RootCpuType + "' instead"}),
+			cpu.RootCores: cpu.SchemaCores(),
+			cpu.RootCpuType: cpu.SchemaType(schema.Schema{
+				ConflictsWith: []string{cpu.Root},
+				Default:       "host"}),
+			cpu.RootNuma:         cpu.SchemaNuma(),
+			cpu.RootSockets:      cpu.SchemaSockets(),
+			cpu.RootVirtualCores: cpu.SchemaVirtualCores(),
 			"kvm": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -714,7 +700,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	config := pxapi.ConfigQemu{
 		Name:        vmName,
-		CPU:         mapToSDK_CPU(d),
+		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
 		Pool:        util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:        d.Get("bios").(string),
@@ -960,7 +946,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	config := pxapi.ConfigQemu{
 		Name:        d.Get("name").(string),
-		CPU:         mapToSDK_CPU(d),
+		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
 		Pool:        util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
 		Bios:        d.Get("bios").(string),
@@ -1280,7 +1266,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
-	mapToTerraform_CPU(config.CPU, d)
+	if config.CPU != nil {
+		cpu.Terraform(*config.CPU, d)
+	}
 	mapToTerraform_CloudInit(config.CloudInit, d)
 	mapToTerraform_Memory(config.Memory, d)
 	if len(config.Networks) != 0 {
@@ -1758,27 +1746,6 @@ func mapToTerraform_CloudInitNetworkConfig(config pxapi.CloudInitNetworkConfig) 
 	return ""
 }
 
-func mapToTerraform_CPU(config *pxapi.QemuCPU, d *schema.ResourceData) {
-	if config == nil {
-		return
-	}
-	if config.Cores != nil {
-		d.Set("cores", int(*config.Cores))
-	}
-	if config.Numa != nil {
-		d.Set("numa", *config.Numa)
-	}
-	if config.Sockets != nil {
-		d.Set("sockets", int(*config.Sockets))
-	}
-	if config.Type != nil {
-		d.Set("cpu", string(*config.Type))
-	}
-	if config.VirtualCores != nil {
-		d.Set("vcpus", int(*config.VirtualCores))
-	}
-}
-
 func mapToTerraform_Description(description *string) string {
 	if description != nil {
 		return *description
@@ -1902,15 +1869,6 @@ func mapToSDK_Memory(d *schema.ResourceData) *pxapi.QemuMemory {
 		MinimumCapacityMiB: util.Pointer(pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))),
 		Shares:             util.Pointer(pxapi.QemuMemoryShares(0)),
 	}
-}
-
-func mapToSDK_CPU(d *schema.ResourceData) *pxapi.QemuCPU {
-	return &pxapi.QemuCPU{
-		Cores:        util.Pointer(pxapi.QemuCpuCores(d.Get("cores").(int))),
-		Numa:         util.Pointer(d.Get("numa").(bool)),
-		Sockets:      util.Pointer(pxapi.QemuCpuSockets(d.Get("sockets").(int))),
-		Type:         util.Pointer(pxapi.CpuType(d.Get("cpu").(string))),
-		VirtualCores: util.Pointer(pxapi.CpuVirtualCores(d.Get("vcpus").(int)))}
 }
 
 func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pxapi.QemuGuestAgent {
