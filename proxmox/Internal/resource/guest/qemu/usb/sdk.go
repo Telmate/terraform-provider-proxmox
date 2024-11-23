@@ -42,6 +42,10 @@ func SDK(d *schema.ResourceData) (pveAPI.QemuUSBs, diag.Diagnostics) {
 					usbDevices[pveAPI.QemuUsbID(tmpID)] = usbsSDK(v.([]interface{}))
 				}
 			}
+		} else {
+			for i := 0; i < amountUSBs; i++ {
+				usbDevices[pveAPI.QemuUsbID(i)] = pveAPI.QemuUSB{Delete: true}
+			}
 		}
 	}
 	return usbDevices, diags

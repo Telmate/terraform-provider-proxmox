@@ -43,8 +43,12 @@ func SDK(d *schema.ResourceData) (pveAPI.QemuPciDevices, diag.Diagnostics) {
 			if subSchema, ok := schemaItem[0].(map[string]interface{}); ok {
 				for k, v := range subSchema {
 					tmpID, _ := strconv.ParseUint(k[len(prefixSchemaID):], 10, 64)
-					pciDevices[pveAPI.QemuPciID(tmpID)] = sdkPCIs_Unsafe(v.([]interface{}))
+					pciDevices[pveAPI.QemuPciID(tmpID)] = sdkPCIs(v.([]interface{}))
 				}
+			}
+		} else {
+			for i := pveAPI.QemuPciID(0); i < pveAPI.QemuPciID(amountPCIs); i++ {
+				pciDevices[i] = pveAPI.QemuPci{Delete: true}
 			}
 		}
 	}
@@ -91,7 +95,7 @@ func sdkPCI(schema map[string]interface{}) (pveAPI.QemuPciID, pveAPI.QemuPci, er
 	return id, pveAPI.QemuPci{Delete: true}, nil
 }
 
-func sdkPCIs_Unsafe(schema []interface{}) pveAPI.QemuPci {
+func sdkPCIs(schema []interface{}) pveAPI.QemuPci {
 	if len(schema) == 0 {
 		return pveAPI.QemuPci{Delete: true}
 	}
