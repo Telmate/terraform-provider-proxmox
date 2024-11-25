@@ -15,10 +15,12 @@ func Terraform(config pveAPI.QemuCPU, d *schema.ResourceData) {
 	if config.Sockets != nil {
 		d.Set(RootSockets, int(*config.Sockets))
 	}
-	if _, ok := d.GetOk(Root); ok {
-		d.Set(Root, string(*config.Type))
-	} else {
-		d.Set(RootCpuType, string(*config.Type))
+	if config.Type != nil {
+		if _, ok := d.GetOk(Root); ok {
+			d.Set(Root, string(*config.Type))
+		} else {
+			d.Set(RootCpuType, string(*config.Type))
+		}
 	}
 	if config.VirtualCores != nil {
 		d.Set(RootVirtualCores, int(*config.VirtualCores))
