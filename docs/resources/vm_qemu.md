@@ -173,7 +173,7 @@ details.
 | `model`     | `str`  |               | **Required** Network Card Model. The virtio model provides the best performance with very low CPU overhead. If your guest does not support this driver, it is usually best to use e1000. Options: `e1000`, `e1000-82540em`, `e1000-82544gc`, `e1000-82545em`, `i82551`, `i82557b`, `i82559er`, `ne2k_isa`, `ne2k_pci`, `pcnet`, `rtl8139`, `virtio`, `vmxnet3`. |
 | `macaddr`   | `str`  |               | Override the randomly generated MAC Address for the VM. Requires the MAC Address be Unicast.  |
 | `bridge`    | `str`  | `"nat"`       | Bridge to which the network device should be attached. The Proxmox VE standard bridge is called `vmbr0`. |
-| `tag`       | `int`  | `-1`          | The VLAN tag to apply to packets on this device. `-1` disables VLAN tagging. |
+| `tag`       | `int`  | `0`           | The VLAN tag to apply to packets on this device. `0` disables VLAN tagging. |
 | `firewall`  | `bool` | `false`       | Whether to enable the Proxmox firewall on this network device. |
 | `mtu`       | `int`  |               | The MTU value for the network device. On ``virtio`` models, set to ``1`` to inherit the MTU value from the underlying bridge. |
 | `rate`      | `int`  | `0`           | Network device rate limit in mbps (megabytes per second) as floating point number. Set to `0` to disable rate limiting. |
