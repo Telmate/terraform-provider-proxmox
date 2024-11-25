@@ -55,6 +55,7 @@ their HCL.
 ```hcl
 provider "proxmox" {
   pm_api_url = "https://proxmox-server01.example.com:8006/api2/json"
+  pm_tls_insecure = true # By default Proxmox Virtual Environment uses self-signed certificates.
 }
 ```
 
@@ -105,7 +106,7 @@ The following arguments are supported in the provider block:
 | `pm_api_token_id`     | `PM_API_TOKEN_ID`    | `string` |                                | This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user. |
 | `pm_api_token_secret` | `PM_API_TOKEN`       | `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
 | `pm_otp`              | `PM_OTP`             | `string` |                                | The 2FA OTP code. |
-| `pm_tls_insecure`     |                      | `bool`   | `true`                         | Disable TLS verification while connecting to the proxmox server. |
+| `pm_tls_insecure`     |                      | `bool`   | `false`                        | Disable TLS verification while connecting to the proxmox server. |
 | `pm_parallel`         |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when using dynamic guest id allocation. |
 | `pm_log_enable`       |                      | `bool`   | `false`                        | Enable debug logging, see the section below for logging details. |
 | `pm_log_levels`       |                      | `map`    |                                | A map of log sources and levels. |
