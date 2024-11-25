@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// const defaultTimeout = 300
+const defaultDescription = "Managed by Terraform."
 
 var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\d+)`)
 

@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+const schemaPoolComment = "comment"
+
 var poolResourceDef *schema.Resource
 
 func resourcePool() *schema.Resource {
@@ -26,8 +28,9 @@ func resourcePool() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			"comment": {
+			schemaPoolComment: {
 				Type:     schema.TypeString,
+				Default:  defaultDescription,
 				Optional: true,
 			},
 		},

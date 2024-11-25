@@ -49,6 +49,8 @@ const (
 )
 
 const (
+	schemaQemuDescription = "desc"
+
 	schemaAdditionalWait = "additional_wait"
 	schemaAgentTimeout   = "agent_timeout"
 	schemaSkipIPv4       = "skip_ipv4"
@@ -135,13 +137,13 @@ func resourceVmQemu() *schema.Resource {
 					return
 				},
 			},
-			"desc": {
+			schemaQemuDescription: {
 				Type:     schema.TypeString,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
-				// Default:     "",
+				Default:     defaultDescription,
 				Description: "The VM description",
 			},
 			"target_node": {
