@@ -21,11 +21,8 @@ pveum user add terraform-prov@pve --password <password>
 pveum aclmod / -user terraform-prov@pve -role TerraformProv
 ```
 
-The provider also supports using an API key rather than a password, see below for details.
-
 After the role is in use, if there is a need to modify the privileges, simply issue the command showed, adding or
 removing privileges as needed.
-
 
 Proxmox > 8:
 ```bash
@@ -35,6 +32,13 @@ Proxmox < 8:
 ```bash
 pveum role modify TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.Monitor VM.PowerMgmt"
 ```
+
+The provider also supports using an API token rather than a password. To create an API token, use the following command:
+
+```bash
+pveum user token add terraform-prov@pve mytoken
+```
+
 For more information on existing roles and privileges in Proxmox, refer to the vendor docs
 on [PVE User Management](https://pve.proxmox.com/wiki/User_Management)
 
