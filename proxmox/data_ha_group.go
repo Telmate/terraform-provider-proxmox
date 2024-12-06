@@ -1,15 +1,16 @@
 package proxmox
 
 import (
+	"context"
 	"sort"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func DataHAGroup() *schema.Resource {
 	return &schema.Resource{
-		Read: dataReadHAGroup,
+		ReadContext: dataReadHAGroup,
 		Schema: map[string]*schema.Schema{
 			"group_name": {
 				Type:     schema.TypeString,
@@ -42,17 +43,17 @@ func DataHAGroup() *schema.Resource {
 	}
 }
 
-func dataReadHAGroup(data *schema.ResourceData, meta interface{}) (err error) {
+func dataReadHAGroup(ctx context.Context, data *schema.ResourceData, meta interface{}) diag.Diagnostics {
+
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
 	client := pconf.Client
 
-	var group *proxmox.HAGroup
-	group, err = client.GetHAGroupByName(data.Get("group_name").(string))
+	group, err := client.GetHAGroupByName(ctx, data.Get("group_name").(string))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	nodes := group.Nodes

@@ -131,7 +131,7 @@ func resourceCloudInitDiskCreate(ctx context.Context, d *schema.ResourceData, m 
 	}
 
 	fileName := fmt.Sprintf("tf-ci-%s.iso", d.Get("name").(string))
-	err = client.Upload(d.Get("pve_node").(string), d.Get("storage").(string), isoContentType, fileName, r)
+	err = client.Upload(ctx, d.Get("pve_node").(string), d.Get("storage").(string), isoContentType, fileName, r)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -154,7 +154,7 @@ func resourceCloudInitDiskRead(ctx context.Context, d *schema.ResourceData, m in
 	vmRef := &proxmox.VmRef{}
 	vmRef.SetNode(pveNode)
 	vmRef.SetVmType("qemu")
-	storageContent, err := client.GetStorageContent(vmRef, d.Get("storage").(string))
+	storageContent, err := client.GetStorageContent(ctx, vmRef, d.Get("storage").(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -182,7 +182,7 @@ func resourceCloudInitDiskDelete(ctx context.Context, d *schema.ResourceData, m 
 
 	storage := strings.SplitN(d.Id(), ":", 2)[0]
 	isoURL := fmt.Sprintf("/nodes/%s/storage/%s/content/%s", d.Get("pve_node").(string), storage, d.Id())
-	err := client.Delete(isoURL)
+	err := client.Delete(ctx, isoURL)
 	if err != nil {
 		return diag.FromErr(err)
 	}
