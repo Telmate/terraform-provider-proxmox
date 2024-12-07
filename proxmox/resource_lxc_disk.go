@@ -1,19 +1,21 @@
 package proxmox
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceLxcDisk() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceLxcDiskCreate,
-		Read:   resourceLxcDiskRead,
-		Update: resourceLxcDiskUpdate,
-		Delete: resourceLxcDiskDelete,
+		CreateContext: resourceLxcDiskCreate,
+		ReadContext:   resourceLxcDiskRead,
+		UpdateContext: resourceLxcDiskUpdate,
+		DeleteContext: resourceLxcDiskDelete,
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -108,7 +110,7 @@ func resourceLxcDisk() *schema.Resource {
 	}
 }
 
-func resourceLxcDiskCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceLxcDiskCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 
 	lock := pmParallelBegin(pconf)
@@ -116,15 +118,15 @@ func resourceLxcDiskCreate(d *schema.ResourceData, meta interface{}) error {
 
 	_, _, vmID, err := parseResourceId(d.Get("container").(string))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	client := pconf.Client
 	vmr := pxapi.NewVmRef(vmID)
 	vmr.SetVmType("lxc")
-	_, err = client.GetVmInfo(vmr)
+	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	disk := d.Get("").(map[string]interface{})
@@ -140,19 +142,19 @@ func resourceLxcDiskCreate(d *schema.ResourceData, meta interface{}) error {
 	params := map[string]interface{}{}
 	mpName := fmt.Sprintf("mp%v", d.Get("slot").(int))
 	params[mpName] = pxapi.FormatDiskParam(disk)
-	exitStatus, err := pconf.Client.SetLxcConfig(vmr, params)
+	exitStatus, err := pconf.Client.SetLxcConfig(ctx, vmr, params)
 	if err != nil {
-		return fmt.Errorf("error updating LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
+		return diag.Errorf("error updating LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
 	}
 
-	if err = _resourceLxcDiskRead(d, meta); err != nil {
-		return err
+	if err = _resourceLxcDiskRead(ctx, d, meta); err != nil {
+		return diag.FromErr(err)
 	}
 
 	return nil
 }
 
-func resourceLxcDiskUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceLxcDiskUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
@@ -161,13 +163,13 @@ func resourceLxcDiskUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	_, _, vmID, err := parseResourceId(d.Get("container").(string))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	vmr := pxapi.NewVmRef(vmID)
-	_, err = client.GetVmInfo(vmr)
+	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	oldValue, newValue := d.GetChange("")
@@ -175,22 +177,22 @@ func resourceLxcDiskUpdate(d *schema.ResourceData, meta interface{}) error {
 	newDisk := extractDiskOptions(newValue.(map[string]interface{}))
 
 	// Apply Changes
-	err = processLxcDiskChanges(DeviceToMap(oldDisk, 0), DeviceToMap(newDisk, 0), pconf, vmr)
+	err = processLxcDiskChanges(ctx, DeviceToMap(oldDisk, 0), DeviceToMap(newDisk, 0), pconf, vmr)
 	if err != nil {
-		return fmt.Errorf("error updating LXC Mountpoint: %v", err)
+		return diag.Errorf("error updating LXC Mountpoint: %v", err)
 	}
 
-	return _resourceLxcDiskRead(d, meta)
+	return diag.FromErr(_resourceLxcDiskRead(ctx, d, meta))
 }
 
-func resourceLxcDiskRead(d *schema.ResourceData, meta interface{}) error {
+func resourceLxcDiskRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
-	return _resourceLxcDiskRead(d, meta)
+	return diag.FromErr(_resourceLxcDiskRead(ctx, d, meta))
 }
 
-func _resourceLxcDiskRead(d *schema.ResourceData, meta interface{}) error {
+func _resourceLxcDiskRead(ctx context.Context, d *schema.ResourceData, meta interface{}) error {
 	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
 
@@ -200,12 +202,12 @@ func _resourceLxcDiskRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	vmr := pxapi.NewVmRef(vmID)
-	_, err = client.GetVmInfo(vmr)
+	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return err
 	}
 
-	apiResult, err := client.GetVmConfig(vmr)
+	apiResult, err := client.GetVmConfig(ctx, vmr)
 	if err != nil {
 		return err
 	}
@@ -231,27 +233,27 @@ func _resourceLxcDiskRead(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-func resourceLxcDiskDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceLxcDiskDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
 	_, _, vmID, err := parseResourceId(d.Get("container").(string))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	client := pconf.Client
 	vmr := pxapi.NewVmRef(vmID)
-	_, err = client.GetVmInfo(vmr)
+	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	params := map[string]interface{}{}
 	params["delete"] = fmt.Sprintf("mp%v", d.Get("slot").(int))
-	if exitStatus, err := pconf.Client.SetLxcConfig(vmr, params); err != nil {
-		return fmt.Errorf("error deleting LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
+	if exitStatus, err := pconf.Client.SetLxcConfig(ctx, vmr, params); err != nil {
+		return diag.Errorf("error deleting LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
 	}
 
 	return nil

@@ -1,6 +1,7 @@
 package proxmox
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/url"
@@ -264,7 +265,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	permlist, err := client.GetUserPermissions(userID, "/")
+	ctx := context.Background()
+	permlist, err := client.GetUserPermissions(ctx, userID, "/")
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +350,7 @@ func getClient(pm_api_url string,
 
 	// User+Pass authentication
 	if pm_user != "" && pm_password != "" {
-		err = client.Login(pm_user, pm_password, pm_otp)
+		err = client.Login(context.Background(), pm_user, pm_password, pm_otp)
 	}
 
 	// API authentication
@@ -366,7 +368,7 @@ func getClient(pm_api_url string,
 func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
 	pconf.Mutex.Lock()
 	defer pconf.Mutex.Unlock()
-	nextId, err = pconf.Client.GetNextID(0)
+	nextId, err = pconf.Client.GetNextID(context.Background(), 0)
 	if err != nil {
 		return 0, err
 	}
