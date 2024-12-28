@@ -139,7 +139,7 @@ func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *boo
 			schemaFile:       config.Passthrough.File,
 			schemaReplicate:  config.Passthrough.Replicate,
 			schemaSerial:     string(config.Passthrough.Serial),
-			schemaSize:       convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaSize:       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes)),
 		}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
