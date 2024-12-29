@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/validator"
 	"github.com/hashicorp/go-cty/cty"
@@ -417,8 +418,8 @@ func pmParallelBegin(pconf *providerConfiguration) *pmApiLockHolder {
 	return lock
 }
 
-func resourceId(targetNode string, resType string, vmId int) string {
-	return fmt.Sprintf("%s/%s/%d", targetNode, resType, vmId)
+func resourceId(targetNode pveAPI.NodeName, resType string, vmId int) string {
+	return fmt.Sprintf("%s/%s/%d", targetNode.String(), resType, vmId)
 }
 
 func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
