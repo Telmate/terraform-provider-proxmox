@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
@@ -495,7 +494,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
 
-	targetNode := pveAPI.NodeName(d.Get(node.RootNode).(string))
+	targetNode := pxapi.NodeName(d.Get(node.RootNode).(string))
 
 	// proxmox api allows multiple network sets,
 	// having a unique 'id' parameter foreach set

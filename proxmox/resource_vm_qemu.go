@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 
 	"github.com/google/uuid"
@@ -650,7 +649,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pxapi.Client, name string, id int, targetNode pveAPI.NodeName) (*pxapi.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pxapi.Client, name string, id int, targetNode pxapi.NodeName) (*pxapi.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -760,12 +759,12 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		targetNodes[i] = raw.(string)
 	}
 
-	var targetNode pveAPI.NodeName
+	var targetNode pxapi.NodeName
 
 	if len(targetNodes) == 0 {
-		targetNode = pveAPI.NodeName(d.Get(node.RootNode).(string))
+		targetNode = pxapi.NodeName(d.Get(node.RootNode).(string))
 	} else {
-		targetNode = pveAPI.NodeName(targetNodes[rand.Intn(len(targetNodes))])
+		targetNode = pxapi.NodeName(targetNodes[rand.Intn(len(targetNodes))])
 	}
 
 	if targetNode == "" {
@@ -1171,11 +1170,11 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// by calling a SetId("")
 
 	// loop through all virtual servers...?
-	var targetNodeVMR pveAPI.NodeName
+	var targetNodeVMR pxapi.NodeName
 	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
-	targetNodes := make([]pveAPI.NodeName, len(targetNodesRaw))
+	targetNodes := make([]pxapi.NodeName, len(targetNodesRaw))
 	for i := range targetNodesRaw {
-		targetNodes[i] = pveAPI.NodeName(targetNodesRaw[i].(string))
+		targetNodes[i] = pxapi.NodeName(targetNodesRaw[i].(string))
 	}
 
 	if len(targetNodes) == 0 {
