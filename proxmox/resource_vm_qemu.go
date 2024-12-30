@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-cty/cty"
@@ -25,9 +25,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/dns/nameservers"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/sshkeys"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/dns/nameservers"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/sshkeys"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
@@ -649,7 +649,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pxapi.Client, name string, id int, targetNode pxapi.NodeName) (*pxapi.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id int, targetNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -691,11 +691,11 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
-	config := pxapi.ConfigQemu{
+	config := pveSDK.ConfigQemu{
 		Name:        vmName,
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
-		Pool:        util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
+		Pool:        util.Pointer(pveSDK.PoolName(d.Get("pool").(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
 		Startup:     d.Get("startup").(string),
@@ -759,12 +759,12 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		targetNodes[i] = raw.(string)
 	}
 
-	var targetNode pxapi.NodeName
+	var targetNode pveSDK.NodeName
 
 	if len(targetNodes) == 0 {
-		targetNode = pxapi.NodeName(d.Get(node.RootNode).(string))
+		targetNode = pveSDK.NodeName(d.Get(node.RootNode).(string))
 	} else {
-		targetNode = pxapi.NodeName(targetNodes[rand.Intn(len(targetNodes))])
+		targetNode = pveSDK.NodeName(targetNodes[rand.Intn(len(targetNodes))])
 	}
 
 	if targetNode == "" {
@@ -793,7 +793,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			}
 		}
 
-		vmr = pxapi.NewVmRef(nextid)
+		vmr = pveSDK.NewVmRef(nextid)
 		vmr.SetNode(targetNode.String())
 		config.Node = targetNode
 
@@ -922,7 +922,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	logger.Info().Int("vmid", vmID).Msg("Starting update of the VM resource")
 
-	vmr := pxapi.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(vmID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -937,11 +937,11 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 	d.Partial(false)
 
-	config := pxapi.ConfigQemu{
+	config := pveSDK.ConfigQemu{
 		Name:        d.Get("name").(string),
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
-		Pool:        util.Pointer(pxapi.PoolName(d.Get("pool").(string))),
+		Pool:        util.Pointer(pveSDK.PoolName(d.Get("pool").(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
 		Startup:     d.Get("startup").(string),
@@ -1163,18 +1163,18 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	logger.Info().Int("vmid", vmID).Msg("Reading configuration for vmid")
-	vmr := pxapi.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(vmID)
 
 	// Try to get information on the vm. If this call err's out
 	// that indicates the VM does not exist. We indicate that to terraform
 	// by calling a SetId("")
 
 	// loop through all virtual servers...?
-	var targetNodeVMR pxapi.NodeName
+	var targetNodeVMR pveSDK.NodeName
 	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
-	targetNodes := make([]pxapi.NodeName, len(targetNodesRaw))
+	targetNodes := make([]pveSDK.NodeName, len(targetNodesRaw))
 	for i := range targetNodesRaw {
-		targetNodes[i] = pxapi.NodeName(targetNodesRaw[i].(string))
+		targetNodes[i] = pveSDK.NodeName(targetNodesRaw[i].(string))
 	}
 
 	if len(targetNodes) == 0 {
@@ -1205,7 +1205,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		return nil
 	}
 
-	config, err := pxapi.NewConfigQemuFromApi(ctx, vmr, client)
+	config, err := pveSDK.NewConfigQemuFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -1325,7 +1325,7 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 	client := pconf.Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
-	vmr := pxapi.NewVmRef(vmId)
+	vmr := pveSDK.NewVmRef(vmId)
 	vmState, err := client.GetVmState(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1357,10 +1357,10 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 // Converting from schema.TypeSet to map of id and conf for each device,
 // which will be sent to Proxmox API.
-func DevicesSetToMap(devicesSet *schema.Set) (pxapi.QemuDevices, error) {
+func DevicesSetToMap(devicesSet *schema.Set) (pveSDK.QemuDevices, error) {
 
 	var err error
-	devicesMap := pxapi.QemuDevices{}
+	devicesMap := pveSDK.QemuDevices{}
 
 	for _, set := range devicesSet.List() {
 		setMap, isMap := set.(map[string]interface{})
@@ -1391,7 +1391,7 @@ func DropElementsFromMap(elements []string, mapList []map[string]interface{}) ([
 
 // Consumes an API return (pxapi.QemuDevices) and "flattens" it into a []map[string]interface{} as
 // expected by the terraform interface for TypeList
-func FlattenDevicesList(proxmoxDevices pxapi.QemuDevices) ([]map[string]interface{}, error) {
+func FlattenDevicesList(proxmoxDevices pveSDK.QemuDevices) ([]map[string]interface{}, error) {
 	flattenedDevices := make([]map[string]interface{}, 0, 1)
 
 	numDevices := len(proxmoxDevices)
@@ -1489,8 +1489,8 @@ func ReadSmbiosArgs(smbios string) []interface{} {
 // Consumes a terraform TypeList of a Qemu Device (network, hard drive, etc) and returns the "Expanded"
 // version of the equivalent configuration that the API understands (the struct pxapi.QemuDevices).
 // NOTE this expects the provided deviceList to be []map[string]interface{}.
-func ExpandDevicesList(deviceList []interface{}) (pxapi.QemuDevices, error) {
-	expandedDevices := make(pxapi.QemuDevices)
+func ExpandDevicesList(deviceList []interface{}) (pveSDK.QemuDevices, error) {
+	expandedDevices := make(pveSDK.QemuDevices)
 
 	if len(deviceList) == 0 {
 		return expandedDevices, nil
@@ -1523,7 +1523,7 @@ func ExpandDevicesList(deviceList []interface{}) (pxapi.QemuDevices, error) {
 // TODO: remove these set functions and convert attributes using a set to a list instead.
 func UpdateDevicesSet(
 	devicesSet *schema.Set,
-	devicesMap pxapi.QemuDevices,
+	devicesMap pveSDK.QemuDevices,
 	idKey string,
 ) *schema.Set {
 
@@ -1543,7 +1543,7 @@ func UpdateDevicesSet(
 	return devicesSet
 }
 
-func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pxapi.Client, vmr *pxapi.VmRef, config *pxapi.ConfigQemu, hasCiDisk bool) diag.Diagnostics {
+func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Client, vmr *pveSDK.VmRef, config *pveSDK.ConfigQemu, hasCiDisk bool) diag.Diagnostics {
 	logger, _ := CreateSubLogger("initConnInfo")
 	var diags diag.Diagnostics
 	// allow user to opt-out of setting the connection info for the resource
@@ -1609,7 +1609,7 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pxapi.Cli
 	return diags
 }
 
-func getPrimaryIP(ctx context.Context, cloudInit *pxapi.CloudInit, networks pxapi.QemuNetworkInterfaces, vmr *pxapi.VmRef, client *pxapi.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pveSDK.QemuNetworkInterfaces, vmr *pveSDK.VmRef, client *pveSDK.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1625,7 +1625,7 @@ func getPrimaryIP(ctx context.Context, cloudInit *pxapi.CloudInit, networks pxap
 			if cloudInit.Custom != nil && cloudInit.Custom.Network != nil {
 				cicustom = true
 			}
-			conn = parseCloudInitInterface(cloudInit.NetworkInterfaces[pxapi.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
+			conn = parseCloudInitInterface(cloudInit.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
 			// early return, we have all information we wanted
 			if conn.hasRequiredIP() {
 				if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
@@ -1651,13 +1651,13 @@ func getPrimaryIP(ctx context.Context, cloudInit *pxapi.CloudInit, networks pxap
 			err               error
 		)
 		for i := 0; i < network.AmountNetworkInterfaces; i++ {
-			if v, ok := networks[pxapi.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+			if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
 				primaryMacAddress = *v.MAC
 				break
 			}
 		}
 		for time.Now().Before(endTime) {
-			var interfaces []pxapi.AgentNetworkInterface
+			var interfaces []pveSDK.AgentNetworkInterface
 			interfaces, err = vmr.GetAgentInformation(ctx, client, false)
 			if err != nil {
 				if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
@@ -1697,7 +1697,7 @@ func getPrimaryIP(ctx context.Context, cloudInit *pxapi.CloudInit, networks pxap
 
 // Map struct to the terraform schema
 
-func mapToTerraform_CloudInit(config *pxapi.CloudInit, d *schema.ResourceData) {
+func mapToTerraform_CloudInit(config *pveSDK.CloudInit, d *schema.ResourceData) {
 	if config == nil {
 		return
 	}
@@ -1713,7 +1713,7 @@ func mapToTerraform_CloudInit(config *pxapi.CloudInit, d *schema.ResourceData) {
 		d.Set("searchdomain", config.DNS.SearchDomain)
 		d.Set("nameserver", nameservers.String(config.DNS.NameServers))
 	}
-	for i := pxapi.QemuNetworkInterfaceID(0); i < 16; i++ {
+	for i := pveSDK.QemuNetworkInterfaceID(0); i < 16; i++ {
 		if v, isSet := config.NetworkInterfaces[i]; isSet {
 			d.Set("ipconfig"+strconv.Itoa(int(i)), mapToTerraform_CloudInitNetworkConfig(v))
 		}
@@ -1724,7 +1724,7 @@ func mapToTerraform_CloudInit(config *pxapi.CloudInit, d *schema.ResourceData) {
 	}
 }
 
-func mapToTerraform_CloudInitNetworkConfig(config pxapi.CloudInitNetworkConfig) string {
+func mapToTerraform_CloudInitNetworkConfig(config pveSDK.CloudInitNetworkConfig) string {
 	if config.IPv4 != nil {
 		if config.IPv6 != nil {
 			return config.IPv4.String() + "," + config.IPv6.String()
@@ -1746,7 +1746,7 @@ func mapToTerraform_Description(description *string) string {
 	return ""
 }
 
-func mapToTerraform_Memory(config *pxapi.QemuMemory, d *schema.ResourceData) {
+func mapToTerraform_Memory(config *pveSDK.QemuMemory, d *schema.ResourceData) {
 	// no nil check as pxapi.QemuMemory is always returned
 	if config.CapacityMiB != nil {
 		d.Set("memory", int(*config.CapacityMiB))
@@ -1756,7 +1756,7 @@ func mapToTerraform_Memory(config *pxapi.QemuMemory, d *schema.ResourceData) {
 	}
 }
 
-func mapFromStruct_QemuGuestAgent(d *schema.ResourceData, config *pxapi.QemuGuestAgent) {
+func mapFromStruct_QemuGuestAgent(d *schema.ResourceData, config *pveSDK.QemuGuestAgent) {
 	if config == nil {
 		return
 	}
@@ -1771,19 +1771,19 @@ func mapFromStruct_QemuGuestAgent(d *schema.ResourceData, config *pxapi.QemuGues
 
 // Map the terraform schema to sdk struct
 
-func mapToSDK_CloudInit(d *schema.ResourceData) *pxapi.CloudInit {
-	ci := pxapi.CloudInit{
-		Custom: &pxapi.CloudInitCustom{
-			Meta:    &pxapi.CloudInitSnippet{},
-			Network: &pxapi.CloudInitSnippet{},
-			User:    &pxapi.CloudInitSnippet{},
-			Vendor:  &pxapi.CloudInitSnippet{},
+func mapToSDK_CloudInit(d *schema.ResourceData) *pveSDK.CloudInit {
+	ci := pveSDK.CloudInit{
+		Custom: &pveSDK.CloudInitCustom{
+			Meta:    &pveSDK.CloudInitSnippet{},
+			Network: &pveSDK.CloudInitSnippet{},
+			User:    &pveSDK.CloudInitSnippet{},
+			Vendor:  &pveSDK.CloudInitSnippet{},
 		},
-		DNS: &pxapi.GuestDNS{
+		DNS: &pveSDK.GuestDNS{
 			SearchDomain: util.Pointer(d.Get("searchdomain").(string)),
 			NameServers:  nameservers.Split(d.Get("nameserver").(string)),
 		},
-		NetworkInterfaces: pxapi.CloudInitNetworkInterfaces{},
+		NetworkInterfaces: pveSDK.CloudInitNetworkInterfaces{},
 		PublicSSHkeys:     sshkeys.Split(d.Get("sshkeys").(string)),
 		UpgradePackages:   util.Pointer(d.Get("ciupgrade").(bool)),
 		UserPassword:      util.Pointer(d.Get("cipassword").(string)),
@@ -1803,32 +1803,32 @@ func mapToSDK_CloudInit(d *schema.ResourceData) *pxapi.CloudInit {
 		ci.Custom.Vendor = mapToSDK_CloudInitSnippet(v)
 	}
 	for i := 0; i < 16; i++ {
-		ci.NetworkInterfaces[pxapi.QemuNetworkInterfaceID(i)] = mapToSDK_CloudInitNetworkConfig(d.Get("ipconfig" + strconv.Itoa(i)).(string))
+		ci.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID(i)] = mapToSDK_CloudInitNetworkConfig(d.Get("ipconfig" + strconv.Itoa(i)).(string))
 	}
 	return &ci
 }
 
-func mapToSDK_CloudInitNetworkConfig(param string) pxapi.CloudInitNetworkConfig {
-	config := pxapi.CloudInitNetworkConfig{
-		IPv4: &pxapi.CloudInitIPv4Config{
-			Address: util.Pointer(pxapi.IPv4CIDR("")),
+func mapToSDK_CloudInitNetworkConfig(param string) pveSDK.CloudInitNetworkConfig {
+	config := pveSDK.CloudInitNetworkConfig{
+		IPv4: &pveSDK.CloudInitIPv4Config{
+			Address: util.Pointer(pveSDK.IPv4CIDR("")),
 			DHCP:    false,
-			Gateway: util.Pointer(pxapi.IPv4Address(""))},
-		IPv6: &pxapi.CloudInitIPv6Config{
-			Address: util.Pointer(pxapi.IPv6CIDR("")),
+			Gateway: util.Pointer(pveSDK.IPv4Address(""))},
+		IPv6: &pveSDK.CloudInitIPv6Config{
+			Address: util.Pointer(pveSDK.IPv6CIDR("")),
 			DHCP:    false,
-			Gateway: util.Pointer(pxapi.IPv6Address("")),
+			Gateway: util.Pointer(pveSDK.IPv6Address("")),
 			SLAAC:   false}}
 	params := splitStringOfSettings(param)
 	if v, isSet := params["ip"]; isSet {
 		if v == "dhcp" {
 			config.IPv4.DHCP = true
 		} else {
-			*config.IPv4.Address = pxapi.IPv4CIDR(v)
+			*config.IPv4.Address = pveSDK.IPv4CIDR(v)
 		}
 	}
 	if v, isSet := params["gw"]; isSet {
-		*config.IPv4.Gateway = pxapi.IPv4Address(v)
+		*config.IPv4.Gateway = pveSDK.IPv4Address(v)
 	}
 	if v, isSet := params["ip6"]; isSet {
 		switch v {
@@ -1837,39 +1837,39 @@ func mapToSDK_CloudInitNetworkConfig(param string) pxapi.CloudInitNetworkConfig 
 		case "auto":
 			config.IPv6.SLAAC = true
 		default:
-			*config.IPv6.Address = pxapi.IPv6CIDR(v)
+			*config.IPv6.Address = pveSDK.IPv6CIDR(v)
 		}
 	}
 	if v, isSet := params["gw6"]; isSet {
-		*config.IPv6.Gateway = pxapi.IPv6Address(v)
+		*config.IPv6.Gateway = pveSDK.IPv6Address(v)
 	}
 	return config
 }
 
-func mapToSDK_CloudInitSnippet(param string) *pxapi.CloudInitSnippet {
+func mapToSDK_CloudInitSnippet(param string) *pveSDK.CloudInitSnippet {
 	file := strings.SplitN(param, ":", 2)
 	if len(file) == 2 {
-		return &pxapi.CloudInitSnippet{
+		return &pveSDK.CloudInitSnippet{
 			Storage:  file[0],
-			FilePath: pxapi.CloudInitSnippetPath(file[1])}
+			FilePath: pveSDK.CloudInitSnippetPath(file[1])}
 	}
 	return nil
 }
 
-func mapToSDK_Memory(d *schema.ResourceData) *pxapi.QemuMemory {
-	return &pxapi.QemuMemory{
-		CapacityMiB:        util.Pointer(pxapi.QemuMemoryCapacity(d.Get("memory").(int))),
-		MinimumCapacityMiB: util.Pointer(pxapi.QemuMemoryBalloonCapacity(d.Get("balloon").(int))),
-		Shares:             util.Pointer(pxapi.QemuMemoryShares(0)),
+func mapToSDK_Memory(d *schema.ResourceData) *pveSDK.QemuMemory {
+	return &pveSDK.QemuMemory{
+		CapacityMiB:        util.Pointer(pveSDK.QemuMemoryCapacity(d.Get("memory").(int))),
+		MinimumCapacityMiB: util.Pointer(pveSDK.QemuMemoryBalloonCapacity(d.Get("balloon").(int))),
+		Shares:             util.Pointer(pveSDK.QemuMemoryShares(0)),
 	}
 }
 
-func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pxapi.QemuGuestAgent {
+func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pveSDK.QemuGuestAgent {
 	var tmpEnable bool
 	if d.Get("agent").(int) == 1 {
 		tmpEnable = true
 	}
-	return &pxapi.QemuGuestAgent{
+	return &pveSDK.QemuGuestAgent{
 		Enable: &tmpEnable,
 	}
 }

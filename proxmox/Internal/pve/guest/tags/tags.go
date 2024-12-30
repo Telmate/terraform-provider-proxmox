@@ -4,22 +4,22 @@ import (
 	"sort"
 	"strings"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // Returns an unordered list of unique tags
-func RemoveDuplicates(tags *[]pxapi.Tag) *[]pxapi.Tag {
+func RemoveDuplicates(tags *[]pveSDK.Tag) *[]pveSDK.Tag {
 	if tags == nil || len(*tags) == 0 {
 		return nil
 	}
-	tagMap := make(map[pxapi.Tag]struct{})
+	tagMap := make(map[pveSDK.Tag]struct{})
 	for _, tag := range *tags {
 		tagMap[tag] = struct{}{}
 	}
-	uniqueTags := make([]pxapi.Tag, len(tagMap))
+	uniqueTags := make([]pveSDK.Tag, len(tagMap))
 	var index uint
 	for tag := range tagMap {
 		uniqueTags[index] = tag
@@ -51,7 +51,7 @@ func Schema() *schema.Schema {
 	}
 }
 
-func sortArray(tags *[]pxapi.Tag) *[]pxapi.Tag {
+func sortArray(tags *[]pveSDK.Tag) *[]pveSDK.Tag {
 	if tags == nil || len(*tags) == 0 {
 		return nil
 	}
@@ -61,8 +61,8 @@ func sortArray(tags *[]pxapi.Tag) *[]pxapi.Tag {
 	return tags
 }
 
-func Split(rawTags string) *[]pxapi.Tag {
-	tags := make([]pxapi.Tag, 0)
+func Split(rawTags string) *[]pveSDK.Tag {
+	tags := make([]pveSDK.Tag, 0)
 	if rawTags == "" {
 		return &tags
 	}
@@ -70,19 +70,19 @@ func Split(rawTags string) *[]pxapi.Tag {
 	for _, tag := range tagArrays {
 		tagSubArrays := strings.Split(tag, ",")
 		if len(tagSubArrays) > 1 {
-			tmpTags := make([]pxapi.Tag, len(tagSubArrays))
+			tmpTags := make([]pveSDK.Tag, len(tagSubArrays))
 			for i, e := range tagSubArrays {
-				tmpTags[i] = pxapi.Tag(e)
+				tmpTags[i] = pveSDK.Tag(e)
 			}
 			tags = append(tags, tmpTags...)
 		} else {
-			tags = append(tags, pxapi.Tag(tag))
+			tags = append(tags, pveSDK.Tag(tag))
 		}
 	}
 	return &tags
 }
 
-func String(tags *[]pxapi.Tag) (tagList string) {
+func String(tags *[]pveSDK.Tag) (tagList string) {
 	if tags == nil || len(*tags) == 0 {
 		return ""
 	}

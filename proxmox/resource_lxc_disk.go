@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -122,7 +122,7 @@ func resourceLxcDiskCreate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	client := pconf.Client
-	vmr := pxapi.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(vmID)
 	vmr.SetVmType("lxc")
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
@@ -141,7 +141,7 @@ func resourceLxcDiskCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 	params := map[string]interface{}{}
 	mpName := fmt.Sprintf("mp%v", d.Get("slot").(int))
-	params[mpName] = pxapi.FormatDiskParam(disk)
+	params[mpName] = pveSDK.FormatDiskParam(disk)
 	exitStatus, err := pconf.Client.SetLxcConfig(ctx, vmr, params)
 	if err != nil {
 		return diag.Errorf("error updating LXC Mountpoint: %v, error status: %s (params: %v)", err, exitStatus, params)
@@ -166,7 +166,7 @@ func resourceLxcDiskUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(err)
 	}
 
-	vmr := pxapi.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(vmID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -201,7 +201,7 @@ func _resourceLxcDiskRead(ctx context.Context, d *schema.ResourceData, meta inte
 		return err
 	}
 
-	vmr := pxapi.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(vmID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return err
@@ -214,7 +214,7 @@ func _resourceLxcDiskRead(ctx context.Context, d *schema.ResourceData, meta inte
 
 	diskName := fmt.Sprintf("mp%v", d.Get("slot").(int))
 	diskString := apiResult[diskName].(string)
-	disk := pxapi.ParseLxcDisk(diskString)
+	disk := pveSDK.ParseLxcDisk(diskString)
 	disk["slot"] = d.Get("slot").(int)
 
 	d.SetId(disk["volume"].(string))
@@ -244,7 +244,7 @@ func resourceLxcDiskDelete(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	client := pconf.Client
-	vmr := pxapi.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(vmID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
