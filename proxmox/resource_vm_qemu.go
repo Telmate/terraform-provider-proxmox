@@ -28,6 +28,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/dns/nameservers"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
@@ -146,19 +147,9 @@ func resourceVmQemu() *schema.Resource {
 				Default:     defaultDescription,
 				Description: "The VM description",
 			},
-			"target_node": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The node where VM goes to",
-			},
-			"target_nodes": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-				Description: "A list of nodes where VM goes to",
-			},
+			node.RootNode: node.SchemaNode(schema.Schema{
+				Optional: true}, "qemu"),
+			node.RootNodes: node.SchemaNodes(),
 			"bios": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -658,7 +649,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pxapi.Client, name string, id int, targetNode string) (*pxapi.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pxapi.Client, name string, id int, targetNode pxapi.NodeName) (*pxapi.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -762,27 +753,27 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	forceCreate := d.Get("force_create").(bool)
 
-	targetNodesRaw := d.Get("target_nodes").([]interface{})
+	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
 	var targetNodes = make([]string, len(targetNodesRaw))
 	for i, raw := range targetNodesRaw {
 		targetNodes[i] = raw.(string)
 	}
 
-	var targetNode string
+	var targetNode pxapi.NodeName
 
 	if len(targetNodes) == 0 {
-		targetNode = d.Get("target_node").(string)
+		targetNode = pxapi.NodeName(d.Get(node.RootNode).(string))
 	} else {
-		targetNode = targetNodes[rand.Intn(len(targetNodes))]
+		targetNode = pxapi.NodeName(targetNodes[rand.Intn(len(targetNodes))])
 	}
 
 	if targetNode == "" {
-		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use target_node or target_nodes to set a specific node! %v", vmName, targetNodes))
+		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use "+node.RootNode+" or "+node.RootNodes+" to set a specific node! %v", vmName, targetNodes))
 	}
 	if dupVmr != nil && forceCreate {
 		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId()))
 	} else if dupVmr != nil && dupVmr.Node() != targetNode {
-		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d on different target_node=%s", vmName, dupVmr.VmId(), dupVmr.Node()))
+		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d on different %s=%s", vmName, dupVmr.VmId(), node.RootNodes, dupVmr.Node()))
 	}
 
 	vmr := dupVmr
@@ -803,7 +794,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 
 		vmr = pxapi.NewVmRef(nextid)
-		vmr.SetNode(targetNode)
+		vmr.SetNode(targetNode.String())
 		config.Node = targetNode
 
 		vmr.SetPool(d.Get("pool").(string))
@@ -940,9 +931,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	qemuVgaList := vga.List()
 
 	d.Partial(true)
-	if d.HasChange("target_node") {
+	if d.HasChange(node.RootNode) {
 		// Update target node when it must be migrated manually. Don't if it has been migrated by the proxmox high availability system.
-		vmr.SetNode(d.Get("target_node").(string))
+		vmr.SetNode(d.Get(node.RootNode).(string))
 	}
 	d.Partial(false)
 
@@ -1179,11 +1170,11 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// by calling a SetId("")
 
 	// loop through all virtual servers...?
-	var targetNodeVMR string = ""
-	targetNodesRaw := d.Get("target_nodes").([]interface{})
-	var targetNodes = make([]string, len(targetNodesRaw))
-	for i, raw := range targetNodesRaw {
-		targetNodes[i] = raw.(string)
+	var targetNodeVMR pxapi.NodeName
+	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
+	targetNodes := make([]pxapi.NodeName, len(targetNodesRaw))
+	for i := range targetNodesRaw {
+		targetNodes[i] = pxapi.NodeName(targetNodesRaw[i].(string))
 	}
 
 	if len(targetNodes) == 0 {
@@ -1196,14 +1187,14 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		targetNodeVMR = vmr.Node()
 	} else {
 		for _, targetNode := range targetNodes {
-			vmr.SetNode(targetNode)
+			vmr.SetNode(targetNode.String())
 			_, err = client.GetVmInfo(ctx, vmr)
 			if err != nil {
 				d.SetId("")
 			}
 
 			d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
-			logger.Debug().Any("Setting node id to", d.Get(vmr.Node()))
+			logger.Debug().Any("Setting node id to", d.Get(vmr.Node().String()))
 			targetNodeVMR = targetNode
 		}
 	}

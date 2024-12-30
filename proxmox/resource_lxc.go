@@ -10,6 +10,7 @@ import (
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pxapi/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -422,11 +423,8 @@ func resourceLxc() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
-			"target_node": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
+			node.RootNode: node.SchemaNode(schema.Schema{
+				Required: true, ForceNew: true}, "lxc"),
 			"vmid": {
 				Type:             schema.TypeInt,
 				Optional:         true,
@@ -496,7 +494,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
 
-	targetNode := d.Get("target_node").(string)
+	targetNode := pxapi.NodeName(d.Get(node.RootNode).(string))
 
 	// proxmox api allows multiple network sets,
 	// having a unique 'id' parameter foreach set
@@ -532,7 +530,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	vmr := pxapi.NewVmRef(nextid)
-	vmr.SetNode(targetNode)
+	vmr.SetNode(targetNode.String())
 
 	if d.Get("clone").(string) != "" {
 
@@ -785,7 +783,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		return err
 	}
 	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
-	d.Set("target_node", vmr.Node())
+	d.Set(node.RootNode, vmr.Node())
 
 	// Read Features
 	defaultFeatures := d.Get("features").(*schema.Set)
