@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/validator"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -38,7 +38,7 @@ const (
 )
 
 type providerConfiguration struct {
-	Client                             *pxapi.Client
+	Client                             *pveSDK.Client
 	MaxParallel                        int
 	CurrentParallel                    int
 	MaxVMID                            int
@@ -261,7 +261,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	} else if result, getok := d.GetOk(schemaPmUser); getok {
 		id = result.(string)
 	}
-	userID, err := pxapi.NewUserID(id)
+	userID, err := pveSDK.NewUserID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +320,7 @@ func getClient(pm_api_url string,
 	pm_http_headers string,
 	pm_timeout int,
 	pm_debug bool,
-	pm_proxy_server string) (*pxapi.Client, error) {
+	pm_proxy_server string) (*pveSDK.Client, error) {
 
 	tlsconf := &tls.Config{InsecureSkipVerify: true}
 	if !pm_tls_insecure {
@@ -345,8 +345,8 @@ func getClient(pm_api_url string,
 		err = fmt.Errorf("your API TokenID username should contain a !, check your API credentials")
 	}
 
-	client, _ := pxapi.NewClient(pm_api_url, nil, pm_http_headers, tlsconf, pm_proxy_server, pm_timeout)
-	*pxapi.Debug = pm_debug
+	client, _ := pveSDK.NewClient(pm_api_url, nil, pm_http_headers, tlsconf, pm_proxy_server, pm_timeout)
+	*pveSDK.Debug = pm_debug
 
 	// User+Pass authentication
 	if pm_user != "" && pm_password != "" {
@@ -417,7 +417,7 @@ func pmParallelBegin(pconf *providerConfiguration) *pmApiLockHolder {
 	return lock
 }
 
-func resourceId(targetNode pxapi.NodeName, resType string, vmId int) string {
+func resourceId(targetNode pveSDK.NodeName, resType string, vmId int) string {
 	return fmt.Sprintf("%s/%s/%d", targetNode.String(), resType, vmId)
 }
 

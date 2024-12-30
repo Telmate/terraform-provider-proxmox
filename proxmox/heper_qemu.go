@@ -4,7 +4,7 @@ import (
 	"net"
 	"strings"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
@@ -15,7 +15,7 @@ const (
 	errorGuestAgentNoIPv6Summary string = "Qemu Guest Agent is enabled but no IPv6 address is found"
 )
 
-func parseCloudInitInterface(ipConfig pxapi.CloudInitNetworkConfig, ciCustom, skipIPv4, skipIPv6 bool) (conn connectionInfo) {
+func parseCloudInitInterface(ipConfig pveSDK.CloudInitNetworkConfig, ciCustom, skipIPv4, skipIPv6 bool) (conn connectionInfo) {
 	conn.SkipIPv4 = skipIPv4
 	conn.SkipIPv6 = skipIPv6
 	if ipConfig.IPv4 != nil {
@@ -80,7 +80,7 @@ func (conn connectionInfo) hasRequiredIP() bool {
 	return true
 }
 
-func (conn connectionInfo) parsePrimaryIPs(interfaces []pxapi.AgentNetworkInterface, mac net.HardwareAddr) connectionInfo {
+func (conn connectionInfo) parsePrimaryIPs(interfaces []pveSDK.AgentNetworkInterface, mac net.HardwareAddr) connectionInfo {
 	macString := mac.String()
 	for _, iFace := range interfaces {
 		if iFace.MacAddress.String() == macString {

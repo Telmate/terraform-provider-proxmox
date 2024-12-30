@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -50,8 +50,8 @@ func resourcePoolCreate(ctx context.Context, d *schema.ResourceData, meta interf
 
 	poolid := d.Get("poolid").(string)
 
-	err := pxapi.ConfigPool{
-		Name:    pxapi.PoolName(poolid),
+	err := pveSDK.ConfigPool{
+		Name:    pveSDK.PoolName(poolid),
 		Comment: util.Pointer(d.Get("comment").(string)),
 	}.Create(ctx, client)
 	if err != nil {
@@ -80,7 +80,7 @@ func _resourcePoolRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		return fmt.Errorf("unexpected error when trying to read and parse resource id: %v", err)
 	}
 
-	pool := pxapi.PoolName(poolID)
+	pool := pveSDK.PoolName(poolID)
 
 	logger, _ := CreateSubLogger("resource_pool_read")
 	logger.Info().Str("poolid", poolID).Msg("Reading configuration for poolid")
@@ -118,8 +118,8 @@ func resourcePoolUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	logger.Info().Str("poolid", poolID).Msg("Starting update of the Pool resource")
 
 	if d.HasChange("comment") {
-		err := pxapi.ConfigPool{
-			Name:    pxapi.PoolName(poolID),
+		err := pveSDK.ConfigPool{
+			Name:    pveSDK.PoolName(poolID),
 			Comment: util.Pointer(d.Get("comment").(string)),
 		}.Update(ctx, client)
 		if err != nil {
@@ -141,7 +141,7 @@ func resourcePoolDelete(ctx context.Context, d *schema.ResourceData, meta interf
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if err = pxapi.PoolName(poolID).Delete(ctx, client); err != nil {
+	if err = pveSDK.PoolName(poolID).Delete(ctx, client); err != nil {
 		return diag.FromErr(err)
 	}
 
