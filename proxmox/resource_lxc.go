@@ -222,6 +222,30 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
+						"mountoptions": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeBool,
+							},
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								allowedOptions := map[string]bool{
+									"lazytime": true,
+									"noexec":   true,
+									"nosuid":   true,
+									"nodev":    true,
+									"discard":  true,
+									"noatime":  true,
+								}
+								for k := range val.(map[string]interface{}) {
+									if _, ok := allowedOptions[k]; !ok {
+										errs = append(errs, fmt.Errorf("invalid mount option %s", k))
+									}
+								}
+								return warns, errs
+							},
+							Description: "Map of mount options. Allowed options: discard, lazytime, noatime, noexec, nosuid, nodev",
+						},
 					},
 				},
 			},
@@ -515,6 +539,18 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	mountpoints := d.Get("mountpoint").([]interface{})
 	if len(mountpoints) > 0 {
 		lxcMountpoints := DevicesListToDevices(mountpoints, "slot")
+		// Then handle `mountoptions` inside each mountpoint
+		for _, mp := range lxcMountpoints {
+			if mountoptions, ok := mp["mountoptions"]; ok {
+				if len(mountoptions.([]interface{})) > 0 {
+					// Assign first element to mountoptions
+					mp["mountoptions"] = mountoptions.([]interface{})[0]
+				} else {
+					// If empty, delete mountoptions from this mountpoint
+					delete(mp, "mountoptions")
+				}
+			}
+		}
 		config.Mountpoints = lxcMountpoints
 	}
 
@@ -707,6 +743,10 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		oldSet, newSet := d.GetChange("mountpoint")
 		oldMounts := DevicesListToMapByKey(oldSet.([]interface{}), "key")
 		newMounts := DevicesListToMapByKey(newSet.([]interface{}), "key")
+
+		// Removing mountoptions if no options provided
+		newMounts = formatMountOptions(newMounts)
+		
 		processLxcDiskChanges(ctx, oldMounts, newMounts, pconf, vmr)
 
 		lxcMountpoints := DevicesListToDevices(newSet.([]interface{}), "slot")
@@ -942,6 +982,10 @@ func processLxcDiskChanges(
 
 		if ok {
 			for k, v := range prevDisk {
+				if k == "mountoptions" {
+					continue  // No override of mountoptions by preDisk, necessary in case newDisk mountoptions null
+				}
+
 				_, ok := newDisk[k]
 				if !ok {
 					newDisk[k] = v
@@ -1078,4 +1122,31 @@ func processLxcNetworkChanges(ctx context.Context, prevNetworks []map[string]int
 	}
 
 	return nil
+}
+
+// Remove options set to false and mountoptions block if empty
+func formatMountOptions(mountpoints KeyedDeviceMap) KeyedDeviceMap {
+	// Initialize the result map to store cleaned mountpoints
+	cleanedMounts := make(KeyedDeviceMap)
+
+	// Iterate over each device in the KeyedDeviceMap
+	for key, mount := range mountpoints {
+		// Get mountoptions, and immediately check if it is a valid map with length > 0
+		if optionsMap, ok := mount["mountoptions"].(map[string]interface{}); ok {
+
+			// Remove false options
+			for optionKey, optionValue := range optionsMap {
+				if !optionValue.(bool) {
+					delete(optionsMap, optionKey)
+				}
+			}
+			if len(optionsMap) > 0 {
+				mount["mountoptions"] = optionsMap
+			} else {
+				delete(mount, "mountoptions") // Delete if it's not valid or if it's empty
+			}
+		}
+		cleanedMounts[key] = mount
+	}
+	return cleanedMounts
 }
