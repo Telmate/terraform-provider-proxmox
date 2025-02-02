@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/dns/nameservers"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
@@ -35,6 +34,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/pci"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
@@ -505,13 +505,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"sshkeys": {
-				Type:     schema.TypeString,
-				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return sshkeys.Trim(old) == sshkeys.Trim(new)
-				},
-			},
+			sshkeys.Root: sshkeys.Schema(),
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -1713,7 +1707,9 @@ func mapToTerraform_CloudInit(config *pveSDK.CloudInit, d *schema.ResourceData) 
 			d.Set("ipconfig"+strconv.Itoa(int(i)), mapToTerraform_CloudInitNetworkConfig(v))
 		}
 	}
-	d.Set("sshkeys", sshkeys.String(config.PublicSSHkeys))
+	if config.PublicSSHkeys != nil {
+		sshkeys.Terraform(*config.PublicSSHkeys, d)
+	}
 	if config.UpgradePackages != nil {
 		d.Set("ciupgrade", *config.UpgradePackages)
 	}
@@ -1779,7 +1775,7 @@ func mapToSDK_CloudInit(d *schema.ResourceData) *pveSDK.CloudInit {
 			NameServers:  nameservers.Split(d.Get("nameserver").(string)),
 		},
 		NetworkInterfaces: pveSDK.CloudInitNetworkInterfaces{},
-		PublicSSHkeys:     sshkeys.Split(d.Get("sshkeys").(string)),
+		PublicSSHkeys:     sshkeys.SDK(d),
 		UpgradePackages:   util.Pointer(d.Get("ciupgrade").(bool)),
 		UserPassword:      util.Pointer(d.Get("cipassword").(string)),
 		Username:          util.Pointer(d.Get("ciuser").(string)),

@@ -9,3 +9,4 @@ bin
 *env
 vendor/*
 
+__debug*
