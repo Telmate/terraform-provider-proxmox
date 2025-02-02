@@ -115,6 +115,7 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
   }
 
   network {
+    id = 0
     bridge = "vmbr0"
     model  = "virtio"
   }
