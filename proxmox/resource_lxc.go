@@ -11,6 +11,7 @@ import (
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
+	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -425,14 +426,7 @@ func resourceLxc() *schema.Resource {
 			},
 			node.RootNode: node.SchemaNode(schema.Schema{
 				Required: true, ForceNew: true}, "lxc"),
-			"vmid": {
-				Type:             schema.TypeInt,
-				Optional:         true,
-				Computed:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: VMIDValidator(),
-				Description:      "The VM identifier in proxmox (100-999999999)",
-			},
+			vmID.Root: vmID.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -520,7 +514,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// get unique id
 	nextid, err := nextVmId(pconf)
-	vmID := d.Get("vmid").(int)
+	vmID := d.Get(vmID.Root).(int)
 	if vmID != 0 {
 		nextid = vmID
 	} else {
@@ -768,12 +762,12 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 	client := pconf.Client
-	_, _, vmID, err := parseResourceId(d.Id())
+	_, _, guestID, err := parseResourceId(d.Id())
 	if err != nil {
 		d.SetId("")
 		return err
 	}
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(guestID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return err
@@ -844,7 +838,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 			poolContent, _ := client.GetPoolInfo(ctx, poolInfo.(map[string]interface{})["poolid"].(string))
 			for _, member := range poolContent["members"].([]interface{}) {
 				if member.(map[string]interface{})["type"] != "storage" {
-					if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
+					if guestID == int(member.(map[string]interface{})[vmID.Root].(float64)) {
 						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
 					}
 				}
@@ -860,6 +854,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	d.Set("hagroup", vmr.HaGroup())
 
 	// Read Misc
+	vmID.Terraform(vmr.VmId(), d)
 	d.Set("arch", config.Arch)
 	d.Set("bwlimit", config.BWLimit)
 	d.Set("cmode", config.CMode)
