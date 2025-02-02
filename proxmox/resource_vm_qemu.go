@@ -1232,6 +1232,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	logger.Debug().Int(vmID.Root, guestID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
+	vmID.Terraform(vmr.VmId(), d)
 	d.Set("name", config.Name)
 	d.Set("desc", mapToTerraform_Description(config.Description))
 	d.Set("bios", config.Bios)

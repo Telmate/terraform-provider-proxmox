@@ -854,6 +854,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	d.Set("hagroup", vmr.HaGroup())
 
 	// Read Misc
+	vmID.Terraform(vmr.VmId(), d)
 	d.Set("arch", config.Arch)
 	d.Set("bwlimit", config.BWLimit)
 	d.Set("cmode", config.CMode)
