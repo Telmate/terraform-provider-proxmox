@@ -28,6 +28,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/dns/nameservers"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
@@ -570,10 +571,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"pool": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
+			pool.Root: pool.Schema(),
 			"ssh_host": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -683,7 +681,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Name:        vmName,
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
-		Pool:        util.Pointer(pveSDK.PoolName(d.Get("pool").(string))),
+		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
 		Startup:     d.Get("startup").(string),
@@ -784,8 +782,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		vmr = pveSDK.NewVmRef(nextid)
 		vmr.SetNode(targetNode.String())
 		config.Node = targetNode
-
-		vmr.SetPool(d.Get("pool").(string))
 
 		// check if clone, or PXE boot
 		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 {
@@ -929,7 +925,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Name:        d.Get("name").(string),
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
-		Pool:        util.Pointer(pveSDK.PoolName(d.Get("pool").(string))),
+		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
 		Startup:     d.Get("startup").(string),
@@ -1294,7 +1290,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		d.Set("features", UpdateDeviceConfDefaults(config.QemuVga, activeVgaSet))
 	}
 
-	d.Set("pool", vmr.Pool())
+	d.Set(pool.Root, config.Pool)
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
