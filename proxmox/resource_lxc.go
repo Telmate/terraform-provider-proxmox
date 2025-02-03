@@ -11,6 +11,7 @@ import (
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -314,10 +315,7 @@ func resourceLxc() *schema.Resource {
 				Sensitive: true,
 				ForceNew:  true, // Proxmox doesn't support password changes
 			},
-			"pool": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
+			pool.Root: pool.Schema(),
 			"protection": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -474,7 +472,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
-	config.Pool = util.Pointer(pveSDK.PoolName(d.Get("pool").(string)))
+	config.Pool = util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string)))
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)
@@ -645,7 +643,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
-	config.Pool = util.Pointer(pveSDK.PoolName(d.Get("pool").(string)))
+	config.Pool = util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string)))
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)
@@ -714,9 +712,9 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(err)
 	}
 
-	if d.HasChange("pool") {
+	if d.HasChange(pool.Root) {
 		oldPool, newPool := func() (string, string) {
-			a, b := d.GetChange("pool")
+			a, b := d.GetChange(pool.Root)
 			return a.(string), b.(string)
 		}()
 
@@ -839,7 +837,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 			for _, member := range poolContent["members"].([]interface{}) {
 				if member.(map[string]interface{})["type"] != "storage" {
 					if guestID == int(member.(map[string]interface{})[vmID.Root].(float64)) {
-						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+						d.Set(pool.Root, poolInfo.(map[string]interface{})["poolid"].(string))
 					}
 				}
 			}
