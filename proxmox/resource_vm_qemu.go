@@ -635,7 +635,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id int, targetNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id pveSDK.GuestID, targetNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -770,7 +770,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	if vmr == nil {
 		// get unique id
 		nextid, err := nextVmId(pconf)
-		guestID := d.Get(vmID.Root).(int)
+		guestID := pveSDK.GuestID(d.Get(vmID.Root).(int))
 		if guestID != 0 { // 0 is the "no value" for int in golang
 			nextid = guestID
 		} else {
@@ -791,7 +791,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			}
 			config.FullClone = &fullClone
 
-			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), d.Get("clone_id").(int), vmr.Node())
+			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), pveSDK.GuestID(d.Get("clone_id").(int)), vmr.Node())
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
@@ -861,7 +861,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	}
 	d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
-	logger.Debug().Int(vmID.Root, vmr.VmId()).Msgf("Set this vm (resource Id) to '%v'", d.Id())
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get(schemaAdditionalWait).(int)) * time.Second)
@@ -904,7 +904,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 
-	logger.Info().Int(vmID.Root, guestID).Msg("Starting update of the VM resource")
+	logger.Info().Int(vmID.Root, int(guestID)).Msg("Starting update of the VM resource")
 
 	vmr := pveSDK.NewVmRef(guestID)
 	_, err = client.GetVmInfo(ctx, vmr)
@@ -973,7 +973,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 
-	logger.Debug().Int(vmID.Root, guestID).Msgf("Updating VM with the following configuration: %+v", config)
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
 	automaticReboot := d.Get("automatic_reboot").(bool)
@@ -1146,7 +1146,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		return diag.FromErr(fmt.Errorf("unexpected error when trying to read and parse the resource: %v", err))
 	}
 
-	logger.Info().Int(vmID.Root, guestID).Msg("Reading configuration for vmid")
+	logger.Info().Int(vmID.Root, int(guestID)).Msg("Reading configuration for vmid")
 	vmr := pveSDK.NewVmRef(guestID)
 
 	// Try to get information on the vm. If this call err's out
@@ -1164,7 +1164,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if len(targetNodes) == 0 {
 		_, err = client.GetVmInfo(ctx, vmr)
 		if err != nil {
-			logger.Debug().Int(vmID.Root, guestID).Err(err).Msg("failed to get vm info")
+			logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("failed to get vm info")
 			d.SetId("")
 			return nil
 		}
@@ -1184,7 +1184,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	if targetNodeVMR == "" {
-		logger.Debug().Int(vmID.Root, guestID).Err(err).Msg("failed to get vm info")
+		logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("failed to get vm info")
 		d.SetId("")
 		return nil
 	}
@@ -1219,7 +1219,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		diags = append(diags, diag.FromErr(err)...)
 	}
 
-	logger.Debug().Int(vmID.Root, guestID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	vmID.Terraform(vmr.VmId(), d)
@@ -1266,10 +1266,10 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	checkedKeys := []string{"force_create", "define_connection_info"}
 	for _, key := range checkedKeys {
 		if val := d.Get(key); val == nil {
-			logger.Debug().Int(vmID.Root, guestID).Msgf("key '%s' not found, setting to default", key)
+			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' not found, setting to default", key)
 			d.Set(key, thisResource.Schema[key].Default)
 		} else {
-			logger.Debug().Int(vmID.Root, guestID).Msgf("key '%s' is set to %t", key, val.(bool))
+			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' is set to %t", key, val.(bool))
 			d.Set(key, val.(bool))
 		}
 	}
@@ -1279,7 +1279,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
-	logger.Debug().Int(vmID.Root, guestID).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
 	if err = d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return diag.FromErr(err)
 	}
@@ -1298,7 +1298,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Debug().Int(vmID.Root, guestID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return diags
 }
@@ -1310,7 +1310,7 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 	client := pconf.Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
-	vmr := pveSDK.NewVmRef(vmId)
+	vmr := pveSDK.NewVmRef(pveSDK.GuestID(vmId))
 	vmState, err := client.GetVmState(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1534,7 +1534,7 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	// allow user to opt-out of setting the connection info for the resource
 	if !d.Get("define_connection_info").(bool) {
 		log.Printf("[INFO][initConnInfo] define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
-		logger.Info().Int(vmID.Root, vmr.VmId()).Msgf("define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
+		logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
 		return diags
 	}
 
@@ -1543,7 +1543,7 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	if config.Agent != nil && config.Agent.Enable != nil && *config.Agent.Enable {
 		if d.Get("agent") != 1 { // allow user to opt-out of setting the connection info for the resource
 			log.Printf("[INFO][initConnInfo] qemu agent is disabled from proxmox config, cant communicate with vm.")
-			logger.Info().Int(vmID.Root, vmr.VmId()).Msgf("qemu agent is disabled from proxmox config, cant communicate with vm.")
+			logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("qemu agent is disabled from proxmox config, cant communicate with vm.")
 			return append(diags, diag.Diagnostic{
 				Severity:      diag.Warning,
 				Summary:       "Qemu Guest Agent support is disabled from proxmox config.",
@@ -1554,15 +1554,15 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	}
 
 	log.Print("[INFO][initConnInfo] trying to get vm ip address for provisioner")
-	logger.Info().Int(vmID.Root, vmr.VmId()).Msgf("trying to get vm ip address for provisioner")
+	logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("trying to get vm ip address for provisioner")
 
 	// wait until the os has started the guest agent
 	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
 	guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout))
 	log.Printf("[DEBUG][initConnInfo] retrying for at most  %v minutes before giving up", guestAgentTimeout)
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
-	logger.Debug().Int(vmID.Root, vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
-	logger.Debug().Int(vmID.Root, vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retries will end at %s", guestAgentWaitEnd)
 	IPs, agentDiags := getPrimaryIP(ctx, config.CloudInit, config.Networks, vmr, client, guestAgentWaitEnd, d.Get(schemaAdditionalWait).(int), d.Get(schemaAgentTimeout).(int), ciAgentEnabled, d.Get(schemaSkipIPv4).(bool), d.Get(schemaSkipIPv6).(bool), hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
@@ -1577,7 +1577,7 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 
 	sshPort := "22"
 	log.Printf("[DEBUG][initConnInfo] this is the vm configuration: %s %s", sshHost, sshPort)
-	logger.Debug().Int(vmID.Root, vmr.VmId()).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
 	// Optional convenience attributes for provisioners
 	_ = d.Set("default_ipv4_address", IPs.IPv4)
@@ -1605,7 +1605,7 @@ func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pve
 	if hasCiDisk { // Check if we have a Cloud-Init disk, cloud-init setting won't have any effect if without it.
 		if cloudInit != nil { // Check if we have a Cloud-Init configuration
 			log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
-			logger.Debug().Int(vmID.Root, vmr.VmId()).Msgf(" vm has a cloud-init configuration")
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf(" vm has a cloud-init configuration")
 			var cicustom bool
 			if cloudInit.Custom != nil && cloudInit.Custom.Network != nil {
 				cicustom = true
@@ -1649,11 +1649,11 @@ func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pve
 					return primaryIPs{}, diag.FromErr(err)
 				}
 				log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
-				logger.Debug().Int(vmID.Root, vmr.VmId()).Msgf("check ip result error %s", err.Error())
+				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("check ip result error %s", err.Error())
 			} else { // vm is running and reachable
 				if len(interfaces) > 0 { // agent returned some information
 					log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
-					logger.Debug().Int(vmID.Root, vmr.VmId()).Msgf("QEMU Agent interfaces found: %v", interfaces)
+					logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
 					conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
 					if conn.hasRequiredIP() {
 						return conn.IPs, diag.Diagnostics{}
