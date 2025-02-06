@@ -1,6 +1,7 @@
 package vmid
 
 import (
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -9,8 +10,8 @@ import (
 const (
 	Root string = "vmid"
 
-	maxID int = 999999999
-	minID int = 100
+	maxID = int(pveSDK.GuestIdMaximum)
+	minID = int(pveSDK.GuestIdMinimum)
 )
 
 func Schema() *schema.Schema {

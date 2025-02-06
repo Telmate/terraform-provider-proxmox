@@ -512,9 +512,9 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// get unique id
 	nextid, err := nextVmId(pconf)
-	vmID := d.Get(vmID.Root).(int)
-	if vmID != 0 {
-		nextid = vmID
+	guestID := pveSDK.GuestID(d.Get(vmID.Root).(int))
+	if guestID != 0 {
+		nextid = guestID
 	} else {
 		if err != nil {
 			return diag.FromErr(err)
@@ -836,7 +836,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 			poolContent, _ := client.GetPoolInfo(ctx, poolInfo.(map[string]interface{})["poolid"].(string))
 			for _, member := range poolContent["members"].([]interface{}) {
 				if member.(map[string]interface{})["type"] != "storage" {
-					if guestID == int(member.(map[string]interface{})[vmID.Root].(float64)) {
+					if guestID == pveSDK.GuestID(member.(map[string]interface{})[vmID.Root].(float64)) {
 						d.Set(pool.Root, poolInfo.(map[string]interface{})["poolid"].(string))
 					}
 				}
