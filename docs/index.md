@@ -108,7 +108,7 @@ The following arguments are supported in the provider block:
 | `pm_user`             | `PM_USER`            | `string` |                                | The user, remember to include the authentication realm such as myuser@pam or myuser@pve. |
 | `pm_password`         | `PM_PASS`            | `string` |                                | **Sensitive** The password. |
 | `pm_api_token_id`     | `PM_API_TOKEN_ID`    | `string` |                                | This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user. |
-| `pm_api_token_secret` | `PM_API_TOKEN`       | `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
+| `pm_api_token_secret` | `PM_API_TOKEN_SECRET`| `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
 | `pm_otp`              | `PM_OTP`             | `string` |                                | The 2FA OTP code. |
 | `pm_tls_insecure`     |                      | `bool`   | `false`                        | Disable TLS verification while connecting to the proxmox server. |
 | `pm_parallel`         |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when using dynamic guest id allocation. |
