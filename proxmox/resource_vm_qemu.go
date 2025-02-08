@@ -796,6 +796,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 				return append(diags, diag.FromErr(err)...)
 			}
 
+			vmr.SetPool(d.Get(pool.Root).(string)) // This pool is used for clone
+
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
 			logger.Debug().Str(vmID.Root, d.Id()).Msgf("Cloning VM")
 			err = config.CloneVm(ctx, sourceVmr, vmr, client)
