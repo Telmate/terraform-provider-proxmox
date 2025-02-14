@@ -280,6 +280,7 @@ func resourceVmQemu() *schema.Resource {
 			cpu.RootNuma:         cpu.SchemaNuma(),
 			cpu.RootSockets:      cpu.SchemaSockets(),
 			cpu.RootVirtualCores: cpu.SchemaVirtualCores(),
+                        cpu.RootCpuAffinity:  cpu.SchemaCpuAffinity(),
 			"kvm": {
 				Type:     schema.TypeBool,
 				Optional: true,

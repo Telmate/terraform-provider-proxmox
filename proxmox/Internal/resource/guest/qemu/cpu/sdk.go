@@ -8,16 +8,23 @@ import (
 
 func SDK(d *schema.ResourceData) *pveAPI.QemuCPU {
 	var cpuType pveAPI.CpuType
-	if v, ok := d.GetOk(Root); ok {
+        if v, ok := d.GetOk(Root); ok {
 		cpuType = pveAPI.CpuType(v.(string))
 	} else {
 		v := d.Get(RootCpuType)
 		cpuType = pveAPI.CpuType(v.(string))
 	}
+
+        CpuAffinityRaw := d.Get(RootCpuAffinity).([]interface{})
+        CpuAffinity    := make([]uint, len(CpuAffinityRaw))
+        for i, raw := range CpuAffinityRaw {
+            CpuAffinity[i] = uint(raw.(int))
+        }
 	return &pveAPI.QemuCPU{
 		Cores:        util.Pointer(pveAPI.QemuCpuCores(d.Get(RootCores).(int))),
 		Numa:         util.Pointer(d.Get(RootNuma).(bool)),
 		Sockets:      util.Pointer(pveAPI.QemuCpuSockets(d.Get(RootSockets).(int))),
 		Type:         util.Pointer(cpuType),
-		VirtualCores: util.Pointer(pveAPI.CpuVirtualCores(d.Get(RootVirtualCores).(int)))}
+		VirtualCores: util.Pointer(pveAPI.CpuVirtualCores(d.Get(RootVirtualCores).(int))),
+                Affinity:     util.Pointer(CpuAffinity)}
 }

@@ -25,4 +25,7 @@ func Terraform(config pveAPI.QemuCPU, d *schema.ResourceData) {
 	if config.VirtualCores != nil {
 		d.Set(RootVirtualCores, int(*config.VirtualCores))
 	}
+        if config.Affinity != nil {
+                d.Set(RootCpuAffinity, []uint(*config.Affinity))
+        }
 }
