@@ -14,6 +14,7 @@ const (
 	RootNuma         string = "numa"
 	RootSockets      string = "sockets"
 	RootVirtualCores string = "vcpus"
+        RootCpuAffinity  string = "cpu_affinity"
 )
 
 func SchemaCores() *schema.Schema {
@@ -79,4 +80,12 @@ func SchemaVirtualCores() *schema.Schema {
 			return nil
 		},
 	}
+}
+
+func SchemaCpuAffinity() *schema.Schema {
+	return &schema.Schema{
+		Type:          schema.TypeList,
+		Optional:      true,
+                Elem:          &schema.Schema{Type: schema.TypeInt},
+        }
 }
