@@ -129,12 +129,6 @@ func Provider() *schema.Provider {
 					if v < 1 {
 						return diag.Errorf(schemaPmParallel + " must be greater than 0")
 					}
-					if v > 1 { // TODO actually fix the parallelism! workaround for #1136
-						return diag.Diagnostics{
-							diag.Diagnostic{
-								Severity: diag.Warning,
-								Summary:  "setting " + schemaPmParallel + " greater than 1 is currently not recommended when using dynamic guest id allocation"}}
-					}
 					return nil
 				},
 			},
@@ -368,7 +362,7 @@ func getClient(pm_api_url string,
 func nextVmId(pconf *providerConfiguration) (nextId pveSDK.GuestID, err error) {
 	pconf.Mutex.Lock()
 	defer pconf.Mutex.Unlock()
-	nextId, err = pconf.Client.GetNextID(context.Background(), 0)
+	nextId, err = pconf.Client.GetNextID(context.Background(), nil)
 	if err != nil {
 		return 0, err
 	}
