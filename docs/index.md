@@ -111,7 +111,7 @@ The following arguments are supported in the provider block:
 | `pm_api_token_secret` | `PM_API_TOKEN`       | `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
 | `pm_otp`              | `PM_OTP`             | `string` |                                | The 2FA OTP code. |
 | `pm_tls_insecure`     |                      | `bool`   | `false`                        | Disable TLS verification while connecting to the proxmox server. |
-| `pm_parallel`         |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when using dynamic guest id allocation. |
+| `pm_parallel`         |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when creating LXC containers with dynamic id allocation. For Qemu the threading issue has been resolved.|
 | `pm_log_enable`       |                      | `bool`   | `false`                        | Enable debug logging, see the section below for logging details. |
 | `pm_log_levels`       |                      | `map`    |                                | A map of log sources and levels. |
 | `pm_log_file`         |                      | `string` | `terraform-plugin-proxmox.log` | The log file the provider will write logs to. |

@@ -460,7 +460,6 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		config.Features = featureSetList[0].(map[string]interface{})
 	}
 	config.Force = d.Get("force").(bool)
-	config.Full = d.Get("full").(bool)
 	config.HaState = d.Get("hastate").(string)
 	config.HaGroup = d.Get("hagroup").(string)
 	config.Hookscript = d.Get("hookscript").(string)
@@ -511,27 +510,57 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	// get unique id
-	nextid, err := nextVmId(pconf)
-	guestID := pveSDK.GuestID(d.Get(vmID.Root).(int))
-	if guestID != 0 {
-		nextid = guestID
-	} else {
+
+	setGuestID := d.Get(vmID.Root).(int)
+
+	var diags diag.Diagnostics
+	var err error
+	var vmr *pveSDK.VmRef
+	if d.Get("clone").(string) != "" { // Clone
+		var sourceVmr *pveSDK.VmRef
+		sourceVmr, err = getSourceVmr(ctx, client, d.Get("clone").(string), 0, targetNode)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
-	}
 
-	vmr := pveSDK.NewVmRef(nextid)
-	vmr.SetNode(targetNode.String())
+		var guestID *pveSDK.GuestID
+		if setGuestID != 0 {
+			guestID = util.Pointer(pveSDK.GuestID(setGuestID))
+		}
 
-	if d.Get("clone").(string) != "" {
+		var storage *string
+		if config.CloneStorage != "" {
+			storage = &config.CloneStorage
+		}
+
+		var poolName *pveSDK.PoolName
+		tmpPool := d.Get(pool.Root).(string)
+		if tmpPool != "" {
+			poolName = util.Pointer(pveSDK.PoolName(tmpPool))
+		}
+
+		var cloneSettings pveSDK.CloneLxcTarget
+		if !d.Get("full").(bool) {
+			cloneSettings = pveSDK.CloneLxcTarget{
+				Linked: &pveSDK.CloneLinked{
+					Node: targetNode,
+					ID:   guestID,
+					Name: &config.Hostname,
+					Pool: poolName}}
+		} else {
+			cloneSettings = pveSDK.CloneLxcTarget{
+				Full: &pveSDK.CloneLxcFull{
+					Node:    targetNode,
+					ID:      guestID,
+					Name:    &config.Hostname,
+					Pool:    poolName,
+					Storage: storage}}
+		}
 
 		log.Print("[DEBUG][LxcCreate] cloning LXC")
-
-		err = config.CloneLxc(ctx, vmr, client)
-
+		vmr, err = sourceVmr.CloneLxc(ctx, cloneSettings, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 
 		// Waiting for the clone to become ready and
@@ -547,7 +576,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 				// to prevent an infinite loop we check for any other error
 				// this error is actually fine because the clone is not ready yet
 			} else if err.Error() != "vm locked, could not obtain config" {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 			time.Sleep(5 * time.Second)
 			log.Print("[DEBUG][LxcCreate] Clone still not ready, checking again")
@@ -560,7 +589,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 		config_post_resize, err := pveSDK.NewConfigLxcFromApi(ctx, vmr, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 		config.RootFs["size"] = config_post_resize.RootFs["size"]
 		config.RootFs["volume"] = config_post_resize.RootFs["volume"]
@@ -568,13 +597,30 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		// Update all remaining stuff
 		err = config.UpdateConfig(ctx, vmr, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 
-	} else {
+	} else { // Create
+		var nextID pveSDK.GuestID
+		if setGuestID != 0 {
+			if pconf.MaxParallel > 1 { // TODO actually fix the parallelism! workaround for #1136
+				diags = append(diags, diag.Diagnostic{
+					Summary:  "setting " + schemaPmParallel + " greater than 1 is currently not recommended when creating LXC containers with dynamic id allocation",
+					Severity: diag.Warning})
+			}
+
+			nextID, err = nextVmId(pconf)
+			if err != nil {
+				return append(diags, diag.FromErr(err)...)
+			}
+		}
+
+		vmr = pveSDK.NewVmRef(nextID)
+		vmr.SetNode(targetNode.String())
+
 		err = config.CreateLxc(ctx, vmr, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 	}
 
@@ -583,7 +629,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		log.Print("[DEBUG][LxcCreate] starting LXC")
 		_, err := client.StartVm(ctx, vmr)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 	} else {
 		log.Print("[DEBUG][LxcCreate] start = false, not starting LXC")
@@ -593,8 +639,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
 	lock.unlock()
-	return resourceLxcRead(ctx, d, meta)
-
+	return append(diags, resourceLxcRead(ctx, d, meta)...)
 }
 
 func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

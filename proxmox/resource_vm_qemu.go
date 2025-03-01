@@ -635,7 +635,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id pveSDK.GuestID, targetNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id pveSDK.GuestID, preferredNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -644,7 +644,7 @@ func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id pv
 		// Prefer source VM on the same node
 		sourceVmr := sourceVmrs[0]
 		for _, candVmr := range sourceVmrs {
-			if candVmr.Node() == targetNode {
+			if candVmr.Node() == preferredNode {
 				sourceVmr = candVmr
 			}
 		}
@@ -671,14 +671,14 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	defer lock.unlock()
 
 	client := pconf.Client
-	vmName := d.Get("name").(string)
+	guestName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	config := pveSDK.ConfigQemu{
-		Name:        vmName,
+		Name:        guestName,
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
@@ -734,8 +734,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.EFIDisk = qemuEfiDisks[0]
 	}
 
-	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", vmName)
-	dupVmr, _ := client.GetVmRefByName(ctx, vmName)
+	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", guestName)
+	duplicateVmr, _ := client.GetVmRefByName(ctx, guestName)
 
 	forceCreate := d.Get("force_create").(bool)
 
@@ -754,53 +754,60 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	if targetNode == "" {
-		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use "+node.RootNode+" or "+node.RootNodes+" to set a specific node! %v", vmName, targetNodes))
+		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use "+node.RootNode+" or "+node.RootNodes+" to set a specific node! %v", guestName, targetNodes))
 	}
-	if dupVmr != nil && forceCreate {
-		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId()))
-	} else if dupVmr != nil && dupVmr.Node() != targetNode {
-		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d on different %s=%s", vmName, dupVmr.VmId(), node.RootNodes, dupVmr.Node()))
+	if duplicateVmr != nil && forceCreate {
+		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", guestName, duplicateVmr.VmId()))
+	} else if duplicateVmr != nil && duplicateVmr.Node() != targetNode {
+		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d on different %s=%s", guestName, duplicateVmr.VmId(), node.RootNodes, duplicateVmr.Node()))
 	}
 
-	vmr := dupVmr
+	vmr := duplicateVmr
 
 	var rebootRequired bool
 	var err error
 
-	if vmr == nil {
-		// get unique id
-		nextid, err := nextVmId(pconf)
-		guestID := pveSDK.GuestID(d.Get(vmID.Root).(int))
-		if guestID != 0 { // 0 is the "no value" for int in golang
-			nextid = guestID
-		} else {
-			if err != nil {
-				return append(diags, diag.FromErr(err)...)
-			}
+	if vmr == nil { // Create new VM
+		config.Node = &targetNode
+
+		var guestID *pveSDK.GuestID
+		if newID := pveSDK.GuestID(d.Get(vmID.Root).(int)); newID != 0 {
+			guestID = &newID
 		}
 
-		vmr = pveSDK.NewVmRef(nextid)
-		vmr.SetNode(targetNode.String())
-		config.Node = targetNode
-
 		// check if clone, or PXE boot
-		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 {
-			fullClone := 1
-			if !d.Get("full_clone").(bool) {
-				fullClone = 0
-			}
-			config.FullClone = &fullClone
+		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 { // Clone
 
-			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), pveSDK.GuestID(d.Get("clone_id").(int)), vmr.Node())
+			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
 
-			vmr.SetPool(d.Get(pool.Root).(string)) // This pool is used for clone
+			var poolName *pveSDK.PoolName
+			tmpPool := d.Get(pool.Root).(string)
+			if tmpPool != "" {
+				poolName = util.Pointer(pveSDK.PoolName(tmpPool))
+			}
+			var cloneSettings pveSDK.CloneQemuTarget
+			if !d.Get("full_clone").(bool) {
+				cloneSettings = pveSDK.CloneQemuTarget{
+					Linked: &pveSDK.CloneLinked{
+						Node: targetNode,
+						ID:   guestID,
+						Name: &guestName,
+						Pool: poolName}}
+			} else {
+				cloneSettings = pveSDK.CloneQemuTarget{
+					Full: &pveSDK.CloneQemuFull{
+						Node: targetNode,
+						ID:   guestID,
+						Name: &guestName,
+						Pool: poolName}}
+			}
 
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
 			logger.Debug().Str(vmID.Root, d.Id()).Msgf("Cloning VM")
-			err = config.CloneVm(ctx, sourceVmr, vmr, client)
+			vmr, err = sourceVmr.CloneQemu(ctx, cloneSettings, client)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
@@ -815,7 +822,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 				return append(diags, diag.FromErr(err)...)
 			}
 
-		} else if d.Get("pxe").(bool) {
+		} else if d.Get("pxe").(bool) { // PXE boot
 			var found bool
 			bs := d.Get("boot").(string)
 			// This used to be multiple regexes. Keeping the loop for flexibility.
@@ -838,18 +845,20 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 				return append(diags, diag.FromErr(fmt.Errorf("no network boot option matched in 'boot' config"))...)
 			}
 			log.Print("[DEBUG][QemuVmCreate] create with PXE")
-			err := config.Create(ctx, vmr, client)
+			config.ID = guestID
+			vmr, err = config.Create(ctx, client)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
-		} else {
+		} else { // Normal VM creation
 			log.Print("[DEBUG][QemuVmCreate] create with ISO")
-			err := config.Create(ctx, vmr, client)
+			config.ID = guestID
+			vmr, err = config.Create(ctx, client)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
 		}
-	} else {
+	} else { // Forcefully update an existing VM
 		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
 
 		client.StopVm(ctx, vmr)
