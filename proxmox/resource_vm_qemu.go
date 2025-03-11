@@ -394,6 +394,12 @@ func resourceVmQemu() *schema.Resource {
 							Required: true,
 							ForceNew: true,
 						},
+						"pre_enrolled_keys": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+							ForceNew: true,
+						},
 						"efitype": {
 							Type:     schema.TypeString,
 							Optional: true,
@@ -1506,6 +1512,10 @@ func ExpandDevicesList(deviceList []interface{}) (pveSDK.QemuDevices, error) {
 		// this is a map of string->interface, loop over it and move it into
 		// the qemuDevices struct
 		for configuration, value := range thisDeviceMap {
+			// XXX: Not sure where to put these
+			if configuration == "pre_enrolled_keys" {
+				configuration = "pre-enrolled-keys"
+			}
 			thisExpandedDevice[configuration] = value
 		}
 
