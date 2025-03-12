@@ -11,10 +11,12 @@ import (
 const (
 	RootNode  string = "target_node"
 	RootNodes string = "target_nodes"
+	Computed  string = "current_node"
 )
 
 func SchemaNode(s schema.Schema, guestType string) *schema.Schema {
 	s.Type = schema.TypeString
+	s.Optional = true
 	s.Description = "The node the " + guestType + " guest goes to."
 	s.ValidateDiagFunc = func(i interface{}, path cty.Path) diag.Diagnostics {
 		v, ok := i.(string)
@@ -36,11 +38,12 @@ func SchemaNode(s schema.Schema, guestType string) *schema.Schema {
 	return &s
 }
 
-func SchemaNodes() *schema.Schema {
+func SchemaNodes(guestType string) *schema.Schema {
 	return &schema.Schema{
-		Type:        schema.TypeList, // TODO should be `schema.TypeSet`
-		Optional:    true,
-		Description: "A list of nodes the qemu guest goes to.",
+		Type:          schema.TypeSet,
+		Optional:      true,
+		Description:   "A list of nodes the " + guestType + " guest may be placed on.",
+		ConflictsWith: []string{RootNode},
 		Elem: &schema.Schema{
 			Type: schema.TypeString,
 			ValidateDiagFunc: func(i interface{}, path cty.Path) diag.Diagnostics {
@@ -60,4 +63,11 @@ func SchemaNodes() *schema.Schema {
 				}
 				return nil
 			}}}
+}
+
+func SchemaComputed(guestType string) *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: "The node the " + guestType + " guest is currently on."}
 }

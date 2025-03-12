@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"net/url"
 	"path"
@@ -142,9 +141,9 @@ func resourceVmQemu() *schema.Resource {
 				Default:     defaultDescription,
 				Description: "The VM description",
 			},
-			node.RootNode: node.SchemaNode(schema.Schema{
-				Optional: true}, "qemu"),
-			node.RootNodes: node.SchemaNodes(),
+			node.Computed:  node.SchemaComputed("qemu"),
+			node.RootNode:  node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "qemu"),
+			node.RootNodes: node.SchemaNodes("qemu"),
 			"bios": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -739,27 +738,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	forceCreate := d.Get("force_create").(bool)
 
-	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
-	var targetNodes = make([]string, len(targetNodesRaw))
-	for i, raw := range targetNodesRaw {
-		targetNodes[i] = raw.(string)
-	}
-
-	var targetNode pveSDK.NodeName
-
-	if len(targetNodes) == 0 {
-		targetNode = pveSDK.NodeName(d.Get(node.RootNode).(string))
-	} else {
-		targetNode = pveSDK.NodeName(targetNodes[rand.Intn(len(targetNodes))])
-	}
-
-	if targetNode == "" {
-		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use "+node.RootNode+" or "+node.RootNodes+" to set a specific node! %v", guestName, targetNodes))
-	}
 	if duplicateVmr != nil && forceCreate {
 		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", guestName, duplicateVmr.VmId()))
-	} else if duplicateVmr != nil && duplicateVmr.Node() != targetNode {
-		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d on different %s=%s", guestName, duplicateVmr.VmId(), node.RootNodes, duplicateVmr.Node()))
 	}
 
 	vmr := duplicateVmr
@@ -768,6 +748,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	var err error
 
 	if vmr == nil { // Create new VM
+		targetNode := node.SdkCreate(d)
 		config.Node = &targetNode
 
 		var guestID *pveSDK.GuestID
@@ -861,6 +842,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	} else { // Forcefully update an existing VM
 		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
 
+		targetNode := node.SdkUpdate(d, vmr.Node())
 		client.StopVm(ctx, vmr)
 
 		rebootRequired, err = config.Update(ctx, false, vmr, client)
@@ -871,7 +853,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 
 	}
-	d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
+	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
@@ -925,15 +907,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
-	d.Partial(true)
-	if d.HasChange(node.RootNode) {
-		// Update target node when it must be migrated manually. Don't if it has been migrated by the proxmox high availability system.
-		vmr.SetNode(d.Get(node.RootNode).(string))
-	}
-	d.Partial(false)
-
 	config := pveSDK.ConfigQemu{
 		Name:        d.Get("name").(string),
+		Node:        util.Pointer(node.SdkUpdate(d, vmr.Node())),
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
@@ -1164,46 +1140,25 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// that indicates the VM does not exist. We indicate that to terraform
 	// by calling a SetId("")
 
-	// loop through all virtual servers...?
-	var targetNodeVMR pveSDK.NodeName
-	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
-	targetNodes := make([]pveSDK.NodeName, len(targetNodesRaw))
-	for i := range targetNodesRaw {
-		targetNodes[i] = pveSDK.NodeName(targetNodesRaw[i].(string))
-	}
-
-	if len(targetNodes) == 0 {
-		_, err = client.GetVmInfo(ctx, vmr)
-		if err != nil {
-			logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("failed to get vm info")
+	// not sure if we want to set the id to "" if the vm does not exist
+	// as it will cause terraform to delete the resource
+	// and it could be unavailable due to permission issues
+	// when we are `root@pam` then we can do it as we can see all vms
+	_, err = client.GetVmInfo(ctx, vmr)
+	if err != nil {
+		if err.Error() == "vm '"+vmr.VmId().String()+"' not found" {
+			logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("vm does not exist")
 			d.SetId("")
 			return nil
 		}
-		targetNodeVMR = vmr.Node()
-	} else {
-		for _, targetNode := range targetNodes {
-			vmr.SetNode(targetNode.String())
-			_, err = client.GetVmInfo(ctx, vmr)
-			if err != nil {
-				d.SetId("")
-			}
-
-			d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
-			logger.Debug().Any("Setting node id to", d.Get(vmr.Node().String()))
-			targetNodeVMR = targetNode
-		}
-	}
-
-	if targetNodeVMR == "" {
-		logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("failed to get vm info")
-		d.SetId("")
-		return nil
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	config, err := pveSDK.NewConfigQemuFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	node.Terraform(d, vmr.Node())
 
 	var ciDisk bool
 	if config.Disks != nil {
