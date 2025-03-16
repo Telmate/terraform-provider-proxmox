@@ -34,6 +34,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/pci"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/tpm"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
@@ -384,6 +385,7 @@ func resourceVmQemu() *schema.Resource {
 			pci.RootLegacyPCI: pci.SchemaLegacyPCI(),
 			pci.RootPCI:       pci.SchemaPCI(),
 			pci.RootPCIs:      pci.SchemaPCIs(),
+			tpm.Root:          tpm.Schema(),
 			"efidisk": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -392,6 +394,12 @@ func resourceVmQemu() *schema.Resource {
 						"storage": {
 							Type:     schema.TypeString,
 							Required: true,
+							ForceNew: true,
+						},
+						"pre_enrolled_keys": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
 							ForceNew: true,
 						},
 						"efitype": {
@@ -703,6 +711,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:   mapToSDK_CloudInit(d),
+		TPM:         tpm.SDK(d),
 	}
 
 	var diags, tmpDiags diag.Diagnostics
@@ -958,6 +967,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:   mapToSDK_CloudInit(d),
+		TPM:         tpm.SDK(d),
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -1385,7 +1395,7 @@ func DropElementsFromMap(elements []string, mapList []map[string]interface{}) ([
 	return mapList, nil
 }
 
-// Consumes an API return (pxapi.QemuDevices) and "flattens" it into a []map[string]interface{} as
+// Consumes an API return (pveSDK.QemuDevices) and "flattens" it into a []map[string]interface{} as
 // expected by the terraform interface for TypeList
 func FlattenDevicesList(proxmoxDevices pveSDK.QemuDevices) ([]map[string]interface{}, error) {
 	flattenedDevices := make([]map[string]interface{}, 0, 1)
@@ -1483,7 +1493,7 @@ func ReadSmbiosArgs(smbios string) []interface{} {
 }
 
 // Consumes a terraform TypeList of a Qemu Device (network, hard drive, etc) and returns the "Expanded"
-// version of the equivalent configuration that the API understands (the struct pxapi.QemuDevices).
+// version of the equivalent configuration that the API understands (the struct pveSDK.QemuDevices).
 // NOTE this expects the provided deviceList to be []map[string]interface{}.
 func ExpandDevicesList(deviceList []interface{}) (pveSDK.QemuDevices, error) {
 	expandedDevices := make(pveSDK.QemuDevices)
@@ -1506,6 +1516,10 @@ func ExpandDevicesList(deviceList []interface{}) (pveSDK.QemuDevices, error) {
 		// this is a map of string->interface, loop over it and move it into
 		// the qemuDevices struct
 		for configuration, value := range thisDeviceMap {
+			// XXX: Not sure where to put these
+			if configuration == "pre_enrolled_keys" {
+				configuration = "pre-enrolled-keys"
+			}
 			thisExpandedDevice[configuration] = value
 		}
 
@@ -1745,7 +1759,7 @@ func mapToTerraform_Description(description *string) string {
 }
 
 func mapToTerraform_Memory(config *pveSDK.QemuMemory, d *schema.ResourceData) {
-	// no nil check as pxapi.QemuMemory is always returned
+	// no nil check as pveSDK.QemuMemory is always returned
 	if config.CapacityMiB != nil {
 		d.Set("memory", int(*config.CapacityMiB))
 	}
