@@ -267,6 +267,7 @@ The following arguments may be optionally defined when using this resource:
 * `unique` - A boolean that determines if a unique random ethernet address is assigned to the container.
 * `unprivileged` - A boolean that makes the container run as an unprivileged user. Default is `false`.
 * `vmid` - A number that sets the VMID of the container. If set to `0`, the next available VMID is used. Default is `0`.
+* `current_node` __(computed)__ - A string that shows on which node the LXC guest exists.|
 
 ## Attribute Reference
 

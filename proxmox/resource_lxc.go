@@ -422,9 +422,9 @@ func resourceLxc() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
-			node.RootNode: node.SchemaNode(schema.Schema{
-				Required: true, ForceNew: true}, "lxc"),
-			vmID.Root: vmID.Schema(),
+			node.Computed: node.SchemaComputed("qemu"),
+			node.RootNode: node.SchemaNode(schema.Schema{}, "lxc"),
+			vmID.Root:     vmID.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -485,8 +485,6 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
 
-	targetNode := pveSDK.NodeName(d.Get(node.RootNode).(string))
-
 	// proxmox api allows multiple network sets,
 	// having a unique 'id' parameter foreach set
 	networks := d.Get("network").([]interface{})
@@ -513,6 +511,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	setGuestID := d.Get(vmID.Root).(int)
 
+	targetNode := node.SdkCreate(d)
 	var diags diag.Diagnostics
 	var err error
 	var vmr *pveSDK.VmRef
@@ -820,7 +819,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		return err
 	}
 	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
-	d.Set(node.RootNode, vmr.Node())
+	node.Terraform(d, vmr.Node())
 
 	// Read Features
 	defaultFeatures := d.Get("features").(*schema.Set)
