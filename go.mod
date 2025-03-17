@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20250312221820-b57bd2eabcaa
 	github.com/google/uuid v1.6.0
-	github.com/hashicorp/go-cty v1.4.1
+	github.com/hashicorp/go-cty v1.5.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.10.0
