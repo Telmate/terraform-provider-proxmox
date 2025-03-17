@@ -575,6 +575,7 @@ Don't need it in a module? Use the [PCIs Block](#pcis-block) instead.
 | `vendor_id`     | `str`  |               | The vendor id of the PCI device. |
 | `sub_device_id` | `str`  |               | The sub device id of the PCI device. |
 | `sub_vendor_id` | `str`  |               | The sub vendor id of the PCI device. |
+| `mdev`          | `str`  |               | The mediated device. |
 
 \* Either `mapping_id` or `raw_id` is required.
 
@@ -596,6 +597,7 @@ These types share the following arguments, with minor differences:
 | `vendor_id`     | `str`  |               | `mapping`, `raw` | The vendor id of the PCI device. |
 | `sub_device_id` | `str`  |               | `mapping`, `raw` | The sub device id of the PCI device. |
 | `sub_vendor_id` | `str`  |               | `mapping`, `raw` | The sub vendor id of the PCI device. |
+| `mdev`          | `str`  |               | `mapping`, `raw` | The mediated device. |
 
 The range of pci devices is from `pci0` to `pci15`.
 
