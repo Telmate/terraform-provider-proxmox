@@ -99,7 +99,7 @@ func resourceVmQemu() *schema.Resource {
 			schemaAgentTimeout: { // suppressing the diff causes it to never be set
 				Type:        schema.TypeInt,
 				Optional:    true,
-				Default:     60,
+				Default:     90,
 				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection.",
 				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 					v, ok := i.(int)
