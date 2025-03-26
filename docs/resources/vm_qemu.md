@@ -145,7 +145,7 @@ The following arguments are supported in the top level resource block.
 | `automatic_reboot`            | `bool`   | `true`               | Automatically reboot the VM when parameter changes require this. If disabled the provider will emit a warning when the VM needs to be rebooted. |
 | `skip_ipv4`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv4 address from the qemu guest agent isn't required, it will still return an ipv4 address if it could obtain one. Useful for reducing retries in environments without ipv4.|
 | `skip_ipv6`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv6 address from the qemu guest agent isn't required, it will still return an ipv6 address if it could obtain one. Useful for reducing retries in environments without ipv6.|
-| `agent_timeout`               | `int`    | `60`                 | Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection. |
+| `agent_timeout`               | `int`    | `90`                 | Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection. |
 | `current_node`                | `string` |                      | **Computed** The current node of the Qemu guest is on.|
 
 ### VGA Block

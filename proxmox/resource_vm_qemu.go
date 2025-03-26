@@ -96,13 +96,10 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
-			schemaAgentTimeout: {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  60,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
-				},
+			schemaAgentTimeout: { // suppressing the diff causes it to never be set
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     90,
 				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection.",
 				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 					v, ok := i.(int)
@@ -1536,14 +1533,17 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	log.Print("[INFO][initConnInfo] trying to get vm ip address for provisioner")
 	logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("trying to get vm ip address for provisioner")
 
-	// wait until the os has started the guest agent
-	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
-	guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout))
-	log.Printf("[DEBUG][initConnInfo] retrying for at most  %v minutes before giving up", guestAgentTimeout)
-	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
-	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
-	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retries will end at %s", guestAgentWaitEnd)
-	IPs, agentDiags := getPrimaryIP(ctx, config.CloudInit, config.Networks, vmr, client, guestAgentWaitEnd, d.Get(schemaAdditionalWait).(int), d.Get(schemaAgentTimeout).(int), ciAgentEnabled, d.Get(schemaSkipIPv4).(bool), d.Get(schemaSkipIPv6).(bool), hasCiDisk)
+	IPs, agentDiags := getPrimaryIP(
+		ctx, client,
+		config.CloudInit,
+		config.Networks,
+		vmr,
+		time.Duration(d.Get(schemaAgentTimeout).(int))*time.Second,
+		time.Duration(d.Get(schemaAdditionalWait).(int))*time.Second,
+		ciAgentEnabled,
+		d.Get(schemaSkipIPv4).(bool),
+		d.Get(schemaSkipIPv6).(bool),
+		hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1574,7 +1574,14 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	return diags
 }
 
-func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pveSDK.QemuNetworkInterfaces, vmr *pveSDK.VmRef, client *pveSDK.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(
+	ctx context.Context,
+	client *pveSDK.Client,
+	cloudInit *pveSDK.CloudInit,
+	networks pveSDK.QemuNetworkInterfaces,
+	vmr *pveSDK.VmRef,
+	retryDuration, retryInterval time.Duration,
+	ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1608,56 +1615,57 @@ func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pve
 		}
 	}
 
-	// get all information we can from qemu agent until the timer runs out
-	if ciAgentEnabled {
-		var (
-			waitedTime        int
-			primaryMacAddress net.HardwareAddr
-			err               error
-		)
-		for i := 0; i < network.AmountNetworkInterfaces; i++ {
-			if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
-				primaryMacAddress = *v.MAC
-				break
-			}
-		}
-		for time.Now().Before(endTime) {
-			var interfaces []pveSDK.AgentNetworkInterface
-			interfaces, err = vmr.GetAgentInformation(ctx, client, false)
-			if err != nil {
-				if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-					return primaryIPs{}, diag.FromErr(err)
-				}
-				log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
-				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("check ip result error %s", err.Error())
-			} else { // vm is running and reachable
-				if len(interfaces) > 0 { // agent returned some information
-					log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
-					logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
-					conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
-					if conn.hasRequiredIP() {
-						return conn.IPs, diag.Diagnostics{}
-					}
-				}
-				if waitedTime > agentTimeout {
-					break
-				}
-				waitedTime += additionalWait
-			}
-			time.Sleep(time.Duration(additionalWait) * time.Second)
-		}
-		if err != nil {
-			if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Qemu Guest Agent is enabled but not working",
-					Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
-			}
-			return primaryIPs{}, diag.FromErr(err)
-		}
-		return conn.IPs, conn.agentDiagnostics()
+	if !ciAgentEnabled {
+		return conn.IPs, diag.Diagnostics{}
 	}
-	return conn.IPs, diag.Diagnostics{}
+
+	// get all information we can from qemu agent until the timer runs out
+	var (
+		primaryMacAddress net.HardwareAddr
+		err               error
+	)
+	for i := 0; i < network.AmountNetworkInterfaces; i++ {
+		if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+			primaryMacAddress = *v.MAC
+			break
+		}
+	}
+	endTime := time.Now().Add(retryDuration)
+	log.Printf("[DEBUG][initConnInfo] retrying for at most  %v before giving up", retryDuration)
+	log.Printf("[DEBUG][initConnInfo] retries will end at %s", endTime)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retrying for at most  %v before giving up", retryDuration)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retries will end at %s", endTime)
+	for time.Now().Before(endTime) {
+		var interfaces []pveSDK.AgentNetworkInterface
+		interfaces, err = vmr.GetAgentInformation(ctx, client, false)
+		if err != nil {
+			if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+				return primaryIPs{}, diag.FromErr(err)
+			}
+			log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("check ip result error %s", err.Error())
+		} else { // vm is running and reachable
+			if len(interfaces) > 0 { // agent returned some information
+				log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
+				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
+				conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
+				if conn.hasRequiredIP() {
+					return conn.IPs, diag.Diagnostics{}
+				}
+			}
+		}
+		time.Sleep(retryInterval)
+	}
+	if err != nil {
+		if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Qemu Guest Agent is enabled but not working",
+				Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
+		}
+		return primaryIPs{}, diag.FromErr(err)
+	}
+	return conn.IPs, conn.agentDiagnostics()
 }
 
 // Map struct to the terraform schema
