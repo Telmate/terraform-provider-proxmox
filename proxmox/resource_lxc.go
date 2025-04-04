@@ -600,8 +600,8 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 
 	} else { // Create
-		var nextID pveSDK.GuestID
-		if setGuestID != 0 {
+		nextID := pveSDK.GuestID(setGuestID)
+		if setGuestID == 0 {
 			if pconf.MaxParallel > 1 { // TODO actually fix the parallelism! workaround for #1136
 				diags = append(diags, diag.Diagnostic{
 					Summary:  "setting " + schemaPmParallel + " greater than 1 is currently not recommended when creating LXC containers with dynamic id allocation",
