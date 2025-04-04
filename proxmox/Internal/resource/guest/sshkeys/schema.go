@@ -33,6 +33,9 @@ func Schema() *schema.Schema {
 			for i := range rawKeys {
 				err := (&pveAPI.AuthorizedKey{}).Parse([]byte(rawKeys[i]))
 				if err != nil {
+					if strings.ReplaceAll(strings.ReplaceAll(rawKeys[i], "\t", ""), " ", "") == "" { // skip empty lines
+						continue
+					}
 					return diag.Diagnostics{{
 						Severity: diag.Error,
 						Summary:  err.Error()}}
