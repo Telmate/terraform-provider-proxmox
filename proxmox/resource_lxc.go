@@ -11,6 +11,8 @@ import (
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
+	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -313,10 +315,7 @@ func resourceLxc() *schema.Resource {
 				Sensitive: true,
 				ForceNew:  true, // Proxmox doesn't support password changes
 			},
-			"pool": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
+			pool.Root: pool.Schema(),
 			"protection": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -423,16 +422,9 @@ func resourceLxc() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
-			node.RootNode: node.SchemaNode(schema.Schema{
-				Required: true, ForceNew: true}, "lxc"),
-			"vmid": {
-				Type:             schema.TypeInt,
-				Optional:         true,
-				Computed:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: VMIDValidator(),
-				Description:      "The VM identifier in proxmox (100-999999999)",
-			},
+			node.Computed: node.SchemaComputed("qemu"),
+			node.RootNode: node.SchemaNode(schema.Schema{}, "lxc"),
+			vmID.Root:     vmID.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -468,7 +460,6 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		config.Features = featureSetList[0].(map[string]interface{})
 	}
 	config.Force = d.Get("force").(bool)
-	config.Full = d.Get("full").(bool)
 	config.HaState = d.Get("hastate").(string)
 	config.HaGroup = d.Get("hagroup").(string)
 	config.Hookscript = d.Get("hookscript").(string)
@@ -480,7 +471,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
-	config.Pool = util.Pointer(pveSDK.PoolName(d.Get("pool").(string)))
+	config.Pool = util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string)))
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)
@@ -493,8 +484,6 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
 	config.Unprivileged = d.Get("unprivileged").(bool)
-
-	targetNode := pveSDK.NodeName(d.Get(node.RootNode).(string))
 
 	// proxmox api allows multiple network sets,
 	// having a unique 'id' parameter foreach set
@@ -519,27 +508,58 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	// get unique id
-	nextid, err := nextVmId(pconf)
-	vmID := d.Get("vmid").(int)
-	if vmID != 0 {
-		nextid = vmID
-	} else {
+
+	setGuestID := d.Get(vmID.Root).(int)
+
+	targetNode := node.SdkCreate(d)
+	var diags diag.Diagnostics
+	var err error
+	var vmr *pveSDK.VmRef
+	if d.Get("clone").(string) != "" { // Clone
+		var sourceVmr *pveSDK.VmRef
+		sourceVmr, err = getSourceVmr(ctx, client, d.Get("clone").(string), 0, targetNode)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
-	}
 
-	vmr := pveSDK.NewVmRef(nextid)
-	vmr.SetNode(targetNode.String())
+		var guestID *pveSDK.GuestID
+		if setGuestID != 0 {
+			guestID = util.Pointer(pveSDK.GuestID(setGuestID))
+		}
 
-	if d.Get("clone").(string) != "" {
+		var storage *string
+		if config.CloneStorage != "" {
+			storage = &config.CloneStorage
+		}
+
+		var poolName *pveSDK.PoolName
+		tmpPool := d.Get(pool.Root).(string)
+		if tmpPool != "" {
+			poolName = util.Pointer(pveSDK.PoolName(tmpPool))
+		}
+
+		var cloneSettings pveSDK.CloneLxcTarget
+		if !d.Get("full").(bool) {
+			cloneSettings = pveSDK.CloneLxcTarget{
+				Linked: &pveSDK.CloneLinked{
+					Node: targetNode,
+					ID:   guestID,
+					Name: &config.Hostname,
+					Pool: poolName}}
+		} else {
+			cloneSettings = pveSDK.CloneLxcTarget{
+				Full: &pveSDK.CloneLxcFull{
+					Node:    targetNode,
+					ID:      guestID,
+					Name:    &config.Hostname,
+					Pool:    poolName,
+					Storage: storage}}
+		}
 
 		log.Print("[DEBUG][LxcCreate] cloning LXC")
-
-		err = config.CloneLxc(ctx, vmr, client)
-
+		vmr, err = sourceVmr.CloneLxc(ctx, cloneSettings, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 
 		// Waiting for the clone to become ready and
@@ -555,7 +575,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 				// to prevent an infinite loop we check for any other error
 				// this error is actually fine because the clone is not ready yet
 			} else if err.Error() != "vm locked, could not obtain config" {
-				return diag.FromErr(err)
+				return append(diags, diag.FromErr(err)...)
 			}
 			time.Sleep(5 * time.Second)
 			log.Print("[DEBUG][LxcCreate] Clone still not ready, checking again")
@@ -568,7 +588,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 		config_post_resize, err := pveSDK.NewConfigLxcFromApi(ctx, vmr, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 		config.RootFs["size"] = config_post_resize.RootFs["size"]
 		config.RootFs["volume"] = config_post_resize.RootFs["volume"]
@@ -576,13 +596,30 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		// Update all remaining stuff
 		err = config.UpdateConfig(ctx, vmr, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 
-	} else {
+	} else { // Create
+		var nextID pveSDK.GuestID
+		if setGuestID != 0 {
+			if pconf.MaxParallel > 1 { // TODO actually fix the parallelism! workaround for #1136
+				diags = append(diags, diag.Diagnostic{
+					Summary:  "setting " + schemaPmParallel + " greater than 1 is currently not recommended when creating LXC containers with dynamic id allocation",
+					Severity: diag.Warning})
+			}
+
+			nextID, err = nextVmId(pconf)
+			if err != nil {
+				return append(diags, diag.FromErr(err)...)
+			}
+		}
+
+		vmr = pveSDK.NewVmRef(nextID)
+		vmr.SetNode(targetNode.String())
+
 		err = config.CreateLxc(ctx, vmr, client)
 		if err != nil {
-			return diag.FromErr(err)
+			return append(diags, diag.FromErr(err)...)
 		}
 	}
 
@@ -590,8 +627,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
 
 	lock.unlock()
-	return resourceLxcRead(ctx, d, meta)
-
+	return append(diags, resourceLxcRead(ctx, d, meta)...)
 }
 
 func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -640,7 +676,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.OnBoot = d.Get("onboot").(bool)
 	config.OsType = d.Get("ostype").(string)
 	config.Password = d.Get("password").(string)
-	config.Pool = util.Pointer(pveSDK.PoolName(d.Get("pool").(string)))
+	config.Pool = util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string)))
 	config.Protection = d.Get("protection").(bool)
 	config.Restore = d.Get("restore").(bool)
 	config.SearchDomain = d.Get("searchdomain").(string)
@@ -709,9 +745,9 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.FromErr(err)
 	}
 
-	if d.HasChange("pool") {
+	if d.HasChange(pool.Root) {
 		oldPool, newPool := func() (string, string) {
-			a, b := d.GetChange("pool")
+			a, b := d.GetChange(pool.Root)
 			return a.(string), b.(string)
 		}()
 
@@ -757,12 +793,12 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 	client := pconf.Client
-	_, _, vmID, err := parseResourceId(d.Id())
+	_, _, guestID, err := parseResourceId(d.Id())
 	if err != nil {
 		d.SetId("")
 		return err
 	}
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(guestID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return err
@@ -772,7 +808,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		return err
 	}
 	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
-	d.Set(node.RootNode, vmr.Node())
+	node.Terraform(d, vmr.Node())
 
 	// Read Features
 	defaultFeatures := d.Get("features").(*schema.Set)
@@ -833,8 +869,8 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 			poolContent, _ := client.GetPoolInfo(ctx, poolInfo.(map[string]interface{})["poolid"].(string))
 			for _, member := range poolContent["members"].([]interface{}) {
 				if member.(map[string]interface{})["type"] != "storage" {
-					if vmID == int(member.(map[string]interface{})["vmid"].(float64)) {
-						d.Set("pool", poolInfo.(map[string]interface{})["poolid"].(string))
+					if guestID == pveSDK.GuestID(member.(map[string]interface{})[vmID.Root].(float64)) {
+						d.Set(pool.Root, poolInfo.(map[string]interface{})["poolid"].(string))
 					}
 				}
 			}
@@ -849,6 +885,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	d.Set("hagroup", vmr.HaGroup())
 
 	// Read Misc
+	vmID.Terraform(vmr.VmId(), d)
 	d.Set("arch", config.Arch)
 	d.Set("bwlimit", config.BWLimit)
 	d.Set("cmode", config.CMode)

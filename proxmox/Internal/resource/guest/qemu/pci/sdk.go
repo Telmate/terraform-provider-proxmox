@@ -73,6 +73,7 @@ func sdkPCI(schema map[string]interface{}) (pveAPI.QemuPciID, pveAPI.QemuPci, er
 			Mapping: &pveAPI.QemuPciMapping{
 				DeviceID:    util.Pointer(pveAPI.PciDeviceID(schema[schemaDeviceID].(string))),
 				ID:          util.Pointer(pveAPI.ResourceMappingPciID(mapping.(string))),
+				MDev:        util.Pointer(pveAPI.PciMediatedDevice(schema[schemaMDev].(string))),
 				PCIe:        util.Pointer(schema[schemaPCIe].(bool)),
 				PrimaryGPU:  util.Pointer(schema[schemaPrimaryGPU].(bool)),
 				ROMbar:      util.Pointer(schema[schemaROMbar].(bool)),
@@ -85,6 +86,7 @@ func sdkPCI(schema map[string]interface{}) (pveAPI.QemuPciID, pveAPI.QemuPci, er
 			Raw: &pveAPI.QemuPciRaw{
 				DeviceID:    util.Pointer(pveAPI.PciDeviceID(schema[schemaDeviceID].(string))),
 				ID:          util.Pointer(raw),
+				MDev:        util.Pointer(pveAPI.PciMediatedDevice(schema[schemaMDev].(string))),
 				PCIe:        util.Pointer(schema[schemaPCIe].(bool)),
 				PrimaryGPU:  util.Pointer(schema[schemaPrimaryGPU].(bool)),
 				ROMbar:      util.Pointer(schema[schemaROMbar].(bool)),
@@ -106,6 +108,7 @@ func sdkPCIs(schema []interface{}) pveAPI.QemuPci {
 			Mapping: &pveAPI.QemuPciMapping{
 				DeviceID:    util.Pointer(pveAPI.PciDeviceID(subSchema[schemaDeviceID].(string))),
 				ID:          util.Pointer(pveAPI.ResourceMappingPciID(subSchema[schemaMappingID].(string))),
+				MDev:        util.Pointer(pveAPI.PciMediatedDevice(subSchema[schemaMDev].(string))),
 				PCIe:        util.Pointer(subSchema[schemaPCIe].(bool)),
 				PrimaryGPU:  util.Pointer(subSchema[schemaPrimaryGPU].(bool)),
 				ROMbar:      util.Pointer(subSchema[schemaROMbar].(bool)),
@@ -119,6 +122,7 @@ func sdkPCIs(schema []interface{}) pveAPI.QemuPci {
 			Raw: &pveAPI.QemuPciRaw{
 				DeviceID:    util.Pointer(pveAPI.PciDeviceID(subSchema[schemaDeviceID].(string))),
 				ID:          util.Pointer(pveAPI.PciID(subSchema[schemaRawID].(string))),
+				MDev:        util.Pointer(pveAPI.PciMediatedDevice(subSchema[schemaMDev].(string))),
 				PCIe:        util.Pointer(subSchema[schemaPCIe].(bool)),
 				PrimaryGPU:  util.Pointer(subSchema[schemaPrimaryGPU].(bool)),
 				ROMbar:      util.Pointer(subSchema[schemaROMbar].(bool)),

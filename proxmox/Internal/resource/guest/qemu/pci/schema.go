@@ -33,6 +33,7 @@ const (
 	schemaSubDeviceID string = "sub_device_id"
 	schemaSubVendorID string = "sub_vendor_id"
 	schemaVendorID    string = "vendor_id"
+	schemaMDev        string = "mdev"
 
 	legacySchemaHost string = "host"
 )
@@ -91,7 +92,8 @@ func SchemaPCI() *schema.Schema {
 				schemaSubDeviceID: subSchemaSubDeviceID(),
 				schemaSubVendorID: subSchemaSubVendorID(),
 				schemaVendorID:    subSchemaVendorID(),
-				schemaRawID:       subSchemaRawID(schema.Schema{Optional: true})}}}
+				schemaRawID:       subSchemaRawID(schema.Schema{Optional: true}),
+				schemaMDev:        subSchemaMDev()}}}
 }
 
 func SchemaPCIs() *schema.Schema {
@@ -132,7 +134,7 @@ func subSchemaPCIs(slot string) *schema.Schema {
 							schemaSubDeviceID: subSchemaSubDeviceID(),
 							schemaSubVendorID: subSchemaSubVendorID(),
 							schemaVendorID:    subSchemaVendorID(),
-						}}},
+							schemaMDev:        subSchemaMDev()}}},
 				schemaRaw: {
 					Type:          schema.TypeList,
 					Optional:      true,
@@ -148,7 +150,7 @@ func subSchemaPCIs(slot string) *schema.Schema {
 							schemaSubDeviceID: subSchemaSubDeviceID(),
 							schemaSubVendorID: subSchemaSubVendorID(),
 							schemaVendorID:    subSchemaVendorID(),
-						}}}}}}
+							schemaMDev:        subSchemaMDev()}}}}}}
 }
 
 func subSchemaMappingID(s schema.Schema) *schema.Schema {
@@ -318,6 +320,30 @@ func subSchemaSubDeviceID() *schema.Schema {
 				return diag.Diagnostics{diag.Diagnostic{
 					Severity:      diag.Error,
 					Summary:       "Invalid " + schemaSubDeviceID,
+					AttributePath: path}}
+			}
+			return nil
+		}}
+}
+
+func subSchemaMDev() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Default:  "",
+		Optional: true,
+		ValidateDiagFunc: func(i interface{}, path cty.Path) diag.Diagnostics {
+			v, ok := i.(string)
+			if !ok {
+				return diag.Diagnostics{diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       "Invalid " + schemaMDev,
+					Detail:        schemaMDev + " must be a string",
+					AttributePath: path}}
+			}
+			if err := pveAPI.PciMediatedDevice(v).Validate(); err != nil {
+				return diag.Diagnostics{diag.Diagnostic{
+					Severity:      diag.Error,
+					Summary:       "Invalid " + schemaMDev,
 					AttributePath: path}}
 			}
 			return nil

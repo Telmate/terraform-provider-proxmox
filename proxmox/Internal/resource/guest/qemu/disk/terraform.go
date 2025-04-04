@@ -14,7 +14,7 @@ func Terraform_Unsafe(d *schema.ResourceData, config *pveAPI.QemuStorages, ciDis
 	}
 }
 
-func terraformLinkedCloneId(id *uint) int {
+func terraformLinkedCloneId(id *pveAPI.GuestID) int {
 	if id != nil {
 		return int(*id)
 	}

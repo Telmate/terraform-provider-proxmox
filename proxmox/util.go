@@ -357,12 +357,14 @@ func resourceDataToFlatValues(d *schema.ResourceData, resource *schema.Resource)
 		case schema.TypeFloat:
 			flatValues[key] = d.Get(key).(float64)
 		case schema.TypeSet:
-			values, _ := schemaSetToFlatValues(d.Get(key).(*schema.Set), value.Elem.(*schema.Resource))
-			flatValues[key] = values
+			if _, ok := value.Elem.(*schema.Schema); ok {
+				flatValues[key] = value.Elem.(*schema.Schema)
+			} else {
+				values, _ := schemaSetToFlatValues(d.Get(key).(*schema.Set), value.Elem.(*schema.Resource))
+				flatValues[key] = values
+			}
 		case schema.TypeList:
-			_, ok := value.Elem.(*schema.Schema)
-
-			if ok {
+			if _, ok := value.Elem.(*schema.Schema); ok {
 				flatValues[key] = value.Elem.(*schema.Schema)
 			} else {
 				values, _ := schemaListToFlatValues(d.Get(key).([]interface{}), value.Elem.(*schema.Resource))

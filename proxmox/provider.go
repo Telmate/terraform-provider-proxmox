@@ -41,7 +41,7 @@ type providerConfiguration struct {
 	Client                             *pveSDK.Client
 	MaxParallel                        int
 	CurrentParallel                    int
-	MaxVMID                            int
+	MaxGuestID                         pveSDK.GuestID
 	Mutex                              *sync.Mutex
 	Cond                               *sync.Cond
 	LogFile                            string
@@ -128,12 +128,6 @@ func Provider() *schema.Provider {
 					}
 					if v < 1 {
 						return diag.Errorf(schemaPmParallel + " must be greater than 0")
-					}
-					if v > 1 { // TODO actually fix the parallelism! workaround for #1136
-						return diag.Diagnostics{
-							diag.Diagnostic{
-								Severity: diag.Warning,
-								Summary:  "setting " + schemaPmParallel + " greater than 1 is currently not recommended when using dynamic guest id allocation"}}
 					}
 					return nil
 				},
@@ -298,7 +292,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 			Client:                             client,
 			MaxParallel:                        d.Get(schemaPmParallel).(int),
 			CurrentParallel:                    0,
-			MaxVMID:                            -1,
+			MaxGuestID:                         0,
 			Mutex:                              &mut,
 			Cond:                               sync.NewCond(&mut),
 			LogFile:                            d.Get(schemaPmLogFile).(string),
@@ -365,14 +359,14 @@ func getClient(pm_api_url string,
 	return client, nil
 }
 
-func nextVmId(pconf *providerConfiguration) (nextId int, err error) {
+func nextVmId(pconf *providerConfiguration) (nextId pveSDK.GuestID, err error) {
 	pconf.Mutex.Lock()
 	defer pconf.Mutex.Unlock()
-	nextId, err = pconf.Client.GetNextID(context.Background(), 0)
+	nextId, err = pconf.Client.GetNextID(context.Background(), nil)
 	if err != nil {
 		return 0, err
 	}
-	pconf.MaxVMID = nextId
+	pconf.MaxGuestID = nextId
 
 	return nextId, nil
 }
@@ -417,24 +411,26 @@ func pmParallelBegin(pconf *providerConfiguration) *pmApiLockHolder {
 	return lock
 }
 
-func resourceId(targetNode pveSDK.NodeName, resType string, vmId int) string {
-	return fmt.Sprintf("%s/%s/%d", targetNode.String(), resType, vmId)
+func resourceId(targetNode pveSDK.NodeName, resType string, guestID pveSDK.GuestID) string {
+	return fmt.Sprintf("%s/%s/%d", targetNode.String(), resType, guestID)
 }
 
-func parseResourceId(resId string) (targetNode string, resType string, vmId int, err error) {
+func parseResourceId(resId string) (targetNode string, resType string, guestID pveSDK.GuestID, err error) {
 	// create a logger for this function
 	logger, _ := CreateSubLogger("parseResourceId")
 
 	if !rxRsId.MatchString(resId) {
-		return "", "", -1, fmt.Errorf("invalid resource format: %s. Must be <node>/<type>/<vmid>", resId)
+		return "", "", 0, fmt.Errorf("invalid resource format: %s. Must be <node>/<type>/<vmid>", resId)
 	}
 	idMatch := rxRsId.FindStringSubmatch(resId)
 	targetNode = idMatch[1]
 	resType = idMatch[2]
-	vmId, err = strconv.Atoi(idMatch[3])
+	var tmpID int
+	tmpID, err = strconv.Atoi(idMatch[3])
 	if err != nil {
 		logger.Info().Str("error", err.Error()).Msgf("failed to get vmId")
 	}
+	guestID = pveSDK.GuestID(tmpID)
 	return
 }
 

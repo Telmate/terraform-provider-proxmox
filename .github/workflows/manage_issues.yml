@@ -20,5 +20,5 @@ jobs:
           days-before-pr-stale: -1
           days-before-pr-close: -1
           exempt-all-assignees: true
-          exempt-issue-labels: 'bug,community feedback,documentation,enhancement,help wanted,need investigation,question,workflow'
-          exempt-pr-labels: 'bug,community feedback,documentation,enhancement,help wanted,need investigation,question,workflow'
+          exempt-issue-labels: 'community feedback,dependencies,good first issue,help wanted,issue/confirmed,issue/critical,issue/investigate,issue/regression,issue/workaround,modifies/dependencies,modifies/docs,modifies/go,proposal/accepted,proposal/pending,proposal/rejected,release,resource/cloud-init,resource/lxc,resource/pool,resource/qemu,type/bug,type/documentation,type/enhancement,type/feature,type/miscellaneous,type/question,type/refactoring,type/summary,type/testing,type/upstream,type/workflow'
+          exempt-pr-labels: 'community feedback,dependencies,good first issue,help wanted,issue/confirmed,issue/critical,issue/investigate,issue/regression,issue/workaround,modifies/dependencies,modifies/docs,modifies/go,proposal/accepted,proposal/pending,proposal/rejected,release,resource/cloud-init,resource/lxc,resource/pool,resource/qemu,type/bug,type/documentation,type/enhancement,type/feature,type/miscellaneous,type/question,type/refactoring,type/summary,type/testing,type/upstream,type/workflow'

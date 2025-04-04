@@ -65,11 +65,6 @@ func Schema() *schema.Schema {
 					Type:     schema.TypeString,
 					Optional: true,
 					Computed: true,
-					DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-						oldMAC, _ := net.ParseMAC(old)
-						newMAC, _ := net.ParseMAC(new)
-						return oldMAC.String() == newMAC.String()
-					},
 					ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
 						v := i.(string)
 						if _, err := net.ParseMAC(v); err != nil {

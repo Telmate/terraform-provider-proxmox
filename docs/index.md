@@ -25,10 +25,13 @@ After the role is in use, if there is a need to modify the privileges, simply is
 removing privileges as needed.
 
 Proxmox > 8:
+
 ```bash
 pveum role modify TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.Monitor VM.PowerMgmt SDN.Use"
 ```
+
 Proxmox < 8:
+
 ```bash
 pveum role modify TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.Monitor VM.PowerMgmt"
 ```
@@ -108,10 +111,10 @@ The following arguments are supported in the provider block:
 | `pm_user`             | `PM_USER`            | `string` |                                | The user, remember to include the authentication realm such as myuser@pam or myuser@pve. |
 | `pm_password`         | `PM_PASS`            | `string` |                                | **Sensitive** The password. |
 | `pm_api_token_id`     | `PM_API_TOKEN_ID`    | `string` |                                | This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user. |
-| `pm_api_token_secret` | `PM_API_TOKEN`       | `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
+| `pm_api_token_secret` | `PM_API_TOKEN_SECRET`| `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
 | `pm_otp`              | `PM_OTP`             | `string` |                                | The 2FA OTP code. |
 | `pm_tls_insecure`     |                      | `bool`   | `false`                        | Disable TLS verification while connecting to the proxmox server. |
-| `pm_parallel`         |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when using dynamic guest id allocation. |
+| `pm_parallel`         |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when creating LXC containers with dynamic id allocation. For Qemu the threading issue has been resolved.|
 | `pm_log_enable`       |                      | `bool`   | `false`                        | Enable debug logging, see the section below for logging details. |
 | `pm_log_levels`       |                      | `map`    |                                | A map of log sources and levels. |
 | `pm_log_file`         |                      | `string` | `terraform-plugin-proxmox.log` | The log file the provider will write logs to. |

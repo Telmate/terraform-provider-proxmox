@@ -51,7 +51,9 @@ func SchemaUSB() *schema.Schema {
 							return diag.Errorf(validator.ErrorUint, k)
 						}
 						if err := pveAPI.QemuUsbID(v).Validate(); err != nil {
-							return diag.Errorf(err.Error())
+							return diag.Diagnostics{{
+								Severity: diag.Error,
+								Summary:  err.Error()}}
 						}
 						return nil
 					},
@@ -145,7 +147,9 @@ func subSchemaDeviceID(s schema.Schema) *schema.Schema {
 			return diag.Errorf(validator.ErrorString, k)
 		}
 		if err := pveAPI.UsbDeviceID(v).Validate(); err != nil {
-			return diag.Errorf(err.Error())
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Summary:  err.Error()}}
 		}
 		return nil
 	}
@@ -160,7 +164,9 @@ func subSchemaMappingID(s schema.Schema) *schema.Schema {
 			return diag.Errorf(validator.ErrorString, k)
 		}
 		if err := pveAPI.ResourceMappingUsbID(v).Validate(); err != nil {
-			return diag.Errorf(err.Error())
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Summary:  err.Error()}}
 		}
 		return nil
 	}
@@ -175,7 +181,9 @@ func subSchemaPortID(s schema.Schema) *schema.Schema {
 			return diag.Errorf(validator.ErrorString, k)
 		}
 		if err := pveAPI.UsbPortID(v).Validate(); err != nil {
-			return diag.Errorf(err.Error())
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Summary:  err.Error()}}
 		}
 		return nil
 	}

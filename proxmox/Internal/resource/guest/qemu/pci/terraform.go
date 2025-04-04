@@ -76,7 +76,7 @@ func terraformLegacySubroutinePCI(config pveAPI.QemuPci) map[string]interface{} 
 
 func terraformSubroutinePCI(id pveAPI.QemuPciID, config pveAPI.QemuPci) map[string]interface{} {
 	var PrimaryGPU, ROMbar, PCIe bool
-	var mappedID, rawID, deviceID, subDeviceID, subVendorID, vendorID string
+	var mappedID, rawID, deviceID, subDeviceID, subVendorID, vendorID, mDev string
 	if config.Mapping != nil {
 		if config.Mapping.ID != nil {
 			mappedID = config.Mapping.ID.String()
@@ -89,6 +89,9 @@ func terraformSubroutinePCI(id pveAPI.QemuPciID, config pveAPI.QemuPci) map[stri
 		}
 		if config.Mapping.PrimaryGPU != nil {
 			PrimaryGPU = *config.Mapping.PrimaryGPU
+		}
+		if config.Mapping.MDev != nil {
+			mDev = config.Mapping.MDev.String()
 		}
 		if config.Mapping.ROMbar != nil {
 			ROMbar = *config.Mapping.ROMbar
@@ -127,6 +130,9 @@ func terraformSubroutinePCI(id pveAPI.QemuPciID, config pveAPI.QemuPci) map[stri
 		if config.Raw.VendorID != nil {
 			vendorID = config.Raw.VendorID.String()
 		}
+		if config.Raw.MDev != nil {
+			mDev = config.Raw.MDev.String()
+		}
 	}
 	return map[string]interface{}{
 		schemaID:          int(id),
@@ -138,7 +144,8 @@ func terraformSubroutinePCI(id pveAPI.QemuPciID, config pveAPI.QemuPci) map[stri
 		schemaDeviceID:    deviceID,
 		schemaSubDeviceID: subDeviceID,
 		schemaVendorID:    vendorID,
-		schemaSubVendorID: subVendorID}
+		schemaSubVendorID: subVendorID,
+		schemaMDev:        mDev}
 }
 
 func terraformPCIs(config pveAPI.QemuPciDevices) []interface{} {
@@ -163,6 +170,9 @@ func terraformSubroutinePCIs(config pveAPI.QemuPci) []interface{} {
 		}
 		if config.Mapping.PrimaryGPU != nil {
 			params[schemaPrimaryGPU] = *config.Mapping.PrimaryGPU
+		}
+		if config.Mapping.MDev != nil {
+			params[schemaMDev] = config.Mapping.VendorID.String()
 		}
 		if config.Mapping.ROMbar != nil {
 			params[schemaROMbar] = *config.Mapping.ROMbar
@@ -192,6 +202,9 @@ func terraformSubroutinePCIs(config pveAPI.QemuPci) []interface{} {
 		}
 		if config.Raw.PrimaryGPU != nil {
 			params[schemaPrimaryGPU] = *config.Raw.PrimaryGPU
+		}
+		if config.Raw.MDev != nil {
+			params[schemaMDev] = config.Raw.MDev.String()
 		}
 		if config.Raw.ROMbar != nil {
 			params[schemaROMbar] = *config.Raw.ROMbar

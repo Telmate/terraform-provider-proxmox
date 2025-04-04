@@ -1,6 +1,8 @@
 package network
 
 import (
+	"net"
+
 	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -8,6 +10,11 @@ import (
 // Converts the SDK configuration to the Terraform configuration
 func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
 	paramArray := make([]interface{}, len(config))
+	tfConfig := d.Get(Root).([]interface{})
+	tfMap := make(map[int]interface{}, len(tfConfig))
+	for i := range tfConfig {
+		tfMap[tfConfig[i].(map[string]interface{})[schemaID].(int)] = tfConfig[i]
+	}
 	var index int
 	for i := 0; i < AmountNetworkInterfaces; i++ {
 		v, ok := config[pveAPI.QemuNetworkInterfaceID(i)]
@@ -26,7 +33,17 @@ func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
 			params[schemaFirewall] = *v.Firewall
 		}
 		if v.MAC != nil {
-			params[schemaMAC] = v.MAC.String()
+			if vv, ok := tfMap[i]; ok {
+				tfMAC := vv.(map[string]interface{})[schemaMAC].(string)
+				mac, _ := net.ParseMAC(tfMAC)
+				if mac.String() == v.MAC.String() {
+					params[schemaMAC] = tfMAC
+				} else {
+					params[schemaMAC] = v.MAC.String()
+				}
+			} else {
+				params[schemaMAC] = v.MAC.String()
+			}
 		}
 		if v.MTU != nil {
 			if v.MTU.Inherit {

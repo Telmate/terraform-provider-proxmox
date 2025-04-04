@@ -92,7 +92,8 @@ The following arguments are supported in the top level resource block.
 | Argument                      | Type     | Default Value        | Description |
 | ----------------------------- | -------- | -------------------- | ----------- |
 | `name`                        | `str`    |                      | **Required** The name of the VM within Proxmox. |
-| `target_node`                 | `str`    |                      | **Required** The name of the Proxmox Node on which to place the VM. |
+| `target_node`                 | `str`    |                      | The name of the PVE Node on which to place the VM.|
+| `target_nodes`                | `str`    |                      | A list of PVE node names on which to place the VM.|
 | `vmid`                        | `int`    | `0`                  | The ID of the VM in Proxmox. The default value of `0` indicates it should use the next available ID in the sequence. |
 | `desc`                        | `str`    |                      | The description of the VM. Shows as the 'Notes' field in the Proxmox GUI. |
 | `define_connection_info`      | `bool`   | `true`               | Whether to let terraform define the (SSH) connection parameters for preprovisioners, see config block below. |
@@ -144,7 +145,8 @@ The following arguments are supported in the top level resource block.
 | `automatic_reboot`            | `bool`   | `true`               | Automatically reboot the VM when parameter changes require this. If disabled the provider will emit a warning when the VM needs to be rebooted. |
 | `skip_ipv4`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv4 address from the qemu guest agent isn't required, it will still return an ipv4 address if it could obtain one. Useful for reducing retries in environments without ipv4.|
 | `skip_ipv6`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv6 address from the qemu guest agent isn't required, it will still return an ipv6 address if it could obtain one. Useful for reducing retries in environments without ipv6.|
-| `agent_timeout`               | `int`    | `60`                 | Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection. |
+| `agent_timeout`               | `int`    | `90`                 | Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection. |
+| `current_node`                | `string` |                      | **Computed** The current node of the Qemu guest is on.|
 
 ### VGA Block
 
@@ -214,10 +216,21 @@ Due to the complexity of the `disk` block, there is a settings matrix that can b
 |`replicate`           |`bool`  |`false`|Whether the drive should considered for replication jobs.|
 |`serial`              |`string`|       |The serial number of the disk.|
 |`size`                |`string`|       |The size of the created disk. Accepts `K` for kibibytes, `M` for mebibytes, `G` for gibibytes, `T` for tibibytes. When only a number is provided gibibytes is assumed. **Required** when `type`=`disk` and `passthrough`=`false`, **Computed** when `type`=`disk` and `passthrough`=`true`. |
-|`slot`                |`string`|       |**Required** The slot id of the disk.|
+|`slot`                |`string`|       |**Required** The slot id of the disk - must be one of 'ide0', 'ide1', 'ide2', 'sata0', 'sata1', 'sata2', 'sata3', 'sata4', 'sata5', 'scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'scsi7', 'scsi8', 'scsi9', 'scsi10', 'scsi11', 'scsi12', 'scsi13', 'scsi14', 'scsi15', 'scsi16', 'scsi17', 'scsi18', 'scsi19', 'scsi20', 'scsi21', 'scsi22', 'scsi23', 'scsi24', 'scsi25', 'scsi26', 'scsi27', 'scsi28', 'scsi29', 'scsi30', 'virtio0', 'virtio1', 'virtio2', 'virtio3', 'virtio4', 'virtio5', 'virtio6', 'virtio7', 'virtio8', 'virtio9', 'virtio10', 'virtio11', 'virtio12', 'virtio13', 'virtio14', 'virtio15'|
 |`storage`             |`string`|       |Required when `type`=`disk` and `passthrough`=`false`. The name of the storage pool on which to store the disk.|
 |`type`                |`string`|`disk` |The type of disk to create. Options: `cdrom`, `cloudinit` ,`disk`.|
 |`wwn`                 |`string`|       |The WWN of the disk.|
+
+Example `Disk block` using an existing vm as a template.
+
+```hcl
+disk {
+  type        = "disk"
+  disk_file   = "local-lvm:vm-<<<vmid>>>-disk-<<<disk number>>>"
+  passthrough = true
+  slot        = "scsi0"
+}
+```
 
 #### Disk compatibility matrix
 
@@ -562,6 +575,7 @@ Don't need it in a module? Use the [PCIs Block](#pcis-block) instead.
 | `vendor_id`     | `str`  |               | The vendor id of the PCI device. |
 | `sub_device_id` | `str`  |               | The sub device id of the PCI device. |
 | `sub_vendor_id` | `str`  |               | The sub vendor id of the PCI device. |
+| `mdev`          | `str`  |               | The mediated device. |
 
 \* Either `mapping_id` or `raw_id` is required.
 
@@ -583,6 +597,7 @@ These types share the following arguments, with minor differences:
 | `vendor_id`     | `str`  |               | `mapping`, `raw` | The vendor id of the PCI device. |
 | `sub_device_id` | `str`  |               | `mapping`, `raw` | The sub device id of the PCI device. |
 | `sub_vendor_id` | `str`  |               | `mapping`, `raw` | The sub vendor id of the PCI device. |
+| `mdev`          | `str`  |               | `mapping`, `raw` | The mediated device. |
 
 The range of pci devices is from `pci0` to `pci15`.
 

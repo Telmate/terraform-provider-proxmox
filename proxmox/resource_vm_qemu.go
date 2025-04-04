@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"net/url"
 	"path"
@@ -26,15 +25,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/dns/nameservers"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/pci"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/tpm"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
+	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
@@ -94,13 +96,10 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
-			schemaAgentTimeout: {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Default:  60,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
-				},
+			schemaAgentTimeout: { // suppressing the diff causes it to never be set
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     90,
 				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection.",
 				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 					v, ok := i.(int)
@@ -113,14 +112,7 @@ func resourceVmQemu() *schema.Resource {
 					return diag.Errorf(schemaAgentTimeout + " must be greater than 0")
 				},
 			},
-			"vmid": {
-				Type:             schema.TypeInt,
-				Optional:         true,
-				Computed:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: VMIDValidator(),
-				Description:      "The VM identifier in proxmox (100-999999999)",
-			},
+			vmID.Root: vmID.Schema(),
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -147,9 +139,9 @@ func resourceVmQemu() *schema.Resource {
 				Default:     defaultDescription,
 				Description: "The VM description",
 			},
-			node.RootNode: node.SchemaNode(schema.Schema{
-				Optional: true}, "qemu"),
-			node.RootNodes: node.SchemaNodes(),
+			node.Computed:  node.SchemaComputed("qemu"),
+			node.RootNode:  node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "qemu"),
+			node.RootNodes: node.SchemaNodes("qemu"),
 			"bios": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -389,6 +381,7 @@ func resourceVmQemu() *schema.Resource {
 			pci.RootLegacyPCI: pci.SchemaLegacyPCI(),
 			pci.RootPCI:       pci.SchemaPCI(),
 			pci.RootPCIs:      pci.SchemaPCIs(),
+			tpm.Root:          tpm.Schema(),
 			"efidisk": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -397,6 +390,12 @@ func resourceVmQemu() *schema.Resource {
 						"storage": {
 							Type:     schema.TypeString,
 							Required: true,
+							ForceNew: true,
+						},
+						"pre_enrolled_keys": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
 							ForceNew: true,
 						},
 						"efitype": {
@@ -511,13 +510,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"sshkeys": {
-				Type:     schema.TypeString,
-				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return sshkeys.Trim(old) == sshkeys.Trim(new)
-				},
-			},
+			sshkeys.Root: sshkeys.Schema(),
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -582,10 +575,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"pool": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
+			pool.Root: pool.Schema(),
 			"ssh_host": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -649,7 +639,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id int, targetNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id pveSDK.GuestID, preferredNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -658,7 +648,7 @@ func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id in
 		// Prefer source VM on the same node
 		sourceVmr := sourceVmrs[0]
 		for _, candVmr := range sourceVmrs {
-			if candVmr.Node() == targetNode {
+			if candVmr.Node() == preferredNode {
 				sourceVmr = candVmr
 			}
 		}
@@ -677,25 +667,25 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	// DEBUG print out the create request
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Info().Str("vmid", d.Id()).Msgf("VM creation")
-	logger.Debug().Str("vmid", d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
+	logger.Info().Str(vmID.Root, d.Id()).Msgf("VM creation")
+	logger.Debug().Str(vmID.Root, d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
 
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
 	client := pconf.Client
-	vmName := d.Get("name").(string)
+	guestName := d.Get("name").(string)
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	config := pveSDK.ConfigQemu{
-		Name:        vmName,
+		Name:        guestName,
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
-		Pool:        util.Pointer(pveSDK.PoolName(d.Get("pool").(string))),
+		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
 		Startup:     d.Get("startup").(string),
@@ -717,6 +707,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:   mapToSDK_CloudInit(d),
+		TPM:         tpm.SDK(d),
 	}
 
 	var diags, tmpDiags diag.Diagnostics
@@ -748,73 +739,62 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.EFIDisk = qemuEfiDisks[0]
 	}
 
-	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", vmName)
-	dupVmr, _ := client.GetVmRefByName(ctx, vmName)
+	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", guestName)
+	duplicateVmr, _ := client.GetVmRefByName(ctx, guestName)
 
 	forceCreate := d.Get("force_create").(bool)
 
-	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
-	var targetNodes = make([]string, len(targetNodesRaw))
-	for i, raw := range targetNodesRaw {
-		targetNodes[i] = raw.(string)
+	if duplicateVmr != nil && forceCreate {
+		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", guestName, duplicateVmr.VmId()))
 	}
 
-	var targetNode pveSDK.NodeName
-
-	if len(targetNodes) == 0 {
-		targetNode = pveSDK.NodeName(d.Get(node.RootNode).(string))
-	} else {
-		targetNode = pveSDK.NodeName(targetNodes[rand.Intn(len(targetNodes))])
-	}
-
-	if targetNode == "" {
-		return diag.FromErr(fmt.Errorf("VM name (%s) has no target node! Please use "+node.RootNode+" or "+node.RootNodes+" to set a specific node! %v", vmName, targetNodes))
-	}
-	if dupVmr != nil && forceCreate {
-		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", vmName, dupVmr.VmId()))
-	} else if dupVmr != nil && dupVmr.Node() != targetNode {
-		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d on different %s=%s", vmName, dupVmr.VmId(), node.RootNodes, dupVmr.Node()))
-	}
-
-	vmr := dupVmr
+	vmr := duplicateVmr
 
 	var rebootRequired bool
 	var err error
 
-	if vmr == nil {
-		// get unique id
-		nextid, err := nextVmId(pconf)
-		vmID := d.Get("vmid").(int)
-		if vmID != 0 { // 0 is the "no value" for int in golang
-			nextid = vmID
-		} else {
-			if err != nil {
-				return append(diags, diag.FromErr(err)...)
-			}
+	if vmr == nil { // Create new VM
+		targetNode := node.SdkCreate(d)
+		config.Node = &targetNode
+
+		var guestID *pveSDK.GuestID
+		if newID := pveSDK.GuestID(d.Get(vmID.Root).(int)); newID != 0 {
+			guestID = &newID
 		}
 
-		vmr = pveSDK.NewVmRef(nextid)
-		vmr.SetNode(targetNode.String())
-		config.Node = targetNode
-
-		vmr.SetPool(d.Get("pool").(string))
-
 		// check if clone, or PXE boot
-		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 {
-			fullClone := 1
-			if !d.Get("full_clone").(bool) {
-				fullClone = 0
-			}
-			config.FullClone = &fullClone
+		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 { // Clone
 
-			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), d.Get("clone_id").(int), vmr.Node())
+			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
+			}
+
+			var poolName *pveSDK.PoolName
+			tmpPool := d.Get(pool.Root).(string)
+			if tmpPool != "" {
+				poolName = util.Pointer(pveSDK.PoolName(tmpPool))
+			}
+			var cloneSettings pveSDK.CloneQemuTarget
+			if !d.Get("full_clone").(bool) {
+				cloneSettings = pveSDK.CloneQemuTarget{
+					Linked: &pveSDK.CloneLinked{
+						Node: targetNode,
+						ID:   guestID,
+						Name: &guestName,
+						Pool: poolName}}
+			} else {
+				cloneSettings = pveSDK.CloneQemuTarget{
+					Full: &pveSDK.CloneQemuFull{
+						Node: targetNode,
+						ID:   guestID,
+						Name: &guestName,
+						Pool: poolName}}
 			}
 
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
-			logger.Debug().Str("vmid", d.Id()).Msgf("Cloning VM")
-			err = config.CloneVm(ctx, sourceVmr, vmr, client)
+			logger.Debug().Str(vmID.Root, d.Id()).Msgf("Cloning VM")
+			vmr, err = sourceVmr.CloneQemu(ctx, cloneSettings, client)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
@@ -829,7 +809,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 				return append(diags, diag.FromErr(err)...)
 			}
 
-		} else if d.Get("pxe").(bool) {
+		} else if d.Get("pxe").(bool) { // PXE boot
 			var found bool
 			bs := d.Get("boot").(string)
 			// This used to be multiple regexes. Keeping the loop for flexibility.
@@ -852,20 +832,23 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 				return append(diags, diag.FromErr(fmt.Errorf("no network boot option matched in 'boot' config"))...)
 			}
 			log.Print("[DEBUG][QemuVmCreate] create with PXE")
-			err := config.Create(ctx, vmr, client)
+			config.ID = guestID
+			vmr, err = config.Create(ctx, client)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
-		} else {
+		} else { // Normal VM creation
 			log.Print("[DEBUG][QemuVmCreate] create with ISO")
-			err := config.Create(ctx, vmr, client)
+			config.ID = guestID
+			vmr, err = config.Create(ctx, client)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
 		}
-	} else {
+	} else { // Forcefully update an existing VM
 		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
 
+		targetNode := node.SdkUpdate(d, vmr.Node())
 		client.StopVm(ctx, vmr)
 
 		rebootRequired, err = config.Update(ctx, false, vmr, client)
@@ -876,8 +859,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 
 	}
-	d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
-	logger.Debug().Int("vmid", vmr.VmId()).Msgf("Set this vm (resource Id) to '%v'", d.Id())
+	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
 	time.Sleep(time.Duration(d.Get(schemaAdditionalWait).(int)) * time.Second)
@@ -915,14 +898,14 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger, _ := CreateSubLogger("resource_vm_update")
 
 	// get vmID
-	_, _, vmID, err := parseResourceId(d.Id())
+	_, _, guestID, err := parseResourceId(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	logger.Info().Int("vmid", vmID).Msg("Starting update of the VM resource")
+	logger.Info().Int(vmID.Root, int(guestID)).Msg("Starting update of the VM resource")
 
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(guestID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -930,18 +913,12 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
-	d.Partial(true)
-	if d.HasChange(node.RootNode) {
-		// Update target node when it must be migrated manually. Don't if it has been migrated by the proxmox high availability system.
-		vmr.SetNode(d.Get(node.RootNode).(string))
-	}
-	d.Partial(false)
-
 	config := pveSDK.ConfigQemu{
 		Name:        d.Get("name").(string),
+		Node:        util.Pointer(node.SdkUpdate(d, vmr.Node())),
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
-		Pool:        util.Pointer(pveSDK.PoolName(d.Get("pool").(string))),
+		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
 		Startup:     d.Get("startup").(string),
@@ -963,6 +940,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
 		CloudInit:   mapToSDK_CloudInit(d),
+		TPM:         tpm.SDK(d),
 	}
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
@@ -989,7 +967,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 
-	logger.Debug().Int("vmid", vmID).Msgf("Updating VM with the following configuration: %+v", config)
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
 	automaticReboot := d.Get("automatic_reboot").(bool)
@@ -1156,59 +1134,38 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	var diags diag.Diagnostics
 	logger, _ := CreateSubLogger("resource_vm_read")
 
-	_, _, vmID, err := parseResourceId(d.Id())
+	_, _, guestID, err := parseResourceId(d.Id())
 	if err != nil {
 		d.SetId("")
 		return diag.FromErr(fmt.Errorf("unexpected error when trying to read and parse the resource: %v", err))
 	}
 
-	logger.Info().Int("vmid", vmID).Msg("Reading configuration for vmid")
-	vmr := pveSDK.NewVmRef(vmID)
+	logger.Info().Int(vmID.Root, int(guestID)).Msg("Reading configuration for vmid")
+	vmr := pveSDK.NewVmRef(guestID)
 
 	// Try to get information on the vm. If this call err's out
 	// that indicates the VM does not exist. We indicate that to terraform
 	// by calling a SetId("")
 
-	// loop through all virtual servers...?
-	var targetNodeVMR pveSDK.NodeName
-	targetNodesRaw := d.Get(node.RootNodes).([]interface{})
-	targetNodes := make([]pveSDK.NodeName, len(targetNodesRaw))
-	for i := range targetNodesRaw {
-		targetNodes[i] = pveSDK.NodeName(targetNodesRaw[i].(string))
-	}
-
-	if len(targetNodes) == 0 {
-		_, err = client.GetVmInfo(ctx, vmr)
-		if err != nil {
-			logger.Debug().Int("vmid", vmID).Err(err).Msg("failed to get vm info")
+	// not sure if we want to set the id to "" if the vm does not exist
+	// as it will cause terraform to delete the resource
+	// and it could be unavailable due to permission issues
+	// when we are `root@pam` then we can do it as we can see all vms
+	_, err = client.GetVmInfo(ctx, vmr)
+	if err != nil {
+		if err.Error() == "vm '"+vmr.VmId().String()+"' not found" {
+			logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("vm does not exist")
 			d.SetId("")
 			return nil
 		}
-		targetNodeVMR = vmr.Node()
-	} else {
-		for _, targetNode := range targetNodes {
-			vmr.SetNode(targetNode.String())
-			_, err = client.GetVmInfo(ctx, vmr)
-			if err != nil {
-				d.SetId("")
-			}
-
-			d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
-			logger.Debug().Any("Setting node id to", d.Get(vmr.Node().String()))
-			targetNodeVMR = targetNode
-		}
-	}
-
-	if targetNodeVMR == "" {
-		logger.Debug().Int("vmid", vmID).Err(err).Msg("failed to get vm info")
-		d.SetId("")
-		return nil
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	config, err := pveSDK.NewConfigQemuFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	node.Terraform(d, vmr.Node())
 
 	var ciDisk bool
 	if config.Disks != nil {
@@ -1235,9 +1192,10 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		diags = append(diags, diag.FromErr(err)...)
 	}
 
-	logger.Debug().Int("vmid", vmID).Msgf("[READ] Received Config from Proxmox API: %+v", config)
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
+	vmID.Terraform(vmr.VmId(), d)
 	d.Set("name", config.Name)
 	d.Set("desc", mapToTerraform_Description(config.Description))
 	d.Set("bios", config.Bios)
@@ -1281,10 +1239,10 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	checkedKeys := []string{"force_create", "define_connection_info"}
 	for _, key := range checkedKeys {
 		if val := d.Get(key); val == nil {
-			logger.Debug().Int("vmid", vmID).Msgf("key '%s' not found, setting to default", key)
+			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' not found, setting to default", key)
 			d.Set(key, thisResource.Schema[key].Default)
 		} else {
-			logger.Debug().Int("vmid", vmID).Msgf("key '%s' is set to %t", key, val.(bool))
+			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' is set to %t", key, val.(bool))
 			d.Set(key, val.(bool))
 		}
 	}
@@ -1294,7 +1252,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
-	logger.Debug().Int("vmid", vmID).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
 	if err = d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return diag.FromErr(err)
 	}
@@ -1305,7 +1263,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		d.Set("features", UpdateDeviceConfDefaults(config.QemuVga, activeVgaSet))
 	}
 
-	d.Set("pool", vmr.Pool())
+	d.Set(pool.Root, config.Pool)
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
@@ -1313,7 +1271,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Debug().Int("vmid", vmID).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
+	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return diags
 }
@@ -1325,7 +1283,7 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 	client := pconf.Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
-	vmr := pveSDK.NewVmRef(vmId)
+	vmr := pveSDK.NewVmRef(pveSDK.GuestID(vmId))
 	vmState, err := client.GetVmState(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -1389,7 +1347,7 @@ func DropElementsFromMap(elements []string, mapList []map[string]interface{}) ([
 	return mapList, nil
 }
 
-// Consumes an API return (pxapi.QemuDevices) and "flattens" it into a []map[string]interface{} as
+// Consumes an API return (pveSDK.QemuDevices) and "flattens" it into a []map[string]interface{} as
 // expected by the terraform interface for TypeList
 func FlattenDevicesList(proxmoxDevices pveSDK.QemuDevices) ([]map[string]interface{}, error) {
 	flattenedDevices := make([]map[string]interface{}, 0, 1)
@@ -1487,7 +1445,7 @@ func ReadSmbiosArgs(smbios string) []interface{} {
 }
 
 // Consumes a terraform TypeList of a Qemu Device (network, hard drive, etc) and returns the "Expanded"
-// version of the equivalent configuration that the API understands (the struct pxapi.QemuDevices).
+// version of the equivalent configuration that the API understands (the struct pveSDK.QemuDevices).
 // NOTE this expects the provided deviceList to be []map[string]interface{}.
 func ExpandDevicesList(deviceList []interface{}) (pveSDK.QemuDevices, error) {
 	expandedDevices := make(pveSDK.QemuDevices)
@@ -1510,6 +1468,10 @@ func ExpandDevicesList(deviceList []interface{}) (pveSDK.QemuDevices, error) {
 		// this is a map of string->interface, loop over it and move it into
 		// the qemuDevices struct
 		for configuration, value := range thisDeviceMap {
+			// XXX: Not sure where to put these
+			if configuration == "pre_enrolled_keys" {
+				configuration = "pre-enrolled-keys"
+			}
 			thisExpandedDevice[configuration] = value
 		}
 
@@ -1549,7 +1511,7 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	// allow user to opt-out of setting the connection info for the resource
 	if !d.Get("define_connection_info").(bool) {
 		log.Printf("[INFO][initConnInfo] define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
-		logger.Info().Int("vmid", vmr.VmId()).Msgf("define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
+		logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("define_connection_info is %t, no further action", d.Get("define_connection_info").(bool))
 		return diags
 	}
 
@@ -1558,7 +1520,7 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	if config.Agent != nil && config.Agent.Enable != nil && *config.Agent.Enable {
 		if d.Get("agent") != 1 { // allow user to opt-out of setting the connection info for the resource
 			log.Printf("[INFO][initConnInfo] qemu agent is disabled from proxmox config, cant communicate with vm.")
-			logger.Info().Int("vmid", vmr.VmId()).Msgf("qemu agent is disabled from proxmox config, cant communicate with vm.")
+			logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("qemu agent is disabled from proxmox config, cant communicate with vm.")
 			return append(diags, diag.Diagnostic{
 				Severity:      diag.Warning,
 				Summary:       "Qemu Guest Agent support is disabled from proxmox config.",
@@ -1569,16 +1531,19 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	}
 
 	log.Print("[INFO][initConnInfo] trying to get vm ip address for provisioner")
-	logger.Info().Int("vmid", vmr.VmId()).Msgf("trying to get vm ip address for provisioner")
+	logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("trying to get vm ip address for provisioner")
 
-	// wait until the os has started the guest agent
-	guestAgentTimeout := d.Timeout(schema.TimeoutCreate)
-	guestAgentWaitEnd := time.Now().Add(time.Duration(guestAgentTimeout))
-	log.Printf("[DEBUG][initConnInfo] retrying for at most  %v minutes before giving up", guestAgentTimeout)
-	log.Printf("[DEBUG][initConnInfo] retries will end at %s", guestAgentWaitEnd)
-	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retrying for at most  %v minutes before giving up", guestAgentTimeout)
-	logger.Debug().Int("vmid", vmr.VmId()).Msgf("retries will end at %s", guestAgentWaitEnd)
-	IPs, agentDiags := getPrimaryIP(ctx, config.CloudInit, config.Networks, vmr, client, guestAgentWaitEnd, d.Get(schemaAdditionalWait).(int), d.Get(schemaAgentTimeout).(int), ciAgentEnabled, d.Get(schemaSkipIPv4).(bool), d.Get(schemaSkipIPv6).(bool), hasCiDisk)
+	IPs, agentDiags := getPrimaryIP(
+		ctx, client,
+		config.CloudInit,
+		config.Networks,
+		vmr,
+		time.Duration(d.Get(schemaAgentTimeout).(int))*time.Second,
+		time.Duration(d.Get(schemaAdditionalWait).(int))*time.Second,
+		ciAgentEnabled,
+		d.Get(schemaSkipIPv4).(bool),
+		d.Get(schemaSkipIPv6).(bool),
+		hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1592,7 +1557,7 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 
 	sshPort := "22"
 	log.Printf("[DEBUG][initConnInfo] this is the vm configuration: %s %s", sshHost, sshPort)
-	logger.Debug().Int("vmid", vmr.VmId()).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
 	// Optional convenience attributes for provisioners
 	_ = d.Set("default_ipv4_address", IPs.IPv4)
@@ -1609,7 +1574,14 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	return diags
 }
 
-func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pveSDK.QemuNetworkInterfaces, vmr *pveSDK.VmRef, client *pveSDK.Client, endTime time.Time, additionalWait, agentTimeout int, ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
+func getPrimaryIP(
+	ctx context.Context,
+	client *pveSDK.Client,
+	cloudInit *pveSDK.CloudInit,
+	networks pveSDK.QemuNetworkInterfaces,
+	vmr *pveSDK.VmRef,
+	retryDuration, retryInterval time.Duration,
+	ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1620,7 +1592,7 @@ func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pve
 	if hasCiDisk { // Check if we have a Cloud-Init disk, cloud-init setting won't have any effect if without it.
 		if cloudInit != nil { // Check if we have a Cloud-Init configuration
 			log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
-			logger.Debug().Int("vmid", vmr.VmId()).Msgf(" vm has a cloud-init configuration")
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf(" vm has a cloud-init configuration")
 			var cicustom bool
 			if cloudInit.Custom != nil && cloudInit.Custom.Network != nil {
 				cicustom = true
@@ -1643,56 +1615,57 @@ func getPrimaryIP(ctx context.Context, cloudInit *pveSDK.CloudInit, networks pve
 		}
 	}
 
-	// get all information we can from qemu agent until the timer runs out
-	if ciAgentEnabled {
-		var (
-			waitedTime        int
-			primaryMacAddress net.HardwareAddr
-			err               error
-		)
-		for i := 0; i < network.AmountNetworkInterfaces; i++ {
-			if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
-				primaryMacAddress = *v.MAC
-				break
-			}
-		}
-		for time.Now().Before(endTime) {
-			var interfaces []pveSDK.AgentNetworkInterface
-			interfaces, err = vmr.GetAgentInformation(ctx, client, false)
-			if err != nil {
-				if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-					return primaryIPs{}, diag.FromErr(err)
-				}
-				log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
-				logger.Debug().Int("vmid", vmr.VmId()).Msgf("check ip result error %s", err.Error())
-			} else { // vm is running and reachable
-				if len(interfaces) > 0 { // agent returned some information
-					log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
-					logger.Debug().Int("vmid", vmr.VmId()).Msgf("QEMU Agent interfaces found: %v", interfaces)
-					conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
-					if conn.hasRequiredIP() {
-						return conn.IPs, diag.Diagnostics{}
-					}
-				}
-				if waitedTime > agentTimeout {
-					break
-				}
-				waitedTime += additionalWait
-			}
-			time.Sleep(time.Duration(additionalWait) * time.Second)
-		}
-		if err != nil {
-			if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-					Severity: diag.Warning,
-					Summary:  "Qemu Guest Agent is enabled but not working",
-					Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
-			}
-			return primaryIPs{}, diag.FromErr(err)
-		}
-		return conn.IPs, conn.agentDiagnostics()
+	if !ciAgentEnabled {
+		return conn.IPs, diag.Diagnostics{}
 	}
-	return conn.IPs, diag.Diagnostics{}
+
+	// get all information we can from qemu agent until the timer runs out
+	var (
+		primaryMacAddress net.HardwareAddr
+		err               error
+	)
+	for i := 0; i < network.AmountNetworkInterfaces; i++ {
+		if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+			primaryMacAddress = *v.MAC
+			break
+		}
+	}
+	endTime := time.Now().Add(retryDuration)
+	log.Printf("[DEBUG][initConnInfo] retrying for at most  %v before giving up", retryDuration)
+	log.Printf("[DEBUG][initConnInfo] retries will end at %s", endTime)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retrying for at most  %v before giving up", retryDuration)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retries will end at %s", endTime)
+	for time.Now().Before(endTime) {
+		var interfaces []pveSDK.AgentNetworkInterface
+		interfaces, err = vmr.GetAgentInformation(ctx, client, false)
+		if err != nil {
+			if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+				return primaryIPs{}, diag.FromErr(err)
+			}
+			log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("check ip result error %s", err.Error())
+		} else { // vm is running and reachable
+			if len(interfaces) > 0 { // agent returned some information
+				log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
+				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
+				conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
+				if conn.hasRequiredIP() {
+					return conn.IPs, diag.Diagnostics{}
+				}
+			}
+		}
+		time.Sleep(retryInterval)
+	}
+	if err != nil {
+		if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Qemu Guest Agent is enabled but not working",
+				Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
+		}
+		return primaryIPs{}, diag.FromErr(err)
+	}
+	return conn.IPs, conn.agentDiagnostics()
 }
 
 // Map struct to the terraform schema
@@ -1718,7 +1691,9 @@ func mapToTerraform_CloudInit(config *pveSDK.CloudInit, d *schema.ResourceData) 
 			d.Set("ipconfig"+strconv.Itoa(int(i)), mapToTerraform_CloudInitNetworkConfig(v))
 		}
 	}
-	d.Set("sshkeys", sshkeys.String(config.PublicSSHkeys))
+	if config.PublicSSHkeys != nil {
+		sshkeys.Terraform(*config.PublicSSHkeys, d)
+	}
 	if config.UpgradePackages != nil {
 		d.Set("ciupgrade", *config.UpgradePackages)
 	}
@@ -1747,7 +1722,7 @@ func mapToTerraform_Description(description *string) string {
 }
 
 func mapToTerraform_Memory(config *pveSDK.QemuMemory, d *schema.ResourceData) {
-	// no nil check as pxapi.QemuMemory is always returned
+	// no nil check as pveSDK.QemuMemory is always returned
 	if config.CapacityMiB != nil {
 		d.Set("memory", int(*config.CapacityMiB))
 	}
@@ -1784,7 +1759,7 @@ func mapToSDK_CloudInit(d *schema.ResourceData) *pveSDK.CloudInit {
 			NameServers:  nameservers.Split(d.Get("nameserver").(string)),
 		},
 		NetworkInterfaces: pveSDK.CloudInitNetworkInterfaces{},
-		PublicSSHkeys:     sshkeys.Split(d.Get("sshkeys").(string)),
+		PublicSSHkeys:     sshkeys.SDK(d),
 		UpgradePackages:   util.Pointer(d.Get("ciupgrade").(bool)),
 		UserPassword:      util.Pointer(d.Get("cipassword").(string)),
 		Username:          util.Pointer(d.Get("ciuser").(string)),
