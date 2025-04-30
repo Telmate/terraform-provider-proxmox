@@ -34,7 +34,7 @@ func SDK(d *schema.ResourceData) (pveAPI.QemuNetworkInterfaces, diag.Diagnostics
 		if mtu != 0 {
 			if string(pveAPI.QemuNetworkModelVirtIO) == model.String() {
 				if mtu == 1 {
-					tmpMTU = pveAPI.QemuMTU{Inherit: false}
+					tmpMTU = pveAPI.QemuMTU{Inherit: true}
 				} else {
 					tmpMTU = pveAPI.QemuMTU{Value: pveAPI.MTU(mtu)}
 				}
