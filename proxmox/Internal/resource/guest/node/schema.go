@@ -43,6 +43,7 @@ func SchemaNodes(guestType string) *schema.Schema {
 		Type:          schema.TypeSet,
 		Optional:      true,
 		Description:   "A list of nodes the " + guestType + " guest may be placed on.",
+		MinItems:      1,
 		ConflictsWith: []string{RootNode},
 		Elem: &schema.Schema{
 			Type: schema.TypeString,

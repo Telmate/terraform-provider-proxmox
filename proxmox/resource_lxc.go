@@ -511,9 +511,11 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	setGuestID := d.Get(vmID.Root).(int)
 
-	targetNode := node.SdkCreate(d)
+	targetNode, err := node.SdkCreate(d)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	var diags diag.Diagnostics
-	var err error
 	var vmr *pveSDK.VmRef
 	if d.Get("clone").(string) != "" { // Clone
 		var sourceVmr *pveSDK.VmRef

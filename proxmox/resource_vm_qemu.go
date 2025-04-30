@@ -751,10 +751,13 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	vmr := duplicateVmr
 
 	var rebootRequired bool
-	var err error
 
 	if vmr == nil { // Create new VM
-		targetNode := node.SdkCreate(d)
+		targetNode, err := node.SdkCreate(d)
+		if err != nil {
+			return append(diags, diag.FromErr(err)...)
+		}
+
 		config.Node = &targetNode
 
 		var guestID *pveSDK.GuestID
@@ -848,7 +851,10 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	} else { // Forcefully update an existing VM
 		log.Printf("[DEBUG][QemuVmCreate] recycling VM vmId: %d", vmr.VmId())
 
-		targetNode := node.SdkUpdate(d, vmr.Node())
+		targetNode, err := node.SdkUpdate(d, vmr.Node())
+		if err != nil {
+			return append(diags, diag.FromErr(err)...)
+		}
 		client.StopVm(ctx, vmr)
 
 		rebootRequired, err = config.Update(ctx, false, vmr, client)
@@ -915,7 +921,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	config := pveSDK.ConfigQemu{
 		Name:        d.Get("name").(string),
-		Node:        util.Pointer(node.SdkUpdate(d, vmr.Node())),
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
@@ -942,6 +947,13 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		CloudInit:   mapToSDK_CloudInit(d),
 		TPM:         tpm.SDK(d),
 	}
+
+	tmpNode, err := node.SdkUpdate(d, vmr.Node())
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	config.Node = &tmpNode
+
 	if len(qemuVgaList) > 0 {
 		config.QemuVga = qemuVgaList[0].(map[string]interface{})
 	}

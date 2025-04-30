@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 
@@ -8,38 +9,46 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func SdkUpdate(d *schema.ResourceData, current pveAPI.NodeName) pveAPI.NodeName {
+const error_NoNodeConfigured = "no target node specified"
+
+func SdkUpdate(d *schema.ResourceData, current pveAPI.NodeName) (pveAPI.NodeName, error) {
 	if node, ok := d.GetOk(RootNode); ok {
-		return pveAPI.NodeName(node.(string))
+		return pveAPI.NodeName(node.(string)), nil
 	}
 	nodes := d.Get(RootNodes).(*schema.Set).List()
 	currentNode := string(current)
-	if len(nodes) == 1 {
+	switch len(nodes) {
+	case 0:
+		return "", errors.New(error_NoNodeConfigured)
+	case 1:
 		if currentNode != nodes[0].(string) {
-			return pveAPI.NodeName(nodes[0].(string))
+			return pveAPI.NodeName(nodes[0].(string)), nil
 		}
-		return current
+		return current, nil
 	}
 	if inArray(nodes, currentNode) {
-		return current
+		return current, nil
 	}
 	randomIndex := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(nodes))
-	return pveAPI.NodeName(nodes[randomIndex].(string))
+	return pveAPI.NodeName(nodes[randomIndex].(string)), nil
 }
 
-func SdkCreate(d *schema.ResourceData) pveAPI.NodeName {
+func SdkCreate(d *schema.ResourceData) (pveAPI.NodeName, error) {
 	if node, ok := d.GetOk(RootNode); ok {
-		return pveAPI.NodeName(node.(string))
+		return pveAPI.NodeName(node.(string)), nil
 	}
 	nodes := d.Get(RootNodes).(*schema.Set).List()
-	if len(nodes) == 1 {
-		return pveAPI.NodeName(nodes[0].(string))
+	switch len(nodes) {
+	case 0:
+		return "", errors.New(error_NoNodeConfigured)
+	case 1:
+		return pveAPI.NodeName(nodes[0].(string)), nil
 	}
 	randomIndex := rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(nodes))
-	return pveAPI.NodeName(nodes[randomIndex].(string))
+	return pveAPI.NodeName(nodes[randomIndex].(string)), nil
 }
 
-func inArray(nodes []interface{}, current string) bool {
+func inArray(nodes []any, current string) bool {
 	for i := range nodes {
 		if current == nodes[i].(string) {
 			return true
