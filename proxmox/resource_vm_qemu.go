@@ -267,16 +267,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  0,
 			},
-			cpu.Root: cpu.SchemaType(schema.Schema{
-				ConflictsWith: []string{cpu.RootCpuType},
-				Deprecated:    "use '" + cpu.RootCpuType + "' instead"}),
-			cpu.RootCores: cpu.SchemaCores(),
-			cpu.RootCpuType: cpu.SchemaType(schema.Schema{
-				ConflictsWith: []string{cpu.Root},
-				Default:       "host"}),
-			cpu.RootNuma:         cpu.SchemaNuma(),
-			cpu.RootSockets:      cpu.SchemaSockets(),
-			cpu.RootVirtualCores: cpu.SchemaVirtualCores(),
+			cpu.Root:                   cpu.Schema(),
+			cpu.RootLegacyCores:        cpu.SchemaLegacyCores(),
+			cpu.RootLegacyCpuType:      cpu.SchemaLegacyType(),
+			cpu.RootLegacyNuma:         cpu.SchemaLegacyNuma(),
+			cpu.RootLegacySockets:      cpu.SchemaLegacySockets(),
+			cpu.RootLegacyVirtualCores: cpu.SchemaLegacyVirtualCores(),
 			"kvm": {
 				Type:     schema.TypeBool,
 				Optional: true,
