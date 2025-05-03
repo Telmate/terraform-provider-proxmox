@@ -116,11 +116,6 @@ The following arguments are supported in the top level resource block.
 | `qemu_os`                     | `str`    | `"l26"`              | The type of OS in the guest. Set properly to allow Proxmox to enable optimizations for the appropriate guest OS. It takes the value from the source template and ignore any changes to resource configuration parameter. |
 | `memory`                      | `int`    | `512`                | The amount of memory to allocate to the VM in Megabytes. |
 | `balloon`                     | `int`    | `0`                  | The minimum amount of memory to allocate to the VM in Megabytes, when Automatic Memory Allocation is desired. Proxmox will enable a balloon device on the guest to manage dynamic allocation. See the [docs about memory](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_memory) for more info. |
-| `sockets`                     | `int`    | `1`                  | The number of CPU sockets to allocate to the VM. |
-| `cores`                       | `int`    | `1`                  | The number of CPU cores per CPU socket to allocate to the VM. |
-| `vcpus`                       | `int`    | `0`                  | The number of vCPUs plugged into the VM when it starts. If `0`, this is set automatically by Proxmox to `sockets * cores`. |
-| `cpu_type`                    | `str`    | `"host"`             | The type of CPU to emulate in the Guest. See the [docs about CPU Types](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) for more info. |
-| `numa`                        | `bool`   | `false`              | Whether to enable [Non-Uniform Memory Access](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) in the guest. |
 | `hotplug`                     | `str`    | `"network,disk,usb"` | Comma delimited list of hotplug features to enable. Options: `network`, `disk`, `cpu`, `memory`, `usb`. Set to `0` to disable hotplug. |
 | `scsihw`                      | `str`    | `"lsi"`              | The SCSI controller to emulate. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`. |
 | `pool`                        | `str`    |                      | The resource pool to which the VM will be added. |
@@ -147,6 +142,42 @@ The following arguments are supported in the top level resource block.
 | `skip_ipv6`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv6 address from the qemu guest agent isn't required, it will still return an ipv6 address if it could obtain one. Useful for reducing retries in environments without ipv6.|
 | `agent_timeout`               | `int`    | `90`                 | Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection. |
 | `current_node`                | `string` |                      | **Computed** The current node of the Qemu guest is on.|
+
+### CPU Block
+
+The `cpu` block is used to configure the CPU settings. It may be specified once.
+See the [docs about CPU](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) for more details.
+
+| Argument  | Type  | Default Value | Description |
+| --------- | ----- | ------------- |:----------- |
+| `affinity`| `str` | `""`          | The CPU affinity for the Qemu guest. This is a comma separated list of values and ranges which define to which CPU cores the Qemu guest is bound. Example: `1,3-5`.|
+| `cores`   | `int` | `1`           | The number of CPU cores to allocate to the Qemu guest.|
+| `limit`   | `int` | `0`           | The CPU limit for the Qemu guest. `0` means unlimited.|
+| `numa`    | `bool`| `false`       | Whether to enable [Non-Uniform Memory Access](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_cpu) in the Qemu guest.|
+| `sockets` | `int` | `1`           | The number of CPU sockets to allocate to the Qemu guest.|
+| `type`    | `str` | `"host"`      | The CPU type to emulate. See the [docs about CPU Types](https://pve.proxmox.com/pve-docs/chapter-qm.html#_cpu_type) for more info.|
+| `units`   | `int` | `0`        | The CPU units for the Qemu guest. This is a relative value which defines the CPU weight of the Qemu guest. The default value of `0` indicates the PVE default is used.|
+| `vcores`  | `int` | `0`        | The number of virtual cores exposed to the Qemu guest. If `0`, this is set automatically by Proxmox to `sockets * cores`.|
+| `flags`   | `list`|         | The CPU flags to enable for the Qemu guest. |
+
+#### CPU Flags Block
+
+The CPU flags to enable for the Qemu guest. A flag can be set with `on` ot `off`, when a flag isn't specified, it will be set to the default value in PVE and will be inherited from the `cpu.type`.
+
+| Argument     | Type | Description |
+| ------------ | ---- | ----------- |
+| `md_clear`   | `str`| Required to let the guest OS know if MDS is mitigated correctly.|
+| `pcid`       | `str`| Meltdown fix cost reduction on Westmere, Sandy-, and IvyBridge Intel CPUs.|
+| `spec_ctrl`  | `str`| Allows improved Spectre mitigation with Intel CPUs.|
+| `ssbd`       | `str`| Protection for "Speculative Store Bypass" for Intel models.|
+| `ibpb`       | `str`| Allows improved Spectre mitigation with AMD CPUs.|
+| `virt_ssbd`  | `str`| Basis for "Speculative Store Bypass" protection for AMD models.|
+| `amd_ssbd`   | `str`| Improves Spectre mitigation performance with AMD CPUs, best used with "virt-ssbd".|
+| `amd_no_ssb` | `str`| Notifies guest OS that host is not vulnerable for Spectre on AMD CPUs.|
+| `pbpe1gb`    | `str`| Allow guest OS to use 1GB size pages, if host HW supports it.|
+| `hv_tlbflush`| `str`| Improve performance in overcommitted Windows guests. May lead to guest bluescreens on old CPUs.|
+| `hv_evmcs`   | `str`| Improve performance for nested virtualization. Only supported on Intel CPUs.|
+| `aes`        | `str`| Activate AES instruction set for HW acceleration.|
 
 ### VGA Block
 
