@@ -10,7 +10,7 @@ func Terraform_Unsafe(d *schema.ResourceData, config *pveAPI.QemuStorages, ciDis
 	if _, ok := d.GetOk(RootDisk); ok {
 		d.Set(RootDisk, terraform_Disk_QemuDisks(*config, ciDisk))
 	} else {
-		d.Set(RootDisks, terraform_Disks_QemuDisks(*config, ciDisk))
+		d.Set(RootDisks, terraform_Disks_QemuDisks(*config, ciDisk, d))
 	}
 }
 
