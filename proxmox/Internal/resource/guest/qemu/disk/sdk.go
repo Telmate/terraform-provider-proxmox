@@ -10,8 +10,8 @@ import (
 )
 
 func SDK(d *schema.ResourceData) (*pveAPI.QemuStorages, diag.Diagnostics) {
-	diags := make(diag.Diagnostics, 0)
 	if v, ok := d.GetOk(RootDisk); ok {
+		diags := make(diag.Diagnostics, 0)
 		storages := &pveAPI.QemuStorages{
 			Ide:    sdk_Disks_QemuIdeDisksDefault(),
 			Sata:   sdk_Disks_QemuSataDisksDefault(),
@@ -45,14 +45,14 @@ func SDK(d *schema.ResourceData) (*pveAPI.QemuStorages, diag.Diagnostics) {
 				Ide:    sdk_Disks_QemuIdeDisks(schemaStorages),
 				Sata:   sdk_Disks_QemuSataDisks(schemaStorages),
 				Scsi:   sdk_Disks_QemuScsiDisks(schemaStorages),
-				VirtIO: sdk_Disks_QemuVirtIODisks(schemaStorages)}, diags
+				VirtIO: sdk_Disks_QemuVirtIODisks(schemaStorages)}, nil
 		}
 	}
 	return &pveAPI.QemuStorages{
 		Ide:    sdk_Disks_QemuIdeDisksDefault(),
 		Sata:   sdk_Disks_QemuSataDisksDefault(),
 		Scsi:   sdk_Disks_QemuScsiDisksDefault(),
-		VirtIO: sdk_Disks_QemuVirtIODisksDefault()}, diags
+		VirtIO: sdk_Disks_QemuVirtIODisksDefault()}, nil
 }
 
 func sdkIsoFile(iso string) *pveAPI.IsoFile {
