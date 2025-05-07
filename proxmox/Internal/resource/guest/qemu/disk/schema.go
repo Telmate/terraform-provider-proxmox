@@ -62,9 +62,9 @@ const (
 	pathScsi   string = RootDisks + ".0." + schemaScsi + ".0."
 	pathVirtIO string = RootDisks + ".0." + schemaVirtIO + ".0."
 
-	enumCdRom     string = "cdrom"
-	enumCloudInit string = "cloudinit"
-	enumDisk      string = "disk"
+	enumCdRom     = "cdrom"
+	enumCloudInit = "cloudinit"
+	enumDisk      = "disk"
 
 	slotIDE    string = schemaIDE
 	slotSata   string = schemaSata
@@ -131,14 +131,14 @@ func SchemaDisk() *schema.Schema {
 				schemaType: {
 					Type:     schema.TypeString,
 					Optional: true,
-					Default:  schemaDisk,
+					Default:  enumDisk,
 					ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 						v, ok := i.(string)
 						if !ok {
 							return diag.Errorf(errorMSG.String, k)
 						}
 						switch v {
-						case schemaDisk, schemaCdRom, schemaCloudInit:
+						case enumDisk, enumCdRom, enumCloudInit:
 							return nil
 						}
 						return diag.Errorf(schemaType + " must be one of '" + enumDisk + "', '" + enumCdRom + "', '" + enumCloudInit + "'")
