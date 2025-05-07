@@ -10,7 +10,7 @@ func warningDisk(slot, setting, property, value, extra string) diag.Diagnostic {
 
 func warningsCdromAndCloudinit(slot, kind string, schema map[string]interface{}) (diags diag.Diagnostics) {
 	if schema[schemaAsyncIO].(string) != "" {
-		diags = append(diags, warningDisk(slot, schemaAsyncIO, schemaType, kind, ""))
+		diags = diag.Diagnostics{warningDisk(slot, schemaAsyncIO, schemaType, kind, "")}
 	}
 	if schema[schemaCache].(string) != "" {
 		diags = append(diags, warningDisk(slot, schemaCache, schemaType, kind, ""))

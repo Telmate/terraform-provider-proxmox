@@ -73,7 +73,7 @@ func sdk_Disk_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, schema map[string]inter
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaIOthread].(bool) {
-			diags = append(diags, warningDisk(slot, schemaIOthread, schemaSlot, slot, ""))
+			diags = diag.Diagnostics{warningDisk(slot, schemaIOthread, schemaSlot, slot, "")}
 		}
 		if schema[schemaISO].(string) != "" {
 			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
@@ -149,7 +149,7 @@ func sdk_Disk_QemuSataStorage(sata *pveAPI.QemuSataStorage, schema map[string]in
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaIOthread].(bool) {
-			diags = append(diags, warningDisk(slot, schemaIOthread, schemaSlot, slot, ""))
+			diags = diag.Diagnostics{warningDisk(slot, schemaIOthread, schemaSlot, slot, "")}
 		}
 		if schema[schemaISO].(string) != "" {
 			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
@@ -275,7 +275,7 @@ func sdk_Disk_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, schema map[string]in
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaISO].(string) != "" {
-			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
+			diags = diag.Diagnostics{warningDisk(slot, schemaISO, schemaSlot, slot, "")}
 		}
 		if schema[schemaPassthrough].(bool) { // passthrough disk
 			scsi.Passthrough = &pveAPI.QemuScsiPassthrough{
@@ -331,7 +331,7 @@ func sdk_Disk_QemuVirtIOStorage(virtio *pveAPI.QemuVirtIOStorage, schema map[str
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaEmulateSSD].(bool) {
-			diags = append(diags, warningDisk(slot, schemaEmulateSSD, schemaSlot, slot, ""))
+			diags = diag.Diagnostics{warningDisk(slot, schemaEmulateSSD, schemaSlot, slot, "")}
 		}
 		if schema[schemaISO].(string) != "" {
 			diags = append(diags, warningDisk(slot, schemaISO, schemaSlot, slot, ""))
