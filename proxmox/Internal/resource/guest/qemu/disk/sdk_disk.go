@@ -67,9 +67,10 @@ func sdk_Disk_QemuIdeDisks(ide *pveAPI.QemuIdeDisks, id string, schema map[strin
 
 func sdk_Disk_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
 	slot := schemaIDE + id
-	if ide.CdRom != nil || ide.Disk != nil || ide.Passthrough != nil || ide.CloudInit != nil {
+	if !ide.Delete {
 		return errorDiskSlotDuplicate(slot)
 	}
+	ide.Delete = false
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaIOthread].(bool) {
@@ -119,6 +120,8 @@ func sdk_Disk_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, schema map[string]inter
 		ide.CdRom, diags = sdk_Disk_QemuCdRom(slot, schema)
 	case enumCloudInit:
 		ide.CloudInit, diags = sdk_Disk_QemuCloudInit(slot, schema)
+	case enumIgnore:
+		return WarningIgnore(slot, schema)
 	}
 	return
 }
@@ -143,9 +146,10 @@ func sdk_Disk_QemuSataDisks(sata *pveAPI.QemuSataDisks, id string, schema map[st
 
 func sdk_Disk_QemuSataStorage(sata *pveAPI.QemuSataStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
 	slot := schemaSata + id
-	if sata.CdRom != nil || sata.Disk != nil || sata.Passthrough != nil || sata.CloudInit != nil {
+	if !sata.Delete {
 		return errorDiskSlotDuplicate(slot)
 	}
+	sata.Delete = false
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaIOthread].(bool) {
@@ -195,6 +199,8 @@ func sdk_Disk_QemuSataStorage(sata *pveAPI.QemuSataStorage, schema map[string]in
 		sata.CdRom, diags = sdk_Disk_QemuCdRom(slot, schema)
 	case enumCloudInit:
 		sata.CloudInit, diags = sdk_Disk_QemuCloudInit(slot, schema)
+	case enumIgnore:
+		return WarningIgnore(slot, schema)
 	}
 	return
 }
@@ -269,9 +275,10 @@ func sdk_Disk_QemuScsiDisks(scsi *pveAPI.QemuScsiDisks, id string, schema map[st
 
 func sdk_Disk_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
 	slot := schemaScsi + id
-	if scsi.CdRom != nil || scsi.Disk != nil || scsi.Passthrough != nil || scsi.CloudInit != nil {
+	if !scsi.Delete {
 		return errorDiskSlotDuplicate(slot)
 	}
+	scsi.Delete = false
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaISO].(string) != "" {
@@ -319,15 +326,18 @@ func sdk_Disk_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, schema map[string]in
 		scsi.CdRom, diags = sdk_Disk_QemuCdRom(slot, schema)
 	case enumCloudInit:
 		scsi.CloudInit, diags = sdk_Disk_QemuCloudInit(slot, schema)
+	case enumIgnore:
+		return WarningIgnore(slot, schema)
 	}
 	return
 }
 
 func sdk_Disk_QemuVirtIOStorage(virtio *pveAPI.QemuVirtIOStorage, schema map[string]interface{}, id string) (diags diag.Diagnostics) {
 	slot := schemaVirtIO + id
-	if virtio.CdRom != nil || virtio.Disk != nil || virtio.Passthrough != nil || virtio.CloudInit != nil {
+	if !virtio.Delete {
 		return errorDiskSlotDuplicate(slot)
 	}
+	virtio.Delete = false
 	switch schema[schemaType].(string) {
 	case enumDisk:
 		if schema[schemaEmulateSSD].(bool) {
@@ -378,6 +388,8 @@ func sdk_Disk_QemuVirtIOStorage(virtio *pveAPI.QemuVirtIOStorage, schema map[str
 		return diag.Diagnostics{{
 			Severity: diag.Error,
 			Summary:  schemaVirtIO + " can't have " + schemaCloudInit + " disk"}}
+	case enumIgnore:
+		return WarningIgnore(slot, schema)
 	}
 	return
 }

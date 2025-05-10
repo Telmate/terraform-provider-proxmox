@@ -7,8 +7,8 @@ import (
 
 // Requires the caller to check for nil
 func Terraform_Unsafe(d *schema.ResourceData, config *pveAPI.QemuStorages, ciDisk *bool) {
-	if _, ok := d.GetOk(RootDisk); ok {
-		d.Set(RootDisk, terraform_Disk_QemuDisks(*config, ciDisk))
+	if v, ok := d.GetOk(RootDisk); ok {
+		d.Set(RootDisk, terraform_Disk_QemuDisks(*config, ciDisk, createDiskMap(v.([]any))))
 	} else {
 		d.Set(RootDisks, terraform_Disks_QemuDisks(*config, ciDisk, d))
 	}

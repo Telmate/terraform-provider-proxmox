@@ -65,6 +65,7 @@ const (
 	enumCdRom     = "cdrom"
 	enumCloudInit = "cloudinit"
 	enumDisk      = "disk"
+	enumIgnore    = "ignore"
 
 	slotIDE    string = schemaIDE
 	slotSata   string = schemaSata
@@ -138,10 +139,10 @@ func SchemaDisk() *schema.Schema {
 							return diag.Errorf(errorMSG.String, k)
 						}
 						switch v {
-						case enumDisk, enumCdRom, enumCloudInit:
+						case enumDisk, enumCdRom, enumCloudInit, enumIgnore:
 							return nil
 						}
-						return diag.Errorf(schemaType + " must be one of '" + enumDisk + "', '" + enumCdRom + "', '" + enumCloudInit + "'")
+						return diag.Errorf(schemaType + " must be one of '" + enumDisk + "', '" + enumCdRom + "', '" + enumCloudInit + "', '" + enumIgnore + "'")
 					}},
 				schemaWorldWideName: subSchemaDiskWWN(),
 			}}}
