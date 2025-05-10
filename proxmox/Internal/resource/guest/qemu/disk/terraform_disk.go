@@ -6,7 +6,6 @@ import pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 func terraform_Disk_QemuCdRom_unsafe(config *pveAPI.QemuCdRom, schema map[string]any) {
 	schema[schemaBackup] = true // always true to avoid diff
 	schema[schemaISO] = terraformIsoFile(config.Iso)
-	schema[schemaCdRom] = true
 	schema[schemaPassthrough] = config.Passthrough
 	schema[schemaType] = enumCdRom
 }
