@@ -10,7 +10,7 @@ func warningDisk(slot, setting, property, value, extra string) diag.Diagnostic {
 
 func warningsCdromAndCloudinit(slot, kind string, schema map[string]interface{}) (diags diag.Diagnostics) {
 	if schema[schemaAsyncIO].(string) != "" {
-		diags = append(diags, warningDisk(slot, schemaAsyncIO, schemaType, kind, ""))
+		diags = diag.Diagnostics{warningDisk(slot, schemaAsyncIO, schemaType, kind, "")}
 	}
 	if schema[schemaCache].(string) != "" {
 		diags = append(diags, warningDisk(slot, schemaCache, schemaType, kind, ""))
@@ -86,4 +86,86 @@ func warningsDiskPassthrough(slot string, schema map[string]interface{}) diag.Di
 		return diag.Diagnostics{warningDisk(slot, schemaStorage, schemaType, schemaPassthrough, "and "+schemaSlot+" = "+slot)}
 	}
 	return diag.Diagnostics{}
+}
+
+func WarningIgnore(slot string, schema map[string]any) (diags diag.Diagnostics) {
+	if schema[schemaAsyncIO].(string) != "" {
+		diags = diag.Diagnostics{warningDisk(slot, schemaAsyncIO, schemaType, enumIgnore, "")}
+	}
+	if !schema[schemaBackup].(bool) {
+		diags = append(diags, warningDisk(slot, schemaBackup, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaCache].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaCache, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaDiscard].(bool) {
+		diags = append(diags, warningDisk(slot, schemaDiscard, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaDiskFile].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaDiskFile, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaEmulateSSD].(bool) {
+		diags = append(diags, warningDisk(slot, schemaEmulateSSD, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaFormat].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaFormat, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaIOPSrBurst].(int) != 0 {
+		diags = append(diags, warningDisk(slot, schemaIOPSrBurst, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaIOPSrBurstLength].(int) != 0 {
+		diags = append(diags, warningDisk(slot, schemaIOPSrBurstLength, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaIOPSrConcurrent].(int) != 0 {
+		diags = append(diags, warningDisk(slot, schemaIOPSrConcurrent, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaIOPSwrBurst].(int) != 0 {
+		diags = append(diags, warningDisk(slot, schemaIOPSwrBurst, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaIOPSwrBurstLength].(int) != 0 {
+		diags = append(diags, warningDisk(slot, schemaIOPSwrBurstLength, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaIOPSwrConcurrent].(int) != 0 {
+		diags = append(diags, warningDisk(slot, schemaIOPSwrConcurrent, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaIOthread].(bool) {
+		diags = append(diags, warningDisk(slot, schemaIOthread, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaISO].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaISO, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaMBPSrBurst].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, schemaMBPSrBurst, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaMBPSrConcurrent].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, schemaMBPSrConcurrent, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaMBPSwrBurst].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, schemaMBPSwrBurst, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaMBPSwrConcurrent].(float64) != 0.0 {
+		diags = append(diags, warningDisk(slot, schemaMBPSwrConcurrent, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaPassthrough].(bool) {
+		diags = append(diags, warningDisk(slot, schemaPassthrough, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaReadOnly].(bool) {
+		diags = append(diags, warningDisk(slot, schemaReadOnly, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaReplicate].(bool) {
+		diags = append(diags, warningDisk(slot, schemaReplicate, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaSerial].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaSerial, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaSize].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaSize, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaStorage].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaStorage, schemaType, enumIgnore, ""))
+	}
+	if schema[schemaWorldWideName].(string) != "" {
+		diags = append(diags, warningDisk(slot, schemaWorldWideName, schemaType, enumIgnore, ""))
+	}
+	return
 }

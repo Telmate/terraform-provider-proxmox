@@ -1,6 +1,11 @@
 package disk
 
-import pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
+import (
+	"strconv"
+
+	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+)
 
 func terraform_Disks_QemuCdRom(config *pveAPI.QemuCdRom) []interface{} {
 	if config == nil {
@@ -23,33 +28,47 @@ func terraform_Disks_QemuCloudInit_unsafe(config *pveAPI.QemuCloudInitDisk) []in
 					schemaStorage: string(config.Storage)}}}}
 }
 
-func terraform_Disks_QemuDisks(config pveAPI.QemuStorages, ciDisk *bool) []interface{} {
-	ide := terraform_Disks_QemuIdeDisks(config.Ide, ciDisk)
-	sata := terraform_Disks_QemuSataDisks(config.Sata, ciDisk)
-	scsi := terraform_Disks_QemuScsiDisks(config.Scsi, ciDisk)
-	virtio := terraform_Disks_QemuVirtIODisks(config.VirtIO)
-	if ide == nil && sata == nil && scsi == nil && virtio == nil {
-		return nil
+func terraform_Disks_QemuDisks(config pveAPI.QemuStorages, ciDisk *bool, d *schema.ResourceData) []any {
+	schema := d.Get(RootDisks)
+	var schemaMap map[string]any
+	if v, ok := schema.([]any); ok && len(v) == 1 {
+		schemaMap = v[0].(map[string]any)
 	}
-	return []interface{}{map[string]interface{}{
-		schemaIDE:    ide,
-		schemaSata:   sata,
-		schemaScsi:   scsi,
-		schemaVirtIO: virtio}}
+	ide := terraform_Disks_QemuIdeDisks(config.Ide, ciDisk, schemaMap[schemaIDE].([]any))
+	sata := terraform_Disks_QemuSataDisks(config.Sata, ciDisk, schemaMap[schemaSata].([]any))
+	scsi := terraform_Disks_QemuScsiDisks(config.Scsi, ciDisk, schemaMap[schemaScsi].([]any))
+	virtio := terraform_Disks_QemuVirtIODisks(config.VirtIO, schemaMap[schemaVirtIO].([]any))
+	if ide != nil || sata != nil && scsi != nil && virtio != nil {
+		return []any{map[string]any{
+			schemaIDE:    ide,
+			schemaSata:   sata,
+			schemaScsi:   scsi,
+			schemaVirtIO: virtio}}
+	}
+	return nil
 }
 
-func terraform_Disks_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool) []interface{} {
+func terraform_Disks_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool, schema []any) []any {
+	var subSchema map[string]any
+	if len(schema) != 0 && schema[0] != nil {
+		subSchema = schema[0].(map[string]any)
+	}
 	if config == nil {
 		return nil
 	}
 	return []interface{}{map[string]interface{}{
-		schemaIDE + "0": terraform_Disks_QemuIdeStorage(config.Disk_0, ciDisk),
-		schemaIDE + "1": terraform_Disks_QemuIdeStorage(config.Disk_1, ciDisk),
-		schemaIDE + "2": terraform_Disks_QemuIdeStorage(config.Disk_2, ciDisk),
-		schemaIDE + "3": terraform_Disks_QemuIdeStorage(config.Disk_3, ciDisk)}}
+		schemaIDE + "0": terraform_Disks_QemuIdeStorage(config.Disk_0, ciDisk, subSchema[schemaIDE+"0"].([]any)),
+		schemaIDE + "1": terraform_Disks_QemuIdeStorage(config.Disk_1, ciDisk, subSchema[schemaIDE+"1"].([]any)),
+		schemaIDE + "2": terraform_Disks_QemuIdeStorage(config.Disk_2, ciDisk, subSchema[schemaIDE+"2"].([]any)),
+		schemaIDE + "3": terraform_Disks_QemuIdeStorage(config.Disk_3, ciDisk, subSchema[schemaIDE+"3"].([]any))}}
 }
 
-func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool) []interface{} {
+func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, schema []any) []any {
+	if len(schema) != 0 && schema[0] != nil {
+		if v := (schema[0].(map[string]any))[schemaIgnore].(bool); v {
+			return []any{map[string]any{schemaIgnore: true}}
+		}
+	}
 	if config == nil {
 		return nil
 	}
@@ -94,20 +113,32 @@ func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool)
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }
 
-func terraform_Disks_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool) []interface{} {
+func terraform_Disks_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool, schema []any) []any {
+	subSchemas := make([][]any, amountSataSlots)
+	if len(schema) != 0 && schema[0] != nil {
+		subSchema := schema[0].(map[string]any)
+		for i := 0; i < amountSataSlots; i++ {
+			subSchemas[i] = subSchema[schemaSata+strconv.Itoa(i)].([]any)
+		}
+	}
 	if config == nil {
 		return nil
 	}
-	return []interface{}{map[string]interface{}{
-		schemaSata + "0": terraform_Disks_QemuSataStorage(config.Disk_0, ciDisk),
-		schemaSata + "1": terraform_Disks_QemuSataStorage(config.Disk_1, ciDisk),
-		schemaSata + "2": terraform_Disks_QemuSataStorage(config.Disk_2, ciDisk),
-		schemaSata + "3": terraform_Disks_QemuSataStorage(config.Disk_3, ciDisk),
-		schemaSata + "4": terraform_Disks_QemuSataStorage(config.Disk_4, ciDisk),
-		schemaSata + "5": terraform_Disks_QemuSataStorage(config.Disk_5, ciDisk)}}
+	return []any{map[string]any{
+		schemaSata + "0": terraform_Disks_QemuSataStorage(config.Disk_0, ciDisk, subSchemas[0]),
+		schemaSata + "1": terraform_Disks_QemuSataStorage(config.Disk_1, ciDisk, subSchemas[1]),
+		schemaSata + "2": terraform_Disks_QemuSataStorage(config.Disk_2, ciDisk, subSchemas[2]),
+		schemaSata + "3": terraform_Disks_QemuSataStorage(config.Disk_3, ciDisk, subSchemas[3]),
+		schemaSata + "4": terraform_Disks_QemuSataStorage(config.Disk_4, ciDisk, subSchemas[4]),
+		schemaSata + "5": terraform_Disks_QemuSataStorage(config.Disk_5, ciDisk, subSchemas[5])}}
 }
 
-func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *bool) []interface{} {
+func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *bool, schema []any) []any {
+	if len(schema) != 0 && schema[0] != nil {
+		if v := (schema[0].(map[string]any))[schemaIgnore].(bool); v {
+			return []any{map[string]any{schemaIgnore: true}}
+		}
+	}
 	if config == nil {
 		return nil
 	}
@@ -152,45 +183,57 @@ func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *boo
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }
 
-func terraform_Disks_QemuScsiDisks(config *pveAPI.QemuScsiDisks, ciDisk *bool) []interface{} {
+func terraform_Disks_QemuScsiDisks(config *pveAPI.QemuScsiDisks, ciDisk *bool, schema []any) []any {
+	subSchemas := make([][]any, amountScsiSlots)
+	if len(schema) != 0 && schema[0] != nil {
+		subSchema := schema[0].(map[string]any)
+		for i := 0; i < amountScsiSlots; i++ {
+			subSchemas[i] = subSchema[schemaScsi+strconv.Itoa(i)].([]any)
+		}
+	}
 	if config == nil {
 		return nil
 	}
-	return []interface{}{map[string]interface{}{
-		schemaScsi + "0":  terraform_Disks_QemuScsiStorage(config.Disk_0, ciDisk),
-		schemaScsi + "1":  terraform_Disks_QemuScsiStorage(config.Disk_1, ciDisk),
-		schemaScsi + "2":  terraform_Disks_QemuScsiStorage(config.Disk_2, ciDisk),
-		schemaScsi + "3":  terraform_Disks_QemuScsiStorage(config.Disk_3, ciDisk),
-		schemaScsi + "4":  terraform_Disks_QemuScsiStorage(config.Disk_4, ciDisk),
-		schemaScsi + "5":  terraform_Disks_QemuScsiStorage(config.Disk_5, ciDisk),
-		schemaScsi + "6":  terraform_Disks_QemuScsiStorage(config.Disk_6, ciDisk),
-		schemaScsi + "7":  terraform_Disks_QemuScsiStorage(config.Disk_7, ciDisk),
-		schemaScsi + "8":  terraform_Disks_QemuScsiStorage(config.Disk_8, ciDisk),
-		schemaScsi + "9":  terraform_Disks_QemuScsiStorage(config.Disk_9, ciDisk),
-		schemaScsi + "10": terraform_Disks_QemuScsiStorage(config.Disk_10, ciDisk),
-		schemaScsi + "11": terraform_Disks_QemuScsiStorage(config.Disk_11, ciDisk),
-		schemaScsi + "12": terraform_Disks_QemuScsiStorage(config.Disk_12, ciDisk),
-		schemaScsi + "13": terraform_Disks_QemuScsiStorage(config.Disk_13, ciDisk),
-		schemaScsi + "14": terraform_Disks_QemuScsiStorage(config.Disk_14, ciDisk),
-		schemaScsi + "15": terraform_Disks_QemuScsiStorage(config.Disk_15, ciDisk),
-		schemaScsi + "16": terraform_Disks_QemuScsiStorage(config.Disk_16, ciDisk),
-		schemaScsi + "17": terraform_Disks_QemuScsiStorage(config.Disk_17, ciDisk),
-		schemaScsi + "18": terraform_Disks_QemuScsiStorage(config.Disk_18, ciDisk),
-		schemaScsi + "19": terraform_Disks_QemuScsiStorage(config.Disk_19, ciDisk),
-		schemaScsi + "20": terraform_Disks_QemuScsiStorage(config.Disk_20, ciDisk),
-		schemaScsi + "21": terraform_Disks_QemuScsiStorage(config.Disk_21, ciDisk),
-		schemaScsi + "22": terraform_Disks_QemuScsiStorage(config.Disk_22, ciDisk),
-		schemaScsi + "23": terraform_Disks_QemuScsiStorage(config.Disk_23, ciDisk),
-		schemaScsi + "24": terraform_Disks_QemuScsiStorage(config.Disk_24, ciDisk),
-		schemaScsi + "25": terraform_Disks_QemuScsiStorage(config.Disk_25, ciDisk),
-		schemaScsi + "26": terraform_Disks_QemuScsiStorage(config.Disk_26, ciDisk),
-		schemaScsi + "27": terraform_Disks_QemuScsiStorage(config.Disk_27, ciDisk),
-		schemaScsi + "28": terraform_Disks_QemuScsiStorage(config.Disk_28, ciDisk),
-		schemaScsi + "29": terraform_Disks_QemuScsiStorage(config.Disk_29, ciDisk),
-		schemaScsi + "30": terraform_Disks_QemuScsiStorage(config.Disk_30, ciDisk)}}
+	return []any{map[string]any{
+		schemaScsi + "0":  terraform_Disks_QemuScsiStorage(config.Disk_0, ciDisk, subSchemas[0]),
+		schemaScsi + "1":  terraform_Disks_QemuScsiStorage(config.Disk_1, ciDisk, subSchemas[1]),
+		schemaScsi + "2":  terraform_Disks_QemuScsiStorage(config.Disk_2, ciDisk, subSchemas[2]),
+		schemaScsi + "3":  terraform_Disks_QemuScsiStorage(config.Disk_3, ciDisk, subSchemas[3]),
+		schemaScsi + "4":  terraform_Disks_QemuScsiStorage(config.Disk_4, ciDisk, subSchemas[4]),
+		schemaScsi + "5":  terraform_Disks_QemuScsiStorage(config.Disk_5, ciDisk, subSchemas[5]),
+		schemaScsi + "6":  terraform_Disks_QemuScsiStorage(config.Disk_6, ciDisk, subSchemas[6]),
+		schemaScsi + "7":  terraform_Disks_QemuScsiStorage(config.Disk_7, ciDisk, subSchemas[7]),
+		schemaScsi + "8":  terraform_Disks_QemuScsiStorage(config.Disk_8, ciDisk, subSchemas[8]),
+		schemaScsi + "9":  terraform_Disks_QemuScsiStorage(config.Disk_9, ciDisk, subSchemas[9]),
+		schemaScsi + "10": terraform_Disks_QemuScsiStorage(config.Disk_10, ciDisk, subSchemas[10]),
+		schemaScsi + "11": terraform_Disks_QemuScsiStorage(config.Disk_11, ciDisk, subSchemas[11]),
+		schemaScsi + "12": terraform_Disks_QemuScsiStorage(config.Disk_12, ciDisk, subSchemas[12]),
+		schemaScsi + "13": terraform_Disks_QemuScsiStorage(config.Disk_13, ciDisk, subSchemas[13]),
+		schemaScsi + "14": terraform_Disks_QemuScsiStorage(config.Disk_14, ciDisk, subSchemas[14]),
+		schemaScsi + "15": terraform_Disks_QemuScsiStorage(config.Disk_15, ciDisk, subSchemas[15]),
+		schemaScsi + "16": terraform_Disks_QemuScsiStorage(config.Disk_16, ciDisk, subSchemas[16]),
+		schemaScsi + "17": terraform_Disks_QemuScsiStorage(config.Disk_17, ciDisk, subSchemas[17]),
+		schemaScsi + "18": terraform_Disks_QemuScsiStorage(config.Disk_18, ciDisk, subSchemas[18]),
+		schemaScsi + "19": terraform_Disks_QemuScsiStorage(config.Disk_19, ciDisk, subSchemas[19]),
+		schemaScsi + "20": terraform_Disks_QemuScsiStorage(config.Disk_20, ciDisk, subSchemas[20]),
+		schemaScsi + "21": terraform_Disks_QemuScsiStorage(config.Disk_21, ciDisk, subSchemas[21]),
+		schemaScsi + "22": terraform_Disks_QemuScsiStorage(config.Disk_22, ciDisk, subSchemas[22]),
+		schemaScsi + "23": terraform_Disks_QemuScsiStorage(config.Disk_23, ciDisk, subSchemas[23]),
+		schemaScsi + "24": terraform_Disks_QemuScsiStorage(config.Disk_24, ciDisk, subSchemas[24]),
+		schemaScsi + "25": terraform_Disks_QemuScsiStorage(config.Disk_25, ciDisk, subSchemas[25]),
+		schemaScsi + "26": terraform_Disks_QemuScsiStorage(config.Disk_26, ciDisk, subSchemas[26]),
+		schemaScsi + "27": terraform_Disks_QemuScsiStorage(config.Disk_27, ciDisk, subSchemas[27]),
+		schemaScsi + "28": terraform_Disks_QemuScsiStorage(config.Disk_28, ciDisk, subSchemas[28]),
+		schemaScsi + "29": terraform_Disks_QemuScsiStorage(config.Disk_29, ciDisk, subSchemas[29]),
+		schemaScsi + "30": terraform_Disks_QemuScsiStorage(config.Disk_30, ciDisk, subSchemas[30])}}
 }
 
-func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *bool) []interface{} {
+func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *bool, schema []any) []any {
+	if len(schema) != 0 && schema[0] != nil {
+		if v := (schema[0].(map[string]any))[schemaIgnore].(bool); v {
+			return []any{map[string]any{schemaIgnore: true}}
+		}
+	}
 	if config == nil {
 		return nil
 	}
@@ -238,30 +281,42 @@ func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *boo
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }
 
-func terraform_Disks_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks) []interface{} {
+func terraform_Disks_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks, schema []any) []any {
+	subSchemas := make([][]any, amountVirtIOSlots)
+	if len(schema) != 0 && schema[0] != nil {
+		subSchema := schema[0].(map[string]any)
+		for i := 0; i < amountVirtIOSlots; i++ {
+			subSchemas[i] = subSchema[schemaVirtIO+strconv.Itoa(i)].([]any)
+		}
+	}
 	if config == nil {
 		return nil
 	}
-	return []interface{}{map[string]interface{}{
-		schemaVirtIO + "0":  terraform_Disks_QemuVirtIOStorage(config.Disk_0),
-		schemaVirtIO + "1":  terraform_Disks_QemuVirtIOStorage(config.Disk_1),
-		schemaVirtIO + "2":  terraform_Disks_QemuVirtIOStorage(config.Disk_2),
-		schemaVirtIO + "3":  terraform_Disks_QemuVirtIOStorage(config.Disk_3),
-		schemaVirtIO + "4":  terraform_Disks_QemuVirtIOStorage(config.Disk_4),
-		schemaVirtIO + "5":  terraform_Disks_QemuVirtIOStorage(config.Disk_5),
-		schemaVirtIO + "6":  terraform_Disks_QemuVirtIOStorage(config.Disk_6),
-		schemaVirtIO + "7":  terraform_Disks_QemuVirtIOStorage(config.Disk_7),
-		schemaVirtIO + "8":  terraform_Disks_QemuVirtIOStorage(config.Disk_8),
-		schemaVirtIO + "9":  terraform_Disks_QemuVirtIOStorage(config.Disk_9),
-		schemaVirtIO + "10": terraform_Disks_QemuVirtIOStorage(config.Disk_10),
-		schemaVirtIO + "11": terraform_Disks_QemuVirtIOStorage(config.Disk_11),
-		schemaVirtIO + "12": terraform_Disks_QemuVirtIOStorage(config.Disk_12),
-		schemaVirtIO + "13": terraform_Disks_QemuVirtIOStorage(config.Disk_13),
-		schemaVirtIO + "14": terraform_Disks_QemuVirtIOStorage(config.Disk_14),
-		schemaVirtIO + "15": terraform_Disks_QemuVirtIOStorage(config.Disk_15)}}
+	return []any{map[string]any{
+		schemaVirtIO + "0":  terraform_Disks_QemuVirtIOStorage(config.Disk_0, subSchemas[0]),
+		schemaVirtIO + "1":  terraform_Disks_QemuVirtIOStorage(config.Disk_1, subSchemas[1]),
+		schemaVirtIO + "2":  terraform_Disks_QemuVirtIOStorage(config.Disk_2, subSchemas[2]),
+		schemaVirtIO + "3":  terraform_Disks_QemuVirtIOStorage(config.Disk_3, subSchemas[3]),
+		schemaVirtIO + "4":  terraform_Disks_QemuVirtIOStorage(config.Disk_4, subSchemas[4]),
+		schemaVirtIO + "5":  terraform_Disks_QemuVirtIOStorage(config.Disk_5, subSchemas[5]),
+		schemaVirtIO + "6":  terraform_Disks_QemuVirtIOStorage(config.Disk_6, subSchemas[6]),
+		schemaVirtIO + "7":  terraform_Disks_QemuVirtIOStorage(config.Disk_7, subSchemas[7]),
+		schemaVirtIO + "8":  terraform_Disks_QemuVirtIOStorage(config.Disk_8, subSchemas[8]),
+		schemaVirtIO + "9":  terraform_Disks_QemuVirtIOStorage(config.Disk_9, subSchemas[9]),
+		schemaVirtIO + "10": terraform_Disks_QemuVirtIOStorage(config.Disk_10, subSchemas[10]),
+		schemaVirtIO + "11": terraform_Disks_QemuVirtIOStorage(config.Disk_11, subSchemas[11]),
+		schemaVirtIO + "12": terraform_Disks_QemuVirtIOStorage(config.Disk_12, subSchemas[12]),
+		schemaVirtIO + "13": terraform_Disks_QemuVirtIOStorage(config.Disk_13, subSchemas[13]),
+		schemaVirtIO + "14": terraform_Disks_QemuVirtIOStorage(config.Disk_14, subSchemas[14]),
+		schemaVirtIO + "15": terraform_Disks_QemuVirtIOStorage(config.Disk_15, subSchemas[15])}}
 }
 
-func terraform_Disks_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage) []interface{} {
+func terraform_Disks_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema []any) []any {
+	if len(schema) != 0 && schema[0] != nil {
+		if v := (schema[0].(map[string]any))[schemaIgnore].(bool); v {
+			return []any{map[string]any{schemaIgnore: true}}
+		}
+	}
 	if config == nil {
 		return nil
 	}
