@@ -217,6 +217,8 @@ details.
 
 The `disk` block is used to configure the disk devices. It may be specified multiple times. This block does not diff as pretty as the `disks` block, but it is more flexible for modules. Putting the disks in alphanumeric order based on the value of `slot` is recommended for readability.
 
+For `type` there is a special `ignore` value. This will tell Terraform to not manage the disk in that slot, useful when another tool manages the disks.
+
 Due to the complexity of the `disk` block, there is a settings matrix that can be found in the [Disk compatibility matrix](#disk-compatibility-matrix).
 
 | Argument             | Type   |Default| Description|
@@ -249,7 +251,7 @@ Due to the complexity of the `disk` block, there is a settings matrix that can b
 |`size`                |`string`|       |The size of the created disk. Accepts `K` for kibibytes, `M` for mebibytes, `G` for gibibytes, `T` for tibibytes. When only a number is provided gibibytes is assumed. **Required** when `type`=`disk` and `passthrough`=`false`, **Computed** when `type`=`disk` and `passthrough`=`true`. |
 |`slot`                |`string`|       |**Required** The slot id of the disk - must be one of 'ide0', 'ide1', 'ide2', 'sata0', 'sata1', 'sata2', 'sata3', 'sata4', 'sata5', 'scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'scsi7', 'scsi8', 'scsi9', 'scsi10', 'scsi11', 'scsi12', 'scsi13', 'scsi14', 'scsi15', 'scsi16', 'scsi17', 'scsi18', 'scsi19', 'scsi20', 'scsi21', 'scsi22', 'scsi23', 'scsi24', 'scsi25', 'scsi26', 'scsi27', 'scsi28', 'scsi29', 'scsi30', 'virtio0', 'virtio1', 'virtio2', 'virtio3', 'virtio4', 'virtio5', 'virtio6', 'virtio7', 'virtio8', 'virtio9', 'virtio10', 'virtio11', 'virtio12', 'virtio13', 'virtio14', 'virtio15'|
 |`storage`             |`string`|       |Required when `type`=`disk` and `passthrough`=`false`. The name of the storage pool on which to store the disk.|
-|`type`                |`string`|`disk` |The type of disk to create. Options: `cdrom`, `cloudinit` ,`disk`.|
+|`type`                |`string`|`disk` |The type of disk to create. Options: `cdrom`, `cloudinit` ,`disk` ,`ignore`.|
 |`wwn`                 |`string`|       |The WWN of the disk.|
 
 Example `Disk block` using an existing vm as a template.
@@ -304,9 +306,12 @@ disk {
 
 The `disks` block is used to configure the disk devices. It may be specified once. There are four types of disk `ide`,`sata`,`scsi` and `virtio`. Configuration for these sub types can be found in their respective chapters:
 
-* `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
-* `disk`: [Disks.x.Disk Block](#disksxdisk-block).
-* `passthrough`: [Disks.x.Passthrough Block](#disksxpassthrough-block).
+* `ide`: [Disks.Ide Block](#diskside-block).
+* `sata`: [Disks.Sata Block](#diskssata-block).
+* `scsi`: [Disks.Scsi Block](#disksscsi-block).
+* `virtio`: [Disks.Virtio Block](#disksvirtio-block).
+
+For each disk slot there is a special `ignore` setting that can be set to `true`. This will tell Terraform to not manage the disk in that slot, useful when another tool manages the disks.
 
 ```hcl
 resource "proxmox_vm_qemu" "resource-name" {
@@ -331,7 +336,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Ide Block
 
-The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide3`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.ide` block is used to configure disks of type ide. It may only be specified once. It has the options `ide0` through `ide3`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`, `ignore`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `cloudinit`: [Disks.x.Cloudinit Block](#disksxcloudinit-block).
@@ -372,7 +377,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Sata Block
 
-The `disks.sata` block is used to configure disks of type sata. It may only be specified once. It has the options `sata0` through `sata5`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.sata` block is used to configure disks of type sata. It may only be specified once. It has the options `sata0` through `sata5`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`, `ignore`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `cloudinit`: [Disks.x.Cloudinit Block](#disksxcloudinit-block).
@@ -405,6 +410,9 @@ resource "proxmox_vm_qemu" "resource-name" {
           //<arguments omitted for brevity...>
         }
       }
+      sata4 {
+        ignore = true
+      }
       //<arguments omitted for brevity...>
     }
     //<arguments omitted for brevity...>
@@ -414,7 +422,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Scsi Block
 
-The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `scsi0` through `scsi30`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.scsi` block is used to configure disks of type scsi. It may only be specified once. It has the options `scsi0` through `scsi30`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `cloudinit`, `disk`, `passthrough` `ignore`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `cloudinit`: [Disks.x.Cloudinit Block](#disksxcloudinit-block).
@@ -447,6 +455,9 @@ resource "proxmox_vm_qemu" "resource-name" {
           //<arguments omitted for brevity...>
         }
       }
+      scsi4 {
+        ignore = true
+      }
       //<arguments omitted for brevity...>
     }
     //<arguments omitted for brevity...>
@@ -456,7 +467,7 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 ### Disks.Virtio Block
 
-The `disks.virtio` block is used to configure disks of type virtio. It may only be specified once. It has the options `virtio0` through `virtio15`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`. Configuration for these sub types can be found in their respective chapters:
+The `disks.virtio` block is used to configure disks of type virtio. It may only be specified once. It has the options `virtio0` through `virtio15`. Each disk can have only one of the following mutually exclusive sub types `cdrom`, `disk`, `passthrough`, `ignore`. Configuration for these sub types can be found in their respective chapters:
 
 * `cdrom`: [Disks.x.Cdrom Block](#disksxcdrom-block).
 * `disk`: [Disks.x.Disk Block](#disksxdisk-block).
@@ -482,6 +493,9 @@ resource "proxmox_vm_qemu" "resource-name" {
         passthrough {
           //<arguments omitted for brevity...>
         }
+      }
+      virtio3 {
+        ignore = true
       }
       //<arguments omitted for brevity...>
     }
