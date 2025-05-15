@@ -28,6 +28,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cloudinit"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
@@ -502,11 +503,8 @@ func resourceVmQemu() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"nameserver": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			sshkeys.Root: sshkeys.Schema(),
+			cloudinit.RootNameServers: cloudinit.SchemaNameServers(),
+			sshkeys.Root:              sshkeys.Schema(),
 			"ipconfig0": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -1003,7 +1001,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"cipassword",
 		"cicustom",
 		"searchdomain",
-		"nameserver",
+		cloudinit.RootNameServers,
 		"sshkeys",
 		"ipconfig0",
 		"ipconfig1",
@@ -1692,7 +1690,7 @@ func mapToTerraform_CloudInit(config *pveSDK.CloudInit, d *schema.ResourceData) 
 	}
 	if config.DNS != nil {
 		d.Set("searchdomain", config.DNS.SearchDomain)
-		d.Set("nameserver", nameservers.String(config.DNS.NameServers))
+		d.Set(cloudinit.RootNameServers, nameservers.String(config.DNS.NameServers))
 	}
 	for i := pveSDK.QemuNetworkInterfaceID(0); i < 16; i++ {
 		if v, isSet := config.NetworkInterfaces[i]; isSet {
@@ -1764,7 +1762,7 @@ func mapToSDK_CloudInit(d *schema.ResourceData) *pveSDK.CloudInit {
 		},
 		DNS: &pveSDK.GuestDNS{
 			SearchDomain: util.Pointer(d.Get("searchdomain").(string)),
-			NameServers:  nameservers.Split(d.Get("nameserver").(string)),
+			NameServers:  nameservers.Split(d.Get(cloudinit.RootNameServers).(string)),
 		},
 		NetworkInterfaces: pveSDK.CloudInitNetworkInterfaces{},
 		PublicSSHkeys:     sshkeys.SDK(d),
