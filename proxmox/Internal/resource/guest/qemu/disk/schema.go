@@ -72,7 +72,7 @@ const (
 	slotScsi   string = schemaScsi
 	slotVirtIO string = schemaVirtIO
 
-	amountIdeSlots    = 3
+	amountIdeSlots    = 4
 	amountSataSlots   = 6
 	amountScsiSlots   = 31
 	amountVirtIOSlots = 16
