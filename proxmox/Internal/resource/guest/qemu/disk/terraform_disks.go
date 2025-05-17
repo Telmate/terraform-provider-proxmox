@@ -284,7 +284,7 @@ func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *boo
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }
 
-func terraform_Disks_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks, schema any) any {
+func terraform_Disks_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks, schema any) []any {
 	subSchemas := make([][]any, amountVirtIOSlots)
 	if v, ok := schema.([]any); ok && len(v) != 0 && v[0] != nil {
 		subSchema := v[0].(map[string]any)
