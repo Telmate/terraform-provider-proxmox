@@ -34,11 +34,11 @@ func terraform_Disks_QemuDisks(config pveAPI.QemuStorages, ciDisk *bool, d *sche
 	if v, ok := schema.([]any); ok && len(v) == 1 {
 		schemaMap = v[0].(map[string]any)
 	}
-	ide := terraform_Disks_QemuIdeDisks(config.Ide, ciDisk, schemaMap[schemaIDE].([]any))
-	sata := terraform_Disks_QemuSataDisks(config.Sata, ciDisk, schemaMap[schemaSata].([]any))
-	scsi := terraform_Disks_QemuScsiDisks(config.Scsi, ciDisk, schemaMap[schemaScsi].([]any))
-	virtio := terraform_Disks_QemuVirtIODisks(config.VirtIO, schemaMap[schemaVirtIO].([]any))
-	if ide != nil || sata != nil && scsi != nil && virtio != nil {
+	ide := terraform_Disks_QemuIdeDisks(config.Ide, ciDisk, schemaMap[schemaIDE])
+	sata := terraform_Disks_QemuSataDisks(config.Sata, ciDisk, schemaMap[schemaSata])
+	scsi := terraform_Disks_QemuScsiDisks(config.Scsi, ciDisk, schemaMap[schemaScsi])
+	virtio := terraform_Disks_QemuVirtIODisks(config.VirtIO, schemaMap[schemaVirtIO])
+	if ide != nil || sata != nil || scsi != nil || virtio != nil {
 		return []any{map[string]any{
 			schemaIDE:    ide,
 			schemaSata:   sata,
@@ -48,19 +48,22 @@ func terraform_Disks_QemuDisks(config pveAPI.QemuStorages, ciDisk *bool, d *sche
 	return nil
 }
 
-func terraform_Disks_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool, schema []any) []any {
-	var subSchema map[string]any
-	if len(schema) != 0 && schema[0] != nil {
-		subSchema = schema[0].(map[string]any)
+func terraform_Disks_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool, schema any) []any {
+	subSchemas := make([][]any, amountIdeSlots)
+	if v, ok := schema.([]any); ok && len(v) != 0 && v[0] != nil {
+		subSchema := v[0].(map[string]any)
+		for i := 0; i < amountIdeSlots; i++ {
+			subSchemas[i] = subSchema[schemaIDE+strconv.Itoa(i)].([]any)
+		}
 	}
 	if config == nil {
 		return nil
 	}
 	return []interface{}{map[string]interface{}{
-		schemaIDE + "0": terraform_Disks_QemuIdeStorage(config.Disk_0, ciDisk, subSchema[schemaIDE+"0"].([]any)),
-		schemaIDE + "1": terraform_Disks_QemuIdeStorage(config.Disk_1, ciDisk, subSchema[schemaIDE+"1"].([]any)),
-		schemaIDE + "2": terraform_Disks_QemuIdeStorage(config.Disk_2, ciDisk, subSchema[schemaIDE+"2"].([]any)),
-		schemaIDE + "3": terraform_Disks_QemuIdeStorage(config.Disk_3, ciDisk, subSchema[schemaIDE+"3"].([]any))}}
+		schemaIDE + "0": terraform_Disks_QemuIdeStorage(config.Disk_0, ciDisk, subSchemas[0]),
+		schemaIDE + "1": terraform_Disks_QemuIdeStorage(config.Disk_1, ciDisk, subSchemas[1]),
+		schemaIDE + "2": terraform_Disks_QemuIdeStorage(config.Disk_2, ciDisk, subSchemas[2]),
+		schemaIDE + "3": terraform_Disks_QemuIdeStorage(config.Disk_3, ciDisk, subSchemas[3])}}
 }
 
 func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, schema []any) []any {
@@ -113,10 +116,10 @@ func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool,
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }
 
-func terraform_Disks_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool, schema []any) []any {
+func terraform_Disks_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool, schema any) []any {
 	subSchemas := make([][]any, amountSataSlots)
-	if len(schema) != 0 && schema[0] != nil {
-		subSchema := schema[0].(map[string]any)
+	if v, ok := schema.([]any); ok && len(v) != 0 && v[0] != nil {
+		subSchema := v[0].(map[string]any)
 		for i := 0; i < amountSataSlots; i++ {
 			subSchemas[i] = subSchema[schemaSata+strconv.Itoa(i)].([]any)
 		}
@@ -183,10 +186,10 @@ func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *boo
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }
 
-func terraform_Disks_QemuScsiDisks(config *pveAPI.QemuScsiDisks, ciDisk *bool, schema []any) []any {
+func terraform_Disks_QemuScsiDisks(config *pveAPI.QemuScsiDisks, ciDisk *bool, schema any) []any {
 	subSchemas := make([][]any, amountScsiSlots)
-	if len(schema) != 0 && schema[0] != nil {
-		subSchema := schema[0].(map[string]any)
+	if v, ok := schema.([]any); ok && len(v) != 0 && v[0] != nil {
+		subSchema := v[0].(map[string]any)
 		for i := 0; i < amountScsiSlots; i++ {
 			subSchemas[i] = subSchema[schemaScsi+strconv.Itoa(i)].([]any)
 		}
@@ -281,10 +284,10 @@ func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *boo
 	return terraform_Disks_QemuCdRom(config.CdRom)
 }
 
-func terraform_Disks_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks, schema []any) []any {
+func terraform_Disks_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks, schema any) any {
 	subSchemas := make([][]any, amountVirtIOSlots)
-	if len(schema) != 0 && schema[0] != nil {
-		subSchema := schema[0].(map[string]any)
+	if v, ok := schema.([]any); ok && len(v) != 0 && v[0] != nil {
+		subSchema := v[0].(map[string]any)
 		for i := 0; i < amountVirtIOSlots; i++ {
 			subSchemas[i] = subSchema[schemaVirtIO+strconv.Itoa(i)].([]any)
 		}
