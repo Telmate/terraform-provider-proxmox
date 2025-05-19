@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/dns/nameservers"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
@@ -473,103 +472,30 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
-			"ciupgrade": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-			},
-			"ciuser": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"cipassword": {
-				Type:      schema.TypeString,
-				Optional:  true,
-				Sensitive: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return new == "**********"
-					// if new == "**********" {
-					// 	return true // api returns asterisks instead of password so can't diff
-					// }
-					// return false
-				},
-			},
-			"cicustom": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
-			},
-			"searchdomain": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			cloudinit.RootNameServers: cloudinit.SchemaNameServers(),
-			sshkeys.Root:              sshkeys.Schema(),
-			"ipconfig0": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig1": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig2": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig3": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig4": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig5": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig6": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig7": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig8": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig9": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig10": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig11": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig12": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig13": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig14": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"ipconfig15": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			pool.Root: pool.Schema(),
+			cloudinit.RootCustom:          cloudinit.SchemaCiCustom(),
+			cloudinit.RootNameServers:     cloudinit.SchemaNameServers(),
+			cloudinit.RootPassword:        cloudinit.SchemaPassword(),
+			cloudinit.RootSearchDomain:    cloudinit.SchemaSearchDomain(),
+			cloudinit.RootUpgrade:         cloudinit.SchemaUpgrade(),
+			cloudinit.RootUser:            cloudinit.SchemaUser(),
+			sshkeys.Root:                  sshkeys.Schema(),
+			cloudinit.RootNetworkConfig0:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig1:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig2:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig3:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig4:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig5:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig6:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig7:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig8:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig9:  cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig10: cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig11: cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig12: cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig13: cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig14: cloudinit.SchemaNetworkConfig(),
+			cloudinit.RootNetworkConfig15: cloudinit.SchemaNetworkConfig(),
+			pool.Root:                     pool.Schema(),
 			"ssh_host": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -700,7 +626,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Args:        d.Get("args").(string),
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		CloudInit:   mapToSDK_CloudInit(d),
+		CloudInit:   cloudinit.SDK(d),
 		TPM:         tpm.SDK(d),
 	}
 
@@ -938,7 +864,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Args:        d.Get("args").(string),
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		CloudInit:   mapToSDK_CloudInit(d),
+		CloudInit:   cloudinit.SDK(d),
 		TPM:         tpm.SDK(d),
 	}
 
@@ -997,39 +923,14 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"hotplug",
 		"scsihw",
 		"os_type",
-		"ciuser",
-		"cipassword",
-		"cicustom",
-		"searchdomain",
-		cloudinit.RootNameServers,
 		"sshkeys",
-		"ipconfig0",
-		"ipconfig1",
-		"ipconfig2",
-		"ipconfig3",
-		"ipconfig4",
-		"ipconfig5",
-		"ipconfig6",
-		"ipconfig7",
-		"ipconfig8",
-		"ipconfig9",
-		"ipconfig10",
-		"ipconfig11",
-		"ipconfig12",
-		"ipconfig13",
-		"ipconfig14",
-		"ipconfig15",
 		"kvm",
 		"vga",
 		"serial",
 		"usb",
 		"hostpci",
 		"smbios",
-	) {
-		rebootRequired = true
-	}
-
-	if d.HasChange("ciupgrade") && *config.CloudInit.UpgradePackages {
+	) || cloudinit.NeedsReboot(config.CloudInit, d) {
 		rebootRequired = true
 	}
 
@@ -1226,7 +1127,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if config.CPU != nil {
 		cpu.Terraform(*config.CPU, d)
 	}
-	mapToTerraform_CloudInit(config.CloudInit, d)
+	if config.CloudInit != nil {
+		cloudinit.Terraform(config.CloudInit, d)
+	}
 	mapToTerraform_Memory(config.Memory, d)
 	if len(config.Networks) != 0 {
 		network.Terraform(config.Networks, d)
@@ -1676,50 +1579,6 @@ func getPrimaryIP(
 
 // Map struct to the terraform schema
 
-func mapToTerraform_CloudInit(config *pveSDK.CloudInit, d *schema.ResourceData) {
-	if config == nil {
-		return
-	}
-	// we purposely use the password from the terraform config here
-	// because the proxmox api will always return "**********" leading to diff issues
-	d.Set("cipassword", d.Get("cipassword").(string))
-
-	d.Set("ciuser", config.Username)
-	if config.Custom != nil {
-		d.Set("cicustom", config.Custom.String())
-	}
-	if config.DNS != nil {
-		d.Set("searchdomain", config.DNS.SearchDomain)
-		d.Set(cloudinit.RootNameServers, nameservers.String(config.DNS.NameServers))
-	}
-	for i := pveSDK.QemuNetworkInterfaceID(0); i < 16; i++ {
-		if v, isSet := config.NetworkInterfaces[i]; isSet {
-			d.Set("ipconfig"+strconv.Itoa(int(i)), mapToTerraform_CloudInitNetworkConfig(v))
-		}
-	}
-	if config.PublicSSHkeys != nil {
-		sshkeys.Terraform(*config.PublicSSHkeys, d)
-	}
-	if config.UpgradePackages != nil {
-		d.Set("ciupgrade", *config.UpgradePackages)
-	}
-}
-
-func mapToTerraform_CloudInitNetworkConfig(config pveSDK.CloudInitNetworkConfig) string {
-	if config.IPv4 != nil {
-		if config.IPv6 != nil {
-			return config.IPv4.String() + "," + config.IPv6.String()
-		} else {
-			return config.IPv4.String()
-		}
-	} else {
-		if config.IPv6 != nil {
-			return config.IPv6.String()
-		}
-	}
-	return ""
-}
-
 func mapToTerraform_Description(description *string) string {
 	if description != nil {
 		return *description
@@ -1751,91 +1610,6 @@ func mapFromStruct_QemuGuestAgent(d *schema.ResourceData, config *pveSDK.QemuGue
 }
 
 // Map the terraform schema to sdk struct
-
-func mapToSDK_CloudInit(d *schema.ResourceData) *pveSDK.CloudInit {
-	ci := pveSDK.CloudInit{
-		Custom: &pveSDK.CloudInitCustom{
-			Meta:    &pveSDK.CloudInitSnippet{},
-			Network: &pveSDK.CloudInitSnippet{},
-			User:    &pveSDK.CloudInitSnippet{},
-			Vendor:  &pveSDK.CloudInitSnippet{},
-		},
-		DNS: &pveSDK.GuestDNS{
-			SearchDomain: util.Pointer(d.Get("searchdomain").(string)),
-			NameServers:  nameservers.Split(d.Get(cloudinit.RootNameServers).(string)),
-		},
-		NetworkInterfaces: pveSDK.CloudInitNetworkInterfaces{},
-		PublicSSHkeys:     sshkeys.SDK(d),
-		UpgradePackages:   util.Pointer(d.Get("ciupgrade").(bool)),
-		UserPassword:      util.Pointer(d.Get("cipassword").(string)),
-		Username:          util.Pointer(d.Get("ciuser").(string)),
-	}
-	params := splitStringOfSettings(d.Get("cicustom").(string))
-	if v, isSet := params["meta"]; isSet {
-		ci.Custom.Meta = mapToSDK_CloudInitSnippet(v)
-	}
-	if v, isSet := params["network"]; isSet {
-		ci.Custom.Network = mapToSDK_CloudInitSnippet(v)
-	}
-	if v, isSet := params["user"]; isSet {
-		ci.Custom.User = mapToSDK_CloudInitSnippet(v)
-	}
-	if v, isSet := params["vendor"]; isSet {
-		ci.Custom.Vendor = mapToSDK_CloudInitSnippet(v)
-	}
-	for i := 0; i < 16; i++ {
-		ci.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID(i)] = mapToSDK_CloudInitNetworkConfig(d.Get("ipconfig" + strconv.Itoa(i)).(string))
-	}
-	return &ci
-}
-
-func mapToSDK_CloudInitNetworkConfig(param string) pveSDK.CloudInitNetworkConfig {
-	config := pveSDK.CloudInitNetworkConfig{
-		IPv4: &pveSDK.CloudInitIPv4Config{
-			Address: util.Pointer(pveSDK.IPv4CIDR("")),
-			DHCP:    false,
-			Gateway: util.Pointer(pveSDK.IPv4Address(""))},
-		IPv6: &pveSDK.CloudInitIPv6Config{
-			Address: util.Pointer(pveSDK.IPv6CIDR("")),
-			DHCP:    false,
-			Gateway: util.Pointer(pveSDK.IPv6Address("")),
-			SLAAC:   false}}
-	params := splitStringOfSettings(param)
-	if v, isSet := params["ip"]; isSet {
-		if v == "dhcp" {
-			config.IPv4.DHCP = true
-		} else {
-			*config.IPv4.Address = pveSDK.IPv4CIDR(v)
-		}
-	}
-	if v, isSet := params["gw"]; isSet {
-		*config.IPv4.Gateway = pveSDK.IPv4Address(v)
-	}
-	if v, isSet := params["ip6"]; isSet {
-		switch v {
-		case "dhcp":
-			config.IPv6.DHCP = true
-		case "auto":
-			config.IPv6.SLAAC = true
-		default:
-			*config.IPv6.Address = pveSDK.IPv6CIDR(v)
-		}
-	}
-	if v, isSet := params["gw6"]; isSet {
-		*config.IPv6.Gateway = pveSDK.IPv6Address(v)
-	}
-	return config
-}
-
-func mapToSDK_CloudInitSnippet(param string) *pveSDK.CloudInitSnippet {
-	file := strings.SplitN(param, ":", 2)
-	if len(file) == 2 {
-		return &pveSDK.CloudInitSnippet{
-			Storage:  file[0],
-			FilePath: pveSDK.CloudInitSnippetPath(file[1])}
-	}
-	return nil
-}
 
 func mapToSDK_Memory(d *schema.ResourceData) *pveSDK.QemuMemory {
 	return &pveSDK.QemuMemory{

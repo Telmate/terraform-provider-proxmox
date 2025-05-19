@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -512,18 +511,4 @@ func ByteCountIEC(b int64) string {
 	}
 	return fmt.Sprintf("%0.f%c",
 		float64(b)/float64(div), "KMGTPE"[exp])
-}
-
-func splitStringOfSettings(settings string) map[string]string {
-	settingValuePairs := strings.Split(settings, ",")
-	settingMap := map[string]string{}
-	for _, e := range settingValuePairs {
-		keyValuePair := strings.SplitN(e, "=", 2)
-		var value string
-		if len(keyValuePair) == 2 {
-			value = keyValuePair[1]
-		}
-		settingMap[keyValuePair[0]] = value
-	}
-	return settingMap
 }
