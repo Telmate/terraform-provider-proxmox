@@ -36,7 +36,10 @@ func SchemaCiCustom() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeString,
 		ForceNew: true,
-		Optional: true}
+		Optional: true,
+		DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+			return sdkCloudInitCustom(new).String() == sdkCloudInitCustom(old).String()
+		}}
 }
 
 func SchemaNameServers() *schema.Schema {
