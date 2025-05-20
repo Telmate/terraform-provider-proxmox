@@ -123,13 +123,13 @@ func terraform_Disk_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool, sc
 	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, ciDisk, schema[schemaSata+"2"]); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, ciDisk, schema[schemaSata+"3"]); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_3, ciDisk, schema[schemaSata+"3"]); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, ciDisk, schema[schemaSata+"4"]); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_4, ciDisk, schema[schemaSata+"4"]); disk != nil {
 		disks = append(disks, disk)
 	}
-	if disk := terraform_Disk_QemuSataStorage(config.Disk_2, ciDisk, schema[schemaSata+"5"]); disk != nil {
+	if disk := terraform_Disk_QemuSataStorage(config.Disk_5, ciDisk, schema[schemaSata+"5"]); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
