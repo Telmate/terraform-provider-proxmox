@@ -4,7 +4,7 @@ import pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 
 // nil check is done by the caller
 func terraform_Disk_QemuCdRom_unsafe(config *pveAPI.QemuCdRom, schema map[string]any) {
-	schema[schemaBackup] = true // always true to avoid diff
+	schema[schemaSize] = defaultSize // set avoid diff
 	schema[schemaISO] = terraformIsoFile(config.Iso)
 	schema[schemaPassthrough] = config.Passthrough
 	schema[schemaType] = enumCdRom
@@ -12,7 +12,7 @@ func terraform_Disk_QemuCdRom_unsafe(config *pveAPI.QemuCdRom, schema map[string
 
 // nil check is done by the caller
 func terraform_Disk_QemuCloudInit_unsafe(config *pveAPI.QemuCloudInitDisk, schema map[string]any) {
-	schema[schemaBackup] = true // always true to avoid diff
+	schema[schemaSize] = defaultSize // set to avoid diff
 	schema[schemaStorage] = config.Storage
 	schema[schemaType] = enumCloudInit
 }
