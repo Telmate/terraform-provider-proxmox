@@ -76,6 +76,8 @@ const (
 	amountSataSlots   = 6
 	amountScsiSlots   = 31
 	amountVirtIOSlots = 16
+
+	totalSlots = amountIdeSlots + amountSataSlots + amountScsiSlots + amountVirtIOSlots
 )
 
 func SchemaDisk() *schema.Schema {

@@ -18,7 +18,7 @@ func terraform_Disk_QemuCloudInit_unsafe(config *pveAPI.QemuCloudInitDisk, schem
 }
 
 func terraform_Disk_QemuDisks(config pveAPI.QemuStorages, ciDisk *bool, schema map[string]map[string]any) []map[string]any {
-	disks := make([]map[string]interface{}, 0, 56) // max is sum of underlying arrays
+	disks := make([]map[string]any, 0, totalSlots)
 	if ideDisks := terraform_Disk_QemuIdeDisks(config.Ide, ciDisk, schema); ideDisks != nil {
 		disks = append(disks, ideDisks...)
 	}
@@ -41,7 +41,7 @@ func terraform_Disk_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool, sche
 	if config == nil {
 		config = &pveAPI.QemuIdeDisks{}
 	}
-	disks := make([]map[string]interface{}, 0, 3)
+	disks := make([]map[string]any, 0, amountIdeSlots)
 	if disk := terraform_Disk_QemuIdeStorage(config.Disk_0, ciDisk, schema[schemaIDE+"0"]); disk != nil {
 		disks = append(disks, disk)
 	}
@@ -49,6 +49,9 @@ func terraform_Disk_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool, sche
 		disks = append(disks, disk)
 	}
 	if disk := terraform_Disk_QemuIdeStorage(config.Disk_2, ciDisk, schema[schemaIDE+"2"]); disk != nil {
+		disks = append(disks, disk)
+	}
+	if disk := terraform_Disk_QemuIdeStorage(config.Disk_3, ciDisk, schema[schemaIDE+"3"]); disk != nil {
 		disks = append(disks, disk)
 	}
 	if len(disks) == 0 {
@@ -110,7 +113,7 @@ func terraform_Disk_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool, sc
 	if config == nil {
 		config = &pveAPI.QemuSataDisks{}
 	}
-	disks := make([]map[string]interface{}, 0, 6)
+	disks := make([]map[string]any, 0, amountSataSlots)
 	if disk := terraform_Disk_QemuSataStorage(config.Disk_0, ciDisk, schema[schemaSata+"0"]); disk != nil {
 		disks = append(disks, disk)
 	}
@@ -188,7 +191,7 @@ func terraform_Disk_QemuScsiDisks(config *pveAPI.QemuScsiDisks, ciDisk *bool, sc
 	if config == nil {
 		config = &pveAPI.QemuScsiDisks{}
 	}
-	disks := make([]map[string]interface{}, 0, 31)
+	disks := make([]map[string]any, 0, amountScsiSlots)
 	if disk := terraform_Disk_QemuScsiStorage(config.Disk_0, ciDisk, schema[schemaScsi+"0"]); disk != nil {
 		disks = append(disks, disk)
 	}
@@ -345,7 +348,7 @@ func terraform_Disk_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks, schema map[s
 	if config == nil {
 		config = &pveAPI.QemuVirtIODisks{}
 	}
-	disks := make([]map[string]interface{}, 0, 16)
+	disks := make([]map[string]any, 0, amountVirtIOSlots)
 	if disk := terraform_Disk_QemuVirtIOStorage(config.Disk_0, schema[schemaVirtIO+"0"]); disk != nil {
 		disks = append(disks, disk)
 	}
