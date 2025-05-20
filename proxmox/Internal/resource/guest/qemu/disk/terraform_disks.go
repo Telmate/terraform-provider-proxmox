@@ -323,7 +323,6 @@ func terraform_Disks_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema 
 	if config == nil {
 		return nil
 	}
-	terraform_Disks_QemuCdRom(config.CdRom)
 	if config.Disk != nil {
 		mapParams := map[string]interface{}{
 			schemaAsyncIO:      string(config.Disk.AsyncIO),
