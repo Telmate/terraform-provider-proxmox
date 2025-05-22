@@ -5,7 +5,7 @@ can help investigate any problems they may run into.
 # Compilation
 Instructions on how to compile the provider, and cause terraform to use that
 newly compiled executable, see the
-[installation guide](https://github.com/Telmate/terraform-provider-proxmox/blob/new_developer_setup/docs/guides/installation.md#compile-the-executables-with-go).
+[installation guide](installation.md#compile-the-executables-with-go).
 
 You may want to specify the namespace and specific path to the plugin to make
 sure terraform is getting the correct executable. If you are using the default
