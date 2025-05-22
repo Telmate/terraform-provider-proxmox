@@ -7,7 +7,7 @@ can help investigate any problems they may run into.
 
 Instructions on how to compile the provider, and cause terraform to use that
 newly compiled executable, see the
-[installation guide](installation.md#compile-the-executables-with-go).
+[installation guide](./installation.md#compile-the-executables-with-go).
 
 You may want to specify the namespace and specific path to the plugin to make
 sure terraform is getting the correct executable. If you are using the default
