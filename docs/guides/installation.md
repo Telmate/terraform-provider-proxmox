@@ -81,8 +81,7 @@ mkdir -p ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLU
 ```
 
 Then, copy the executables to the directory you just created. You could also use the `make local-dev-install` target.
-it's important to note that you aren't required to use a semver, and if you don't, then the path must be altered
-accordingly.
+It's important to note that you aren't required to use a semver, and if you don't, then the path must be altered accordingly.
 
 ```bash
 cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/registry.example.com/telmate/proxmox/1.0.0/${PLUGIN_ARCH}/
