@@ -82,7 +82,9 @@ func subSchemaAffinity() *schema.Schema {
 		ValidateDiagFunc: func(i any, p cty.Path) diag.Diagnostics {
 			v, ok := i.(string)
 			if !ok {
-				return diag.Errorf(schemaAffinity + " must be a string")
+				return diag.Diagnostics{{
+					Severity: diag.Error,
+					Detail:   schemaAffinity + " must be a string"}}
 			}
 			if v == "" {
 				return nil
@@ -102,10 +104,14 @@ func subSchemaCores(key string, s schema.Schema) *schema.Schema {
 	s.ValidateDiagFunc = func(i any, p cty.Path) diag.Diagnostics {
 		v, ok := i.(int)
 		if !ok {
-			return diag.Errorf(key + " must be an integer")
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Detail:   key + " must be an integer"}}
 		}
 		if v < 1 {
-			return diag.Errorf(key + " must be greater than 0")
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Detail:   key + " must be greater than 0"}}
 		}
 		return diag.FromErr(pveSDK.QemuCpuCores(v).Validate())
 	}
@@ -120,10 +126,14 @@ func subSchemaFlag(key string) *schema.Schema {
 		ValidateDiagFunc: func(i any, p cty.Path) diag.Diagnostics {
 			v, ok := i.(string)
 			if !ok {
-				return diag.Errorf(schemaFlags + " must be a string")
+				return diag.Diagnostics{{
+					Severity: diag.Error,
+					Detail:   schemaFlags + " must be a string"}}
 			}
 			if v == "" {
-				return diag.Errorf(schemaFlags + " must not be empty")
+				return diag.Diagnostics{{
+					Severity: diag.Error,
+					Detail:   schemaFlags + " must not be empty"}}
 			}
 			switch v {
 			case flagOn, flagOff:
@@ -190,10 +200,14 @@ func subSchemaSockets(key string, s schema.Schema) *schema.Schema {
 	s.ValidateDiagFunc = func(i any, p cty.Path) diag.Diagnostics {
 		v, ok := i.(int)
 		if !ok {
-			return diag.Errorf(key + " must be an integer")
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Detail:   key + " must be an integer"}}
 		}
 		if v < 1 {
-			return diag.Errorf(key + " must be greater than 0")
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Detail:   key + " must be greater than 0"}}
 		}
 		return diag.FromErr(pveSDK.QemuCpuSockets(v).Validate())
 	}
@@ -245,10 +259,14 @@ func subSchemaVirtualCores(key string, s schema.Schema) *schema.Schema {
 	s.ValidateDiagFunc = func(i any, p cty.Path) diag.Diagnostics {
 		v, ok := i.(int)
 		if !ok {
-			return diag.Errorf(key + " must be an integer")
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Detail:   key + " must be an integer"}}
 		}
 		if v < 0 {
-			return diag.Errorf(key + " must be greater than or equal to 0")
+			return diag.Diagnostics{{
+				Severity: diag.Error,
+				Detail:   key + " must be greater than or equal to 0"}}
 		}
 		return nil
 	}
