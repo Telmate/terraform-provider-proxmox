@@ -16,7 +16,7 @@ on:
       - 'examples/**'
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.24'
 
 jobs:
   verify-dependencies:
