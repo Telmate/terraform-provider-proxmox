@@ -265,7 +265,7 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 		}
 	}
 
-	if d.Get(schemaMinimumPermissionCheck).(bool) && len(minimumPermissions) > 0 { // permission check
+	if d.Get(schemaMinimumPermissionCheck).(bool) { // permission check
 		var id string
 		if result, ok := d.GetOk(schemaPmApiTokenID); ok {
 			id = result.(string)
