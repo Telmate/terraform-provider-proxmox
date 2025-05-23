@@ -34,6 +34,8 @@ const (
 	schemaPmDangerouslyIgnoreUnknownAttributes = "pm_dangerously_ignore_unknown_attributes"
 	schemaPmDebug                              = "pm_debug"
 	schemaPmProxyServer                        = "pm_proxy_server"
+	schemaMinimumPermissionCheck               = "pm_minimum_permission_check"
+	schemaMinimumPermissionList                = "pm_minimum_permission_list"
 	schemaPmOTP                                = "pm_otp"
 )
 
@@ -185,6 +187,14 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("PM_PROXY", nil),
 				Description: "Proxy Server passed to Api client(useful for debugging). Syntax: http://proxy:port",
 			},
+			schemaMinimumPermissionCheck: {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true},
+			schemaMinimumPermissionList: {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString}},
 			schemaPmOTP: &pmOTPprompt,
 		},
 
@@ -207,7 +217,7 @@ func Provider() *schema.Provider {
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+func providerConfigure(d *schema.ResourceData) (any, error) {
 	client, err := getClient(
 		d.Get(schemaPmApiUrl).(string),
 		d.Get(schemaPmUser).(string),
@@ -225,7 +235,6 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 
-	// permission check
 	minimumPermissions := []string{
 		"Datastore.AllocateSpace",
 		"Datastore.Audit",
@@ -248,60 +257,68 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		"VM.Monitor",
 		"VM.PowerMgmt",
 	}
-	var id string
-	if result, getok := d.GetOk(schemaPmApiTokenID); getok {
-		id = result.(string)
-		id = strings.Split(id, "!")[0]
-	} else if result, getok := d.GetOk(schemaPmUser); getok {
-		id = result.(string)
-	}
-	userID, err := pveSDK.NewUserID(id)
-	if err != nil {
-		return nil, err
-	}
-	ctx := context.Background()
-	permlist, err := client.GetUserPermissions(ctx, userID, "/")
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(permlist)
-	sort.Strings(minimumPermissions)
-	permDiff := permissions_check(permlist, minimumPermissions)
-	if len(permDiff) == 0 {
-		// look to see what logging we should be outputting according to the provider configuration
-		logLevels := make(map[string]string)
-		for logger, level := range d.Get(schemaPmLogLevels).(map[string]interface{}) {
-			levelAsString, ok := level.(string)
-			if ok {
-				logLevels[logger] = levelAsString
-			} else {
-				return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
-			}
+	if v, ok := d.GetOk(schemaMinimumPermissionList); ok {
+		rawArray := v.([]any)
+		minimumPermissions = make([]string, len(rawArray))
+		for i := range rawArray {
+			minimumPermissions[i] = rawArray[i].(string)
 		}
-
-		// actually configure logging
-		// note that if enable is false here, the configuration will squash all output
-		ConfigureLogger(
-			d.Get(schemaPmLogEnable).(bool),
-			d.Get(schemaPmLogFile).(string),
-			logLevels,
-		)
-
-		var mut sync.Mutex
-		return &providerConfiguration{
-			Client:                             client,
-			MaxParallel:                        d.Get(schemaPmParallel).(int),
-			CurrentParallel:                    0,
-			MaxGuestID:                         0,
-			Mutex:                              &mut,
-			Cond:                               sync.NewCond(&mut),
-			LogFile:                            d.Get(schemaPmLogFile).(string),
-			LogLevels:                          logLevels,
-			DangerouslyIgnoreUnknownAttributes: d.Get(schemaPmDangerouslyIgnoreUnknownAttributes).(bool),
-		}, nil
 	}
-	err = fmt.Errorf("permissions for user/token %s are not sufficient, please provide also the following permissions that are missing: %v", userID.ToString(), permDiff)
-	return nil, err
+
+	if d.Get(schemaMinimumPermissionCheck).(bool) && len(minimumPermissions) > 0 { // permission check
+		var id string
+		if result, ok := d.GetOk(schemaPmApiTokenID); ok {
+			id = result.(string)
+			id = strings.Split(id, "!")[0]
+		} else if result, ok := d.GetOk(schemaPmUser); ok {
+			id = result.(string)
+		}
+		userID, err := pveSDK.NewUserID(id)
+		if err != nil {
+			return nil, err
+		}
+		permList, err := client.GetUserPermissions(context.Background(), userID, "/")
+		if err != nil {
+			return nil, err
+		}
+		sort.Strings(permList)
+		sort.Strings(minimumPermissions)
+		permDiff := permissions_check(permList, minimumPermissions)
+		if len(permDiff) != 0 {
+			return nil, fmt.Errorf("permissions for user/token "+userID.ToString()+" are not sufficient, please provide also the following permissions that are missing: %v", permDiff)
+		}
+	}
+
+	// look to see what logging we should be outputting according to the provider configuration
+	logLevels := make(map[string]string)
+	for logger, level := range d.Get(schemaPmLogLevels).(map[string]any) {
+		levelAsString, ok := level.(string)
+		if ok {
+			logLevels[logger] = levelAsString
+		} else {
+			return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
+		}
+	}
+
+	// actually configure logging
+	// note that if enable is false here, the configuration will squash all output
+	ConfigureLogger(
+		d.Get(schemaPmLogEnable).(bool),
+		d.Get(schemaPmLogFile).(string),
+		logLevels)
+
+	var mut sync.Mutex
+	return &providerConfiguration{
+		Client:                             client,
+		MaxParallel:                        d.Get(schemaPmParallel).(int),
+		CurrentParallel:                    0,
+		MaxGuestID:                         0,
+		Mutex:                              &mut,
+		Cond:                               sync.NewCond(&mut),
+		LogFile:                            d.Get(schemaPmLogFile).(string),
+		LogLevels:                          logLevels,
+		DangerouslyIgnoreUnknownAttributes: d.Get(schemaPmDangerouslyIgnoreUnknownAttributes).(bool),
+	}, nil
 }
 
 func getClient(pm_api_url string,
