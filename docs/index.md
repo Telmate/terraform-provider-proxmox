@@ -121,7 +121,7 @@ The following arguments are supported in the provider block:
 | `pm_timeout`                 |                      | `uint`   | `300`                          | Timeout value (seconds) for proxmox API calls.|
 | `pm_debug`                   |                      | `bool`   | `false`                        | Enable verbose output in proxmox-api-go.|
 | `pm_proxy_server`            |                      | `string` |                                | Send provider api call to a proxy server for easy debugging.|
-| `pm_minimum_permission_check`|                      | `bool`   | `false`                        | Enable minimum permission check. This will check if the user has the minimum permissions required to use the provider.|
+| `pm_minimum_permission_check`|                      | `bool`   | `true`                         | Enable minimum permission check. This will check if the user has the minimum permissions required to use the provider.|
 | `pm_minimum_permission_list` |                      | `list`   |                                | A list of permissions to check. Allows overwriting of the default permissions.|
 
 Additionally, one can set the `PM_OTP_PROMPT` environment variable to prompt for OTP 2FA code (if required).
