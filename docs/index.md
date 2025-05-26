@@ -105,22 +105,24 @@ provider "proxmox" {
 
 The following arguments are supported in the provider block:
 
-| Argument              | environment variable | Type     | Default Value                  | Description |
-| --------------------- | -------------------- | -------- | ------------------------------ | ----------- |
-| `pm_api_url`          | `PM_API_URL`         | `string` |                                | **Required** This is the target Proxmox API endpoint. |
-| `pm_user`             | `PM_USER`            | `string` |                                | The user, remember to include the authentication realm such as myuser@pam or myuser@pve. |
-| `pm_password`         | `PM_PASS`            | `string` |                                | **Sensitive** The password. |
-| `pm_api_token_id`     | `PM_API_TOKEN_ID`    | `string` |                                | This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user. |
-| `pm_api_token_secret` | `PM_API_TOKEN_SECRET`| `string` |                                | **Sensitive** This uuid is only available when the token was initially created. |
-| `pm_otp`              | `PM_OTP`             | `string` |                                | The 2FA OTP code. |
-| `pm_tls_insecure`     |                      | `bool`   | `false`                        | Disable TLS verification while connecting to the proxmox server. |
-| `pm_parallel`         |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when creating LXC containers with dynamic id allocation. For Qemu the threading issue has been resolved.|
-| `pm_log_enable`       |                      | `bool`   | `false`                        | Enable debug logging, see the section below for logging details. |
-| `pm_log_levels`       |                      | `map`    |                                | A map of log sources and levels. |
-| `pm_log_file`         |                      | `string` | `terraform-plugin-proxmox.log` | The log file the provider will write logs to. |
-| `pm_timeout`          |                      | `uint`   | `300`                          | Timeout value (seconds) for proxmox API calls. |
-| `pm_debug`            |                      | `bool`   | `false`                        | Enable verbose output in proxmox-api-go. |
-| `pm_proxy_server`     |                      | `string` |                                | Send provider api call to a proxy server for easy debugging. |
+| Argument                     | environment variable | Type     | Default Value                  | Description |
+|:---------------------------- |:-------------------- |:-------- |:------------------------------ |:----------- |
+| `pm_api_url`                 | `PM_API_URL`         | `string` |                                | **Required** This is the target Proxmox API endpoint.|
+| `pm_user`                    | `PM_USER`            | `string` |                                | The user, remember to include the authentication realm such as myuser@pam or myuser@pve.|
+| `pm_password`                | `PM_PASS`            | `string` |                                | **Sensitive** The password.|
+| `pm_api_token_id`            | `PM_API_TOKEN_ID`    | `string` |                                | This is an [API token](https://pve.proxmox.com/pve-docs/pveum-plain.html) you have previously created for a specific user.|
+| `pm_api_token_secret`        | `PM_API_TOKEN_SECRET`| `string` |                                | **Sensitive** This uuid is only available when the token was initially created.|
+| `pm_otp`                     | `PM_OTP`             | `string` |                                | The 2FA OTP code.|
+| `pm_tls_insecure`            |                      | `bool`   | `false`                        | Disable TLS verification while connecting to the proxmox server.|
+| `pm_parallel`                |                      | `uint`   | `1`                            | Allowed simultaneous Proxmox processes (e.g. creating resources). Setting this greater than 1 is currently not recommended when creating LXC containers with dynamic id allocation. For Qemu the threading issue has been resolved.|
+| `pm_log_enable`              |                      | `bool`   | `false`                        | Enable debug logging, see the section below for logging details.|
+| `pm_log_levels`              |                      | `map`    |                                | A map of log sources and levels.|
+| `pm_log_file`                |                      | `string` | `terraform-plugin-proxmox.log` | The log file the provider will write logs to.|
+| `pm_timeout`                 |                      | `uint`   | `300`                          | Timeout value (seconds) for proxmox API calls.|
+| `pm_debug`                   |                      | `bool`   | `false`                        | Enable verbose output in proxmox-api-go.|
+| `pm_proxy_server`            |                      | `string` |                                | Send provider api call to a proxy server for easy debugging.|
+| `pm_minimum_permission_check`|                      | `bool`   | `true`                         | Enable minimum permission check. This will check if the user has the minimum permissions required to use the provider.|
+| `pm_minimum_permission_list` |                      | `list`   |                                | A list of permissions to check. Allows overwriting of the default permissions.|
 
 Additionally, one can set the `PM_OTP_PROMPT` environment variable to prompt for OTP 2FA code (if required).
 
