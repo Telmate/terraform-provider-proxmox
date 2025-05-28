@@ -98,7 +98,7 @@ func SchemaDisk() *schema.Schema {
 				schemaEmulateSSD:        {Type: schema.TypeBool, Optional: true},
 				schemaFormat:            subSchemaDiskFormat(schema.Schema{}),
 				schemaID:                subSchemaDiskId(),
-				schemaImportFrom:        {Type: schema.TypeString, Optional: true},
+				schemaImportFrom:        subSchemaImportFrom(),
 				schemaIOPSrBurst:        subSchemaDiskBandwidthIopsBurst(),
 				schemaIOPSrBurstLength:  subSchemaDiskBandwidthIopsBurstLength(),
 				schemaIOPSrConcurrent:   subSchemaDiskBandwidthIopsConcurrent(),
@@ -637,7 +637,7 @@ func subSchemaIde(slot string) *schema.Schema {
 							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
 							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
 							schemaSerial:        subSchemaDiskSerial(),
-							schemaImportFrom:    {Type: schema.TypeString, Optional: true},
+							schemaImportFrom:    subSchemaImportFrom(),
 							schemaSize:          subSchemaDiskSize(schema.Schema{Required: true}),
 							schemaStorage:       subSchemaDiskStorage(schema.Schema{Required: true}),
 							schemaWorldWideName: subSchemaDiskWWN()})}},
@@ -672,6 +672,14 @@ func subSchemaIgnore(path string, ci bool) *schema.Schema {
 		Type:          schema.TypeBool,
 		ConflictsWith: conflicts,
 		Optional:      true}
+}
+
+func subSchemaImportFrom() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	}
 }
 
 func subSchemaIsoPath(s schema.Schema) *schema.Schema {
@@ -721,7 +729,7 @@ func subSchemaSata(slot string) *schema.Schema {
 							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
 							schemaFormat:        subSchemaDiskFormat(schema.Schema{Default: "raw"}),
 							schemaID:            subSchemaDiskId(),
-							schemaImportFrom:    {Type: schema.TypeString, Optional: true},
+							schemaImportFrom:    subSchemaImportFrom(),
 							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
 							schemaReplicate:     {Type: schema.TypeBool, Optional: true},
 							schemaSerial:        subSchemaDiskSerial(),
@@ -772,7 +780,7 @@ func subSchemaScsi(slot string) *schema.Schema {
 							schemaEmulateSSD:    {Type: schema.TypeBool, Optional: true},
 							schemaFormat:        subSchemaDiskFormat(schema.Schema{Default: "raw"}),
 							schemaID:            subSchemaDiskId(),
-							schemaImportFrom:    {Type: schema.TypeString, Optional: true},
+							schemaImportFrom:    subSchemaImportFrom(),
 							schemaIOthread:      {Type: schema.TypeBool, Optional: true},
 							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
 							schemaReadOnly:      {Type: schema.TypeBool, Optional: true},
@@ -825,7 +833,7 @@ func subSchemaVirtio(setting string) *schema.Schema {
 							schemaDiscard:       {Type: schema.TypeBool, Optional: true},
 							schemaFormat:        subSchemaDiskFormat(schema.Schema{Default: "raw"}),
 							schemaID:            subSchemaDiskId(),
-							schemaImportFrom:    {Type: schema.TypeString, Optional: true},
+							schemaImportFrom:    subSchemaImportFrom(),
 							schemaIOthread:      {Type: schema.TypeBool, Optional: true},
 							schemaLinkedDiskId:  subSchemaLinkedDiskId(),
 							schemaReadOnly:      {Type: schema.TypeBool, Optional: true},
