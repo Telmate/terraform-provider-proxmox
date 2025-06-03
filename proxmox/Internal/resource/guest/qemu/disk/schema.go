@@ -676,9 +676,9 @@ func subSchemaIgnore(path string, ci bool) *schema.Schema {
 
 func subSchemaImportFrom() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeString,
-		Optional: true,
-		Computed: true,
+		Type:      schema.TypeString,
+		WriteOnly: true,
+		Optional:  true,
 	}
 }
 
