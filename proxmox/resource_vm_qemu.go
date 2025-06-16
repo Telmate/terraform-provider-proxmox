@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cloudinit"
@@ -840,7 +841,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	qemuVgaList := vga.List()
 
 	config := pveSDK.ConfigQemu{
-		Name:        d.Get("name").(string),
+		Name:        util.Pointer(name.SDK(d)),
 		CPU:         cpu.SDK(d),
 		Description: util.Pointer(d.Get("desc").(string)),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
@@ -1072,7 +1073,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	node.Terraform(d, vmr.Node())
+	node.Terraform(vmr.Node(), d)
 
 	var ciDisk bool
 	if config.Disks != nil {
@@ -1103,6 +1104,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	vmID.Terraform(vmr.VmId(), d)
+	name.Terraform_Unsafe(config.Name, d)
 	d.Set("name", config.Name)
 	d.Set("desc", mapToTerraform_Description(config.Description))
 	d.Set("bios", config.Bios)
