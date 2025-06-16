@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/template"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
@@ -28,6 +29,7 @@ func resourceLxcNew() *schema.Resource {
 			name.Root:      name.Schema(),
 			node.RootNode:  node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
 			node.RootNodes: node.SchemaNodes("lxc"),
+			template.Root:  template.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -52,6 +54,9 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 			Severity: diag.Error})
 	}
 	config.Node = &targetNode
+
+	config.CreateOptions = &pveSDK.LxcCreateOptions{
+		OsTemplate: template.SDK(d)}
 
 	vmr, err := config.Create(ctx, client)
 	if err != nil {
