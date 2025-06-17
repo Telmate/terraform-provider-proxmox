@@ -17,6 +17,6 @@ func StringDiagnostic(k string) diag.Diagnostic {
 		Detail:   "expected type of " + k + " to be a string"}
 }
 
-func StringDiagnositcis(k string) diag.Diagnostics {
+func StringDiagnostics(k string) diag.Diagnostics {
 	return diag.Diagnostics{StringDiagnostic(k)}
 }
