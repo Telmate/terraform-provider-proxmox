@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/rootmount"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/template"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
@@ -27,11 +28,13 @@ func resourceLxcNew() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			name.Root:      name.Schema(),
-			node.RootNode:  node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
-			node.RootNodes: node.SchemaNodes("lxc"),
-			rootmount.Root: rootmount.Schema(),
-			template.Root:  template.Schema(),
+			name.Root:                  name.Schema(),
+			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
+			node.RootNodes:             node.SchemaNodes("lxc"),
+			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
+			privilege.RootUnprivileged: privilege.SchemaUnprivileged(),
+			rootmount.Root:             rootmount.Schema(),
+			template.Root:              template.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -59,6 +62,7 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 
 	config.CreateOptions = &pveSDK.LxcCreateOptions{
 		OsTemplate: template.SDK(d)}
+	config.Privileged = privilege.SDK(d)
 
 	vmr, err := config.Create(ctx, client)
 	if err != nil {
@@ -146,6 +150,8 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	config := raw.ALL(*vmr)
 
 	name.Terraform_Unsafe(config.Name, d)
+	node.Terraform(*config.Node, d)
+	privilege.Terraform(*config.Privileged, d)
 	rootmount.Terraform(config.BootMount, d)
 	return nil
 }
