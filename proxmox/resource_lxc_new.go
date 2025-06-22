@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
@@ -31,6 +32,7 @@ func resourceLxcNew() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			architecture.Root:          architecture.Schema(),
+			description.Root:           description.Schema(),
 			memory.Root:                memory.Schema(),
 			name.Root:                  name.Schema(),
 			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
@@ -154,6 +156,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	config := raw.ALL(*vmr)
 
 	architecture.Terraform(config.Architecture, d)
+	description.Terraform(config.Description, false, d)
 	memory.Terraform(config.Memory, d)
 	name.Terraform_Unsafe(config.Name, d)
 	node.Terraform(*config.Node, d)
@@ -168,9 +171,10 @@ func lxcSDK(d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 		guestName = &v
 	}
 	config := pveSDK.ConfigLXC{
-		BootMount: rootmount.SDK(d),
-		Memory:    memory.SDK(d),
-		Name:      guestName,
+		BootMount:   rootmount.SDK(d),
+		Description: description.SDK(false, d),
+		Memory:      memory.SDK(d),
+		Name:        guestName,
 	}
 	var diags diag.Diagnostics
 	return config, diags

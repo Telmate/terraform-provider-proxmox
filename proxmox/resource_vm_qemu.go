@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
@@ -53,8 +54,6 @@ const (
 )
 
 const (
-	schemaQemuDescription = "desc"
-
 	schemaAdditionalWait = "additional_wait"
 	schemaAgentTimeout   = "agent_timeout"
 	schemaSkipIPv4       = "skip_ipv4"
@@ -131,18 +130,11 @@ func resourceVmQemu() *schema.Resource {
 					return
 				},
 			},
-			schemaQemuDescription: {
-				Type:     schema.TypeString,
-				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return strings.TrimSpace(old) == strings.TrimSpace(new)
-				},
-				Default:     defaultDescription,
-				Description: "The VM description",
-			},
-			node.Computed:  node.SchemaComputed("qemu"),
-			node.RootNode:  node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "qemu"),
-			node.RootNodes: node.SchemaNodes("qemu"),
+			description.Root:       description.Schema(),
+			description.LegacyQemu: description.LegacySchema(),
+			node.Computed:          node.SchemaComputed("qemu"),
+			node.RootNode:          node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "qemu"),
+			node.RootNodes:         node.SchemaNodes("qemu"),
 			"bios": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -605,7 +597,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	config := pveSDK.ConfigQemu{
 		Name:        guestName,
 		CPU:         cpu.SDK(d),
-		Description: util.Pointer(d.Get("desc").(string)),
+		Description: description.SDK(true, d),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
@@ -843,7 +835,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	config := pveSDK.ConfigQemu{
 		Name:        util.Pointer(name.SDK(d)),
 		CPU:         cpu.SDK(d),
-		Description: util.Pointer(d.Get("desc").(string)),
+		Description: description.SDK(true, d),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
@@ -1106,7 +1098,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	vmID.Terraform(vmr.VmId(), d)
 	name.Terraform_Unsafe(config.Name, d)
 	d.Set("name", config.Name)
-	d.Set("desc", mapToTerraform_Description(config.Description))
+	description.Terraform(config.Description, true, d)
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
 	d.Set("startup", config.Startup)
