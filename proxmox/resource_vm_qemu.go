@@ -687,9 +687,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			}
 
 			var poolName *pveSDK.PoolName
-			tmpPool := d.Get(pool.Root).(string)
-			if tmpPool != "" {
-				poolName = util.Pointer(pveSDK.PoolName(tmpPool))
+			if v := pool.SDK(d); v != "" {
+				poolName = &v
 			}
 			var cloneSettings pveSDK.CloneQemuTarget
 			if !d.Get("full_clone").(bool) {
@@ -1572,13 +1571,6 @@ func getPrimaryIP(
 }
 
 // Map struct to the terraform schema
-
-func mapToTerraform_Description(description *string) string {
-	if description != nil {
-		return *description
-	}
-	return ""
-}
 
 func mapToTerraform_Memory(config *pveSDK.QemuMemory, d *schema.ResourceData) {
 	// no nil check as pveSDK.QemuMemory is always returned

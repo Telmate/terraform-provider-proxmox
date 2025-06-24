@@ -37,6 +37,7 @@ func resourceLxcNew() *schema.Resource {
 			name.Root:                  name.Schema(),
 			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
 			node.RootNodes:             node.SchemaNodes("lxc"),
+			pool.Root:                  pool.Schema(),
 			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
 			privilege.RootUnprivileged: privilege.SchemaUnprivileged(),
 			rootmount.Root:             rootmount.Schema(),
@@ -69,6 +70,8 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 	config.CreateOptions = &pveSDK.LxcCreateOptions{
 		OsTemplate: template.SDK(d)}
 	config.Privileged = privilege.SDK(d)
+
+	config.Pool = util.Pointer(pool.SDK(d))
 
 	vmr, err := config.Create(ctx, client)
 	if err != nil {
@@ -160,6 +163,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	memory.Terraform(config.Memory, d)
 	name.Terraform_Unsafe(config.Name, d)
 	node.Terraform(*config.Node, d)
+	pool.Terraform(config.Pool, d)
 	privilege.Terraform(*config.Privileged, d)
 	rootmount.Terraform(config.BootMount, d)
 	return nil
