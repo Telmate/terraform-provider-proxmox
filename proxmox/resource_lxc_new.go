@@ -9,6 +9,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/rootmount"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/swap"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/template"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
@@ -41,6 +42,7 @@ func resourceLxcNew() *schema.Resource {
 			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
 			privilege.RootUnprivileged: privilege.SchemaUnprivileged(),
 			rootmount.Root:             rootmount.Schema(),
+			swap.Root:                  swap.Schema(),
 			template.Root:              template.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
@@ -166,6 +168,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	pool.Terraform(config.Pool, d)
 	privilege.Terraform(*config.Privileged, d)
 	rootmount.Terraform(config.BootMount, d)
+	swap.Terraform(config.Swap, d)
 	return nil
 }
 
@@ -179,6 +182,7 @@ func lxcSDK(d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 		Description: description.SDK(false, d),
 		Memory:      memory.SDK(d),
 		Name:        guestName,
+		Swap:        swap.SDK(d),
 	}
 	var diags diag.Diagnostics
 	return config, diags
