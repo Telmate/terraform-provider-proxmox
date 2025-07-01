@@ -6,6 +6,7 @@ import (
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/rootmount"
@@ -33,6 +34,7 @@ func resourceLxcNew() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			architecture.Root:          architecture.Schema(),
+			cpu.Root:                   cpu.Schema(),
 			description.Root:           description.Schema(),
 			memory.Root:                memory.Schema(),
 			name.Root:                  name.Schema(),
@@ -161,6 +163,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	config := raw.ALL(*vmr)
 
 	architecture.Terraform(config.Architecture, d)
+	cpu.Terraform(config.CPU, d)
 	description.Terraform(config.Description, false, d)
 	memory.Terraform(config.Memory, d)
 	name.Terraform_Unsafe(config.Name, d)
@@ -179,6 +182,7 @@ func lxcSDK(d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 	}
 	config := pveSDK.ConfigLXC{
 		BootMount:   rootmount.SDK(d),
+		CPU:         cpu.SDK(d),
 		Description: description.SDK(false, d),
 		Memory:      memory.SDK(d),
 		Name:        guestName,
