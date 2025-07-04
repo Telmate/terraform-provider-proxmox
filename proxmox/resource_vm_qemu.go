@@ -948,20 +948,20 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
 	// enabled. Attempt a graceful shutdown or if that fails, force power-off.
-	vmState, err := client.GetVmState(ctx, vmr)
+	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
-	switch vmState["status"].(string) { // manage the VM state to match the `vm_state` attribute
+	switch guestStatus.State() { // manage the VM state to match the `vm_state` attribute
 	// case stateStarted: does nothing during update as we don't enforce the VM state
-	case stateStopped:
+	case pveSDK.PowerStateStopped:
 		if d.Get("vm_state").(string) == stateRunning { // start the VM
 			log.Print("[DEBUG][QemuVmUpdate] starting VM to match `vm_state`")
 			if _, err = client.StartVm(ctx, vmr); err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
 		}
-	case stateRunning:
+	case pveSDK.PowerStateRunning:
 		if d.Get("vm_state").(string) == stateStopped { // shutdown the VM
 			log.Print("[DEBUG][QemuVmUpdate] shutting down VM to match `vm_state`")
 			_, err = client.ShutdownVm(ctx, vmr)
@@ -1057,13 +1057,16 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		disk.Terraform_Unsafe(d, config.Disks, &ciDisk)
 	}
 
-	vmState, err := client.GetVmState(ctx, vmr)
+	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.Diagnostics{{
+			Summary:  err.Error(),
+			Severity: diag.Error}}
 	}
-	log.Printf("[DEBUG] VM status: %s", vmState["status"])
-	d.Set("vm_state", vmState["status"])
-	if vmState["status"] == "running" {
+	state := guestStatus.State()
+	log.Print("[DEBUG] Getting VM state" + state.String())
+	d.Set("vm_state", state.String())
+	if state == pveSDK.PowerStateRunning {
 		log.Printf("[DEBUG] VM is running, checking the IP")
 		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
 		diags = append(diags, initConnInfo(ctx, d, client, vmr, config, ciDisk)...)
@@ -1172,11 +1175,13 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	client := pconf.Client
 	vmId, _ := strconv.Atoi(path.Base(d.Id()))
 	vmr := pveSDK.NewVmRef(pveSDK.GuestID(vmId))
-	vmState, err := client.GetVmState(ctx, vmr)
+	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.Diagnostics{{
+			Summary:  "Error getting VM state",
+			Severity: diag.Error}}
 	}
-	if vmState["status"] != "stopped" {
+	if guestStatus.State() != pveSDK.PowerStateStopped {
 		if _, err := client.StopVm(ctx, vmr); err != nil {
 			return diag.FromErr(err)
 		}
@@ -1185,8 +1190,8 @@ func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta inte
 		// ugly way to wait 5 minutes(300s)
 		waited := 0
 		for waited < 300 {
-			vmState, err := client.GetVmState(ctx, vmr)
-			if err == nil && vmState["status"] == "stopped" {
+			guestStatus, err = vmr.GetRawGuestStatus(ctx, client)
+			if err == nil && guestStatus.State() == pveSDK.PowerStateStopped {
 				break
 			} else if err != nil {
 				return diag.FromErr(err)
