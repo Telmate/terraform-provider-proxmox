@@ -112,24 +112,8 @@ func resourceVmQemu() *schema.Resource {
 					return diag.Errorf(schemaAgentTimeout + " must be greater than 0")
 				},
 			},
-			vmID.Root: vmID.Schema(),
-			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				// Default:     "",
-				Description: "The VM name",
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					v := val.(string)
-					matched, err := regexp.Match("[^a-zA-Z0-9-.]", []byte(v))
-					if err != nil {
-						warns = append(warns, fmt.Sprintf("%q, had an error running regexp.Match err=[%v]", key, err))
-					}
-					if matched {
-						errs = append(errs, fmt.Errorf("%q, must only contain alphanumerics, hyphens and dots [%v]", key, v))
-					}
-					return
-				},
-			},
+			vmID.Root:              vmID.Schema(),
+			name.Root:              name.Schema(),
 			description.Root:       description.Schema(),
 			description.LegacyQemu: description.LegacySchema(),
 			node.Computed:          node.SchemaComputed("qemu"),
@@ -552,7 +536,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id pveSDK.GuestID, preferredNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.GuestName, id pveSDK.GuestID, preferredNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -583,19 +567,21 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Info().Str(vmID.Root, d.Id()).Msgf("VM creation")
 	logger.Debug().Str(vmID.Root, d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
 
+	d.SetId("")
+
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
 	client := pconf.Client
-	guestName := d.Get("name").(string)
+	guestName := name.SDK(d) // ensure the name is set in the schema
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	config := pveSDK.ConfigQemu{
-		Name:        guestName,
+		Name:        &guestName,
 		CPU:         cpu.SDK(d),
 		Description: description.SDK(true, d),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
@@ -681,7 +667,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		// check if clone, or PXE boot
 		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 { // Clone
 
-			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode)
+			sourceVmr, err := getSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}

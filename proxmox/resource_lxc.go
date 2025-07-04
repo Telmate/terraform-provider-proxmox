@@ -540,20 +540,21 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			poolName = util.Pointer(pveSDK.PoolName(tmpPool))
 		}
 
+		hostname := pveSDK.GuestName(config.Hostname)
 		var cloneSettings pveSDK.CloneLxcTarget
 		if !d.Get("full").(bool) {
 			cloneSettings = pveSDK.CloneLxcTarget{
 				Linked: &pveSDK.CloneLinked{
 					Node: targetNode,
 					ID:   guestID,
-					Name: &config.Hostname,
+					Name: &hostname,
 					Pool: poolName}}
 		} else {
 			cloneSettings = pveSDK.CloneLxcTarget{
 				Full: &pveSDK.CloneLxcFull{
 					Node:    targetNode,
 					ID:      guestID,
-					Name:    &config.Hostname,
+					Name:    &hostname,
 					Pool:    poolName,
 					Storage: storage}}
 		}
