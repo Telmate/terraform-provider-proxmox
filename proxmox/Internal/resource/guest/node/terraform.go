@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func Terraform(d *schema.ResourceData, currentNode pveAPI.NodeName) {
+func Terraform(currentNode pveAPI.NodeName, d *schema.ResourceData) {
 	current := string(currentNode)
 	d.Set(Computed, current)
 	if _, ok := d.GetOk(RootNode); ok {
