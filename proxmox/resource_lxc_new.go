@@ -5,6 +5,7 @@ import (
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/dns"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
@@ -36,6 +37,7 @@ func resourceLxcNew() *schema.Resource {
 			architecture.Root:          architecture.Schema(),
 			cpu.Root:                   cpu.Schema(),
 			description.Root:           description.Schema(),
+			dns.Root:                   dns.Schema(),
 			memory.Root:                memory.Schema(),
 			name.Root:                  name.Schema(),
 			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
@@ -165,6 +167,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	architecture.Terraform(config.Architecture, d)
 	cpu.Terraform(config.CPU, d)
 	description.Terraform(config.Description, false, d)
+	dns.Terraform(config.DNS, d)
 	memory.Terraform(config.Memory, d)
 	name.Terraform_Unsafe(config.Name, d)
 	node.Terraform(*config.Node, d)
@@ -183,6 +186,7 @@ func lxcSDK(d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 	config := pveSDK.ConfigLXC{
 		BootMount:   rootmount.SDK(d),
 		CPU:         cpu.SDK(d),
+		DNS:         dns.SDK(d),
 		Description: description.SDK(false, d),
 		Memory:      memory.SDK(d),
 		Name:        guestName,
