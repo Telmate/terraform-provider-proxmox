@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func SDK(d *schema.ResourceData) *pveSDK.LxcBootMount {
+func SDK(privilidged bool, d *schema.ResourceData) *pveSDK.LxcBootMount {
 	v, ok := d.GetOk(Root)
 	if !ok {
 		return nil
@@ -20,10 +20,14 @@ func SDK(d *schema.ResourceData) *pveSDK.LxcBootMount {
 	if !ok {
 		return nil
 	}
+	var quota *bool
+	if privilidged {
+		quota = util.Pointer(settings[schemaQuota].(bool))
+	}
 	return &pveSDK.LxcBootMount{
 		ACL:             sdkACL(settings[schemaACL].(string)),
 		Options:         sdkOptions(settings[schemaOptions]),
-		Quota:           util.Pointer(settings[schemaQuota].(bool)),
+		Quota:           quota,
 		Replicate:       util.Pointer(settings[schemaReplicate].(bool)),
 		SizeInKibibytes: util.Pointer(pveSDK.LxcMountSize(size.Parse_Unsafe(settings[schemaSize].(string)))),
 		Storage:         util.Pointer(settings[schemaStorage].(string))}

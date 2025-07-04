@@ -62,7 +62,9 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 
 	client := pconf.Client
 
-	config, diags := lxcSDK(d)
+	privileged := privilege.SDK(d)
+	config, diags := lxcSDK(privileged, d)
+	config.Privileged = &privileged
 
 	// Set the node for the LXC container
 	targetNode, err := node.SdkCreate(d)
@@ -75,7 +77,6 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 
 	config.CreateOptions = &pveSDK.LxcCreateOptions{
 		OsTemplate: template.SDK(d)}
-	config.Privileged = privilege.SDK(d)
 
 	config.Pool = util.Pointer(pool.SDK(d))
 
@@ -116,7 +117,7 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 	}
 
 	// create a new config from the resource data
-	config, diags := lxcSDK(d)
+	config, diags := lxcSDK(privilege.SDK(d), d)
 
 	// update the targetNode for the LXC container
 	var targetNode pveSDK.NodeName
@@ -184,7 +185,7 @@ func lxcSDK(d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 		guestName = &v
 	}
 	config := pveSDK.ConfigLXC{
-		BootMount:   rootmount.SDK(d),
+		BootMount:   rootmount.SDK(privilidged, d),
 		CPU:         cpu.SDK(d),
 		DNS:         dns.SDK(d),
 		Description: description.SDK(false, d),

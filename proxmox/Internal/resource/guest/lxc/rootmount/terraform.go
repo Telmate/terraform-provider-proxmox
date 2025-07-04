@@ -15,10 +15,12 @@ func Terraform(rootMount *pveSDK.LxcBootMount, d *schema.ResourceData) {
 	mounts[0] = map[string]any{
 		schemaACL:       terraformACL(rootMount.ACL),
 		schemaOptions:   TerraformOptions(rootMount.Options),
-		schemaQuota:     *rootMount.Quota,
 		schemaReplicate: *rootMount.Replicate,
 		schemaSize:      size.String(int64(*rootMount.SizeInKibibytes)),
 		schemaStorage:   *rootMount.Storage}
+	if rootMount.Quota != nil {
+		mounts[0][schemaQuota] = *rootMount.Quota
+	}
 	d.Set(Root, mounts)
 }
 

@@ -3,6 +3,7 @@ package rootmount
 import (
 	errorMSG "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/errormsg"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/helper/size"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -77,9 +78,10 @@ func Schema() *schema.Schema {
 							schemaNoATime:  {Type: schema.TypeBool, Optional: true, Default: false},
 							schemaNoSuid:   {Type: schema.TypeBool, Optional: true, Default: false}}}},
 				schemaQuota: {
-					Type:     schema.TypeBool,
-					Optional: true,
-					Default:  false},
+					Type:          schema.TypeBool,
+					Optional:      true,
+					RequiredWith:  []string{privilege.RootPrivileged},
+					ConflictsWith: []string{privilege.RootUnprivileged}},
 				schemaReplicate: {
 					Type:     schema.TypeBool,
 					Optional: true,
