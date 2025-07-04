@@ -9,6 +9,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/password"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/rootmount"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/swap"
@@ -43,6 +44,7 @@ func resourceLxcNew() *schema.Resource {
 			name.Root:                  name.Schema(),
 			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
 			node.RootNodes:             node.SchemaNodes("lxc"),
+			password.Root:              password.Schema(),
 			pool.Root:                  pool.Schema(),
 			powerstate.Root:            powerstate.Schema(),
 			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
@@ -78,7 +80,8 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 	config.Node = &targetNode
 
 	config.CreateOptions = &pveSDK.LxcCreateOptions{
-		OsTemplate: template.SDK(d)}
+		OsTemplate:   template.SDK(d),
+		UserPassword: password.SDK(d)}
 
 	config.Pool = util.Pointer(pool.SDK(d))
 
