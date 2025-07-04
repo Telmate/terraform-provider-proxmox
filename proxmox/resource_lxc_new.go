@@ -16,6 +16,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/powerstate"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -43,6 +44,7 @@ func resourceLxcNew() *schema.Resource {
 			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
 			node.RootNodes:             node.SchemaNodes("lxc"),
 			pool.Root:                  pool.Schema(),
+			powerstate.Root:            powerstate.Schema(),
 			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
 			privilege.RootUnprivileged: privilege.SchemaUnprivileged(),
 			rootmount.Root:             rootmount.Schema(),
@@ -130,7 +132,7 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 	config.Node = &targetNode
 	config.Pool = util.Pointer(pool.SDK(d))
 
-	if err = config.Update(ctx, vmr, client); err != nil {
+	if err = config.Update(ctx, true, vmr, client); err != nil {
 		return append(diags, diag.Diagnostic{
 			Summary:  err.Error(),
 			Severity: diag.Error})
@@ -156,6 +158,13 @@ func resourceLxcNewReadWithLock(ctx context.Context, d *schema.ResourceData, met
 }
 
 func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
+	if err != nil {
+		return diag.Diagnostics{{
+			Summary:  err.Error(),
+			Severity: diag.Error}}
+	}
+
 	raw, err := pveSDK.NewConfigLXCFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.Diagnostics{
@@ -163,7 +172,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 				Summary:  err.Error(),
 				Severity: diag.Error}}
 	}
-	config := raw.ALL(*vmr)
+	config := raw.ALL(*vmr, pveSDK.PowerStateUnknown)
 
 	architecture.Terraform(config.Architecture, d)
 	cpu.Terraform(config.CPU, d)
@@ -173,13 +182,14 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	name.Terraform_Unsafe(config.Name, d)
 	node.Terraform(*config.Node, d)
 	pool.Terraform(config.Pool, d)
+	powerstate.Terraform(guestStatus.State(), d)
 	privilege.Terraform(*config.Privileged, d)
 	rootmount.Terraform(config.BootMount, d)
 	swap.Terraform(config.Swap, d)
 	return nil
 }
 
-func lxcSDK(d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
+func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 	var guestName *pveSDK.GuestName
 	if v := name.SDK(d); v != "" {
 		guestName = &v
@@ -191,6 +201,7 @@ func lxcSDK(d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 		Description: description.SDK(false, d),
 		Memory:      memory.SDK(d),
 		Name:        guestName,
+		State:       powerstate.SDK(d),
 		Swap:        swap.SDK(d),
 	}
 	var diags diag.Diagnostics
