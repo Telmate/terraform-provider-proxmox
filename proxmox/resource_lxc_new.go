@@ -9,6 +9,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/operatingsystem"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/password"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/rootmount"
@@ -44,6 +45,7 @@ func resourceLxcNew() *schema.Resource {
 			name.Root:                  name.Schema(),
 			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
 			node.RootNodes:             node.SchemaNodes("lxc"),
+			operatingsystem.Root:       operatingsystem.Schema(),
 			password.Root:              password.Schema(),
 			pool.Root:                  pool.Schema(),
 			powerstate.Root:            powerstate.Schema(),
@@ -184,6 +186,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	memory.Terraform(config.Memory, d)
 	name.Terraform_Unsafe(config.Name, d)
 	node.Terraform(*config.Node, d)
+	operatingsystem.Terraform(config.OperatingSystem, d)
 	pool.Terraform(config.Pool, d)
 	powerstate.Terraform(guestStatus.State(), d)
 	privilege.Terraform(*config.Privileged, d)
