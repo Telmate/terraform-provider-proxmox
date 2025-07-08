@@ -83,8 +83,8 @@ func subSchemaAffinity() *schema.Schema {
 			v, ok := i.(string)
 			if !ok {
 				return diag.Diagnostics{{
-					Severity: diag.Error,
-					Detail:   schemaAffinity + " must be a string"}}
+					Summary:  schemaAffinity + " must be a string",
+					Severity: diag.Error}}
 			}
 			if v == "" {
 				return nil
@@ -105,13 +105,13 @@ func subSchemaCores(key string, s schema.Schema) *schema.Schema {
 		v, ok := i.(int)
 		if !ok {
 			return diag.Diagnostics{{
-				Severity: diag.Error,
-				Detail:   key + " must be an integer"}}
+				Summary:  key + " must be an integer",
+				Severity: diag.Error}}
 		}
 		if v < 1 {
 			return diag.Diagnostics{{
-				Severity: diag.Error,
-				Detail:   key + " must be greater than 0"}}
+				Summary:  key + " must be greater than 0",
+				Severity: diag.Error}}
 		}
 		return diag.FromErr(pveSDK.QemuCpuCores(v).Validate())
 	}
@@ -127,13 +127,13 @@ func subSchemaFlag(key string) *schema.Schema {
 			v, ok := i.(string)
 			if !ok {
 				return diag.Diagnostics{{
-					Severity: diag.Error,
-					Detail:   schemaFlags + " must be a string"}}
+					Summary:  schemaFlags + " must be a string",
+					Severity: diag.Error}}
 			}
 			if v == "" {
 				return diag.Diagnostics{{
-					Severity: diag.Error,
-					Detail:   schemaFlags + " must not be empty"}}
+					Summary:  schemaFlags + " must not be empty",
+					Severity: diag.Error}}
 			}
 			switch v {
 			case flagOn, flagOff:
@@ -201,13 +201,13 @@ func subSchemaSockets(key string, s schema.Schema) *schema.Schema {
 		v, ok := i.(int)
 		if !ok {
 			return diag.Diagnostics{{
-				Severity: diag.Error,
-				Detail:   key + " must be an integer"}}
+				Summary:  key + " must be an integer",
+				Severity: diag.Error}}
 		}
 		if v < 1 {
 			return diag.Diagnostics{{
-				Severity: diag.Error,
-				Detail:   key + " must be greater than 0"}}
+				Summary:  key + " must be greater than 0",
+				Severity: diag.Error}}
 		}
 		return diag.FromErr(pveSDK.QemuCpuSockets(v).Validate())
 	}
@@ -260,13 +260,13 @@ func subSchemaVirtualCores(key string, s schema.Schema) *schema.Schema {
 		v, ok := i.(int)
 		if !ok {
 			return diag.Diagnostics{{
-				Severity: diag.Error,
-				Detail:   key + " must be an integer"}}
+				Summary:  key + " must be an integer",
+				Severity: diag.Error}}
 		}
 		if v < 0 {
 			return diag.Diagnostics{{
-				Severity: diag.Error,
-				Detail:   key + " must be greater than or equal to 0"}}
+				Summary:  key + " must be greater than or equal to 0",
+				Severity: diag.Error}}
 		}
 		return nil
 	}
