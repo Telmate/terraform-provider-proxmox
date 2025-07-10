@@ -9,9 +9,9 @@ import (
 	"time"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -150,7 +150,7 @@ func resourceLxc() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"tags": tags.Schema(),
+			tags.Root: tags.Schema(),
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -479,7 +479,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
-	config.Tags = tags.String(tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))))
+	config.Tags = tags.SDK(d).String()
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -519,7 +519,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	var vmr *pveSDK.VmRef
 	if d.Get("clone").(string) != "" { // Clone
 		var sourceVmr *pveSDK.VmRef
-		sourceVmr, err = getSourceVmr(ctx, client, d.Get("clone").(string), 0, targetNode)
+		sourceVmr, err = getSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), 0, targetNode)
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
@@ -540,20 +540,21 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			poolName = util.Pointer(pveSDK.PoolName(tmpPool))
 		}
 
+		hostname := pveSDK.GuestName(config.Hostname)
 		var cloneSettings pveSDK.CloneLxcTarget
 		if !d.Get("full").(bool) {
 			cloneSettings = pveSDK.CloneLxcTarget{
 				Linked: &pveSDK.CloneLinked{
 					Node: targetNode,
 					ID:   guestID,
-					Name: &config.Hostname,
+					Name: &hostname,
 					Pool: poolName}}
 		} else {
 			cloneSettings = pveSDK.CloneLxcTarget{
 				Full: &pveSDK.CloneLxcFull{
 					Node:    targetNode,
 					ID:      guestID,
-					Name:    &config.Hostname,
+					Name:    &hostname,
 					Pool:    poolName,
 					Storage: storage}}
 		}
@@ -685,7 +686,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
-	config.Tags = tags.String(tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))))
+	config.Tags = tags.SDK(d).String()
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -763,22 +764,29 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	if d.HasChange("start") {
-		vmState, err := client.GetVmState(ctx, vmr)
-		if err == nil && vmState["status"] == "stopped" && d.Get("start").(bool) {
-			log.Print("[DEBUG][LXCUpdate] starting LXC")
-			_, err = client.StartVm(ctx, vmr)
-			if err != nil {
-				return diag.FromErr(err)
+		guestState, err := vmr.GetRawGuestStatus(ctx, client)
+		if err != nil {
+			return diag.Diagnostics{{
+				Summary:  err.Error(),
+				Severity: diag.Error}}
+		}
+		switch guestState.State() {
+		case pveSDK.PowerStateStopped:
+			if d.Get("start").(bool) {
+				log.Print("[DEBUG][LXCUpdate] starting LXC")
+				_, err = client.StartVm(ctx, vmr)
+				if err != nil {
+					return diag.FromErr(err)
+				}
 			}
-
-		} else if err == nil && vmState["status"] == "running" && !d.Get("start").(bool) {
-			log.Print("[DEBUG][LXCUpdate] stopping LXC")
-			_, err = client.StopVm(ctx, vmr)
-			if err != nil {
-				return diag.FromErr(err)
+		case pveSDK.PowerStateRunning:
+			if !d.Get("start").(bool) {
+				log.Print("[DEBUG][LXCUpdate] stopping LXC")
+				_, err = client.StopVm(ctx, vmr)
+				if err != nil {
+					return diag.FromErr(err)
+				}
 			}
-		} else if err != nil {
-			return diag.FromErr(err)
 		}
 	}
 
@@ -810,7 +818,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		return err
 	}
 	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
-	node.Terraform(d, vmr.Node())
+	node.Terraform(vmr.Node(), d)
 
 	// Read Features
 	defaultFeatures := d.Get("features").(*schema.Set)
@@ -911,7 +919,13 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	d.Set("searchdomain", config.SearchDomain)
 	d.Set("startup", config.Startup)
 	d.Set("swap", config.Swap)
-	d.Set("tags", tags.String(tags.Split(config.Tags)))
+
+	rawTags := strings.Split(config.Tags, ",")
+	tmpTags := make(pveSDK.Tags, len(rawTags))
+	for i := range rawTags {
+		tmpTags[i] = pveSDK.Tag(rawTags[i])
+	}
+	tags.Terraform(&tmpTags, d)
 	d.Set("template", config.Template)
 	d.Set("tty", config.Tty)
 	d.Set("unique", config.Unique)

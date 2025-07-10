@@ -2,6 +2,7 @@ package disk
 
 import (
 	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/helper/size"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
@@ -433,7 +434,7 @@ func sdk_Disk_QemuVirtIODisks(virtio *pveAPI.QemuVirtIODisks, id string, schema 
 }
 
 func sdk_Disk_Size(slot string, schema map[string]interface{}) (pveAPI.QemuDiskSize, diag.Diagnostics) {
-	size := convert_SizeStringToKibibytes_Unsafe(schema[schemaSize].(string))
+	size := size.Parse_Unsafe(schema[schemaSize].(string))
 	if size == 0 {
 		return 0, diag.Diagnostics{{
 			Severity: diag.Error,

@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	Root string = "pool"
+	Root = "pool"
 )
 
 func Schema() *schema.Schema {

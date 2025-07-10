@@ -9,9 +9,7 @@ import (
 	"log"
 	"net"
 	"net/url"
-	"path"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -24,7 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cloudinit"
@@ -36,6 +35,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/tpm"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
@@ -52,8 +52,6 @@ const (
 )
 
 const (
-	schemaQemuDescription = "desc"
-
 	schemaAdditionalWait = "additional_wait"
 	schemaAgentTimeout   = "agent_timeout"
 	schemaSkipIPv4       = "skip_ipv4"
@@ -112,36 +110,13 @@ func resourceVmQemu() *schema.Resource {
 					return diag.Errorf(schemaAgentTimeout + " must be greater than 0")
 				},
 			},
-			vmID.Root: vmID.Schema(),
-			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				// Default:     "",
-				Description: "The VM name",
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					v := val.(string)
-					matched, err := regexp.Match("[^a-zA-Z0-9-.]", []byte(v))
-					if err != nil {
-						warns = append(warns, fmt.Sprintf("%q, had an error running regexp.Match err=[%v]", key, err))
-					}
-					if matched {
-						errs = append(errs, fmt.Errorf("%q, must only contain alphanumerics, hyphens and dots [%v]", key, v))
-					}
-					return
-				},
-			},
-			schemaQemuDescription: {
-				Type:     schema.TypeString,
-				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return strings.TrimSpace(old) == strings.TrimSpace(new)
-				},
-				Default:     defaultDescription,
-				Description: "The VM description",
-			},
-			node.Computed:  node.SchemaComputed("qemu"),
-			node.RootNode:  node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "qemu"),
-			node.RootNodes: node.SchemaNodes("qemu"),
+			vmID.Root:              vmID.Schema(),
+			name.Root:              name.Schema(),
+			description.Root:       description.Schema(),
+			description.LegacyQemu: description.LegacySchema(),
+			node.Computed:          node.SchemaComputed("qemu"),
+			node.RootNode:          node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "qemu"),
+			node.RootNodes:         node.SchemaNodes("qemu"),
 			"bios": {
 				Type:             schema.TypeString,
 				Optional:         true,
@@ -240,7 +215,7 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
-			"tags": tags.Schema(),
+			tags.Root: tags.Schema(),
 			"args": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -559,7 +534,7 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pveSDK.Client, name string, id pveSDK.GuestID, preferredNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
+func getSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.GuestName, id pveSDK.GuestID, preferredNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
 	if name != "" {
 		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
 		if err != nil {
@@ -590,21 +565,23 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Info().Str(vmID.Root, d.Id()).Msgf("VM creation")
 	logger.Debug().Str(vmID.Root, d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
 
+	d.SetId("")
+
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
 	client := pconf.Client
-	guestName := d.Get("name").(string)
+	guestName := name.SDK(d) // ensure the name is set in the schema
 	vga := d.Get("vga").(*schema.Set)
 	qemuVgaList := vga.List()
 
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	config := pveSDK.ConfigQemu{
-		Name:        guestName,
+		Name:        &guestName,
 		CPU:         cpu.SDK(d),
-		Description: util.Pointer(d.Get("desc").(string)),
+		Description: description.SDK(true, d),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
@@ -622,7 +599,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		HaState:     d.Get("hastate").(string),
 		HaGroup:     d.Get("hagroup").(string),
 		QemuOs:      d.Get("qemu_os").(string),
-		Tags:        tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
+		Tags:        tags.SDK(d),
 		Args:        d.Get("args").(string),
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -688,15 +665,14 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		// check if clone, or PXE boot
 		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 { // Clone
 
-			sourceVmr, err := getSourceVmr(ctx, client, d.Get("clone").(string), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode)
+			sourceVmr, err := getSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
 
 			var poolName *pveSDK.PoolName
-			tmpPool := d.Get(pool.Root).(string)
-			if tmpPool != "" {
-				poolName = util.Pointer(pveSDK.PoolName(tmpPool))
+			if v := pool.SDK(d); v != "" {
+				poolName = &v
 			}
 			var cloneSettings pveSDK.CloneQemuTarget
 			if !d.Get("full_clone").(bool) {
@@ -840,9 +816,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	qemuVgaList := vga.List()
 
 	config := pveSDK.ConfigQemu{
-		Name:        d.Get("name").(string),
+		Name:        util.Pointer(name.SDK(d)),
 		CPU:         cpu.SDK(d),
-		Description: util.Pointer(d.Get("desc").(string)),
+		Description: description.SDK(true, d),
 		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Bios:        d.Get("bios").(string),
 		Onboot:      util.Pointer(d.Get("onboot").(bool)),
@@ -860,7 +836,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		HaState:     d.Get("hastate").(string),
 		HaGroup:     d.Get("hagroup").(string),
 		QemuOs:      d.Get("qemu_os").(string),
-		Tags:        tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
+		Tags:        tags.SDK(d),
 		Args:        d.Get("args").(string),
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -970,20 +946,20 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
 	// enabled. Attempt a graceful shutdown or if that fails, force power-off.
-	vmState, err := client.GetVmState(ctx, vmr)
+	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
-	switch vmState["status"].(string) { // manage the VM state to match the `vm_state` attribute
+	switch guestStatus.State() { // manage the VM state to match the `vm_state` attribute
 	// case stateStarted: does nothing during update as we don't enforce the VM state
-	case stateStopped:
+	case pveSDK.PowerStateStopped:
 		if d.Get("vm_state").(string) == stateRunning { // start the VM
 			log.Print("[DEBUG][QemuVmUpdate] starting VM to match `vm_state`")
 			if _, err = client.StartVm(ctx, vmr); err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
 		}
-	case stateRunning:
+	case pveSDK.PowerStateRunning:
 		if d.Get("vm_state").(string) == stateStopped { // shutdown the VM
 			log.Print("[DEBUG][QemuVmUpdate] shutting down VM to match `vm_state`")
 			_, err = client.ShutdownVm(ctx, vmr)
@@ -1072,20 +1048,23 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	node.Terraform(d, vmr.Node())
+	node.Terraform(vmr.Node(), d)
 
 	var ciDisk bool
 	if config.Disks != nil {
 		disk.Terraform_Unsafe(d, config.Disks, &ciDisk)
 	}
 
-	vmState, err := client.GetVmState(ctx, vmr)
+	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.Diagnostics{{
+			Summary:  err.Error(),
+			Severity: diag.Error}}
 	}
-	log.Printf("[DEBUG] VM status: %s", vmState["status"])
-	d.Set("vm_state", vmState["status"])
-	if vmState["status"] == "running" {
+	state := guestStatus.State()
+	log.Print("[DEBUG] Getting VM state" + state.String())
+	d.Set("vm_state", state.String())
+	if state == pveSDK.PowerStateRunning {
 		log.Printf("[DEBUG] VM is running, checking the IP")
 		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
 		diags = append(diags, initConnInfo(ctx, d, client, vmr, config, ciDisk)...)
@@ -1103,8 +1082,8 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	vmID.Terraform(vmr.VmId(), d)
-	d.Set("name", config.Name)
-	d.Set("desc", mapToTerraform_Description(config.Description))
+	name.Terraform_Unsafe(config.Name, d)
+	description.Terraform(config.Description, true, d)
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
 	d.Set("startup", config.Startup)
@@ -1119,7 +1098,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("hastate", vmr.HaState())
 	d.Set("hagroup", vmr.HaGroup())
 	d.Set("qemu_os", config.QemuOs)
-	d.Set("tags", tags.String(config.Tags))
+	tags.Terraform(config.Tags, d)
 	d.Set("args", config.Args)
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
@@ -1172,7 +1151,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		d.Set("features", UpdateDeviceConfDefaults(config.QemuVga, activeVgaSet))
 	}
 
-	d.Set(pool.Root, config.Pool)
+	pool.Terraform(config.Pool, d)
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)
@@ -1185,41 +1164,8 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	return diags
 }
 
-func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	pconf := meta.(*providerConfiguration)
-	lock := pmParallelBegin(pconf)
-	defer lock.unlock()
-
-	client := pconf.Client
-	vmId, _ := strconv.Atoi(path.Base(d.Id()))
-	vmr := pveSDK.NewVmRef(pveSDK.GuestID(vmId))
-	vmState, err := client.GetVmState(ctx, vmr)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	if vmState["status"] != "stopped" {
-		if _, err := client.StopVm(ctx, vmr); err != nil {
-			return diag.FromErr(err)
-		}
-
-		// Wait until vm is stopped. Otherwise, deletion will fail.
-		// ugly way to wait 5 minutes(300s)
-		waited := 0
-		for waited < 300 {
-			vmState, err := client.GetVmState(ctx, vmr)
-			if err == nil && vmState["status"] == "stopped" {
-				break
-			} else if err != nil {
-				return diag.FromErr(err)
-			}
-			// wait before next try
-			time.Sleep(5 * time.Second)
-			waited += 5
-		}
-	}
-
-	_, err = client.DeleteVm(ctx, vmr)
-	return diag.FromErr(err)
+func resourceVmQemuDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+	return guestDelete(ctx, d, meta, "Qemu")
 }
 
 // Converting from schema.TypeSet to map of id and conf for each device,
@@ -1578,13 +1524,6 @@ func getPrimaryIP(
 }
 
 // Map struct to the terraform schema
-
-func mapToTerraform_Description(description *string) string {
-	if description != nil {
-		return *description
-	}
-	return ""
-}
 
 func mapToTerraform_Memory(config *pveSDK.QemuMemory, d *schema.ResourceData) {
 	// no nil check as pveSDK.QemuMemory is always returned

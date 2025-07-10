@@ -2,6 +2,7 @@ package disk
 
 import (
 	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/helper/size"
 )
 
 func sdk_Disks_QemuCdRom(schemaItem []any) (cdRom *pveAPI.QemuCdRom) {
@@ -83,7 +84,7 @@ func sdk_Disks_QemuIdeStorage(key string, schema map[string]any) *pveAPI.QemuIde
 			EmulateSSD:      diskMap[schemaEmulateSSD].(bool),
 			Format:          pveAPI.QemuDiskFormat(diskMap[schemaFormat].(string)),
 			Replicate:       diskMap[schemaReplicate].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(diskMap[schemaSize].(string))),
+			SizeInKibibytes: pveAPI.QemuDiskSize(size.Parse_Unsafe(diskMap[schemaSize].(string))),
 			Storage:         diskMap[schemaStorage].(string)}
 		if asyncIO, ok := diskMap[schemaAsyncIO].(string); ok {
 			disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
@@ -172,7 +173,7 @@ func sdk_Disks_QemuSataStorage(key string, schema map[string]any) *pveAPI.QemuSa
 			EmulateSSD:      diskMap[schemaEmulateSSD].(bool),
 			Format:          pveAPI.QemuDiskFormat(diskMap[schemaFormat].(string)),
 			Replicate:       diskMap[schemaReplicate].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(diskMap[schemaSize].(string))),
+			SizeInKibibytes: pveAPI.QemuDiskSize(size.Parse_Unsafe(diskMap[schemaSize].(string))),
 			Storage:         diskMap[schemaStorage].(string)}
 		if asyncIO, ok := diskMap[schemaAsyncIO].(string); ok {
 			disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
@@ -313,7 +314,7 @@ func sdk_Disks_QemuScsiStorage(key string, schema map[string]any) *pveAPI.QemuSc
 			IOThread:        diskMap[schemaIOthread].(bool),
 			ReadOnly:        diskMap[schemaReadOnly].(bool),
 			Replicate:       diskMap[schemaReplicate].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(diskMap[schemaSize].(string))),
+			SizeInKibibytes: pveAPI.QemuDiskSize(size.Parse_Unsafe(diskMap[schemaSize].(string))),
 			Storage:         diskMap[schemaStorage].(string)}
 		if asyncIO, ok := diskMap[schemaAsyncIO].(string); ok {
 			disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)
@@ -425,7 +426,7 @@ func sdk_Disks_QemuVirtIOStorage(key string, schema map[string]any) *pveAPI.Qemu
 			IOThread:        diskMap[schemaIOthread].(bool),
 			ReadOnly:        diskMap[schemaReadOnly].(bool),
 			Replicate:       diskMap[schemaReplicate].(bool),
-			SizeInKibibytes: pveAPI.QemuDiskSize(convert_SizeStringToKibibytes_Unsafe(diskMap[schemaSize].(string))),
+			SizeInKibibytes: pveAPI.QemuDiskSize(size.Parse_Unsafe(diskMap[schemaSize].(string))),
 			Storage:         diskMap[schemaStorage].(string)}
 		if asyncIO, ok := diskMap[schemaAsyncIO].(string); ok {
 			disk.AsyncIO = pveAPI.QemuDiskAsyncIO(asyncIO)

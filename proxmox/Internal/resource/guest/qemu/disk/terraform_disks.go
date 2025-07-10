@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/helper/size"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -87,7 +88,7 @@ func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool,
 			schemaLinkedDiskId: terraformLinkedCloneId(config.Disk.LinkedDiskId),
 			schemaReplicate:    config.Disk.Replicate,
 			schemaSerial:       string(config.Disk.Serial),
-			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaSize:         size.String(int64(config.Disk.SizeInKibibytes)),
 			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
@@ -103,7 +104,7 @@ func terraform_Disks_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool,
 			schemaFile:       config.Passthrough.File,
 			schemaReplicate:  config.Passthrough.Replicate,
 			schemaSerial:     string(config.Passthrough.Serial),
-			schemaSize:       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes)),
+			schemaSize:       size.String(int64(config.Passthrough.SizeInKibibytes)),
 		}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
@@ -157,7 +158,7 @@ func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *boo
 			schemaLinkedDiskId: terraformLinkedCloneId(config.Disk.LinkedDiskId),
 			schemaReplicate:    config.Disk.Replicate,
 			schemaSerial:       string(config.Disk.Serial),
-			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaSize:         size.String(int64(config.Disk.SizeInKibibytes)),
 			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
@@ -173,7 +174,7 @@ func terraform_Disks_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *boo
 			schemaFile:       config.Passthrough.File,
 			schemaReplicate:  config.Passthrough.Replicate,
 			schemaSerial:     string(config.Passthrough.Serial),
-			schemaSize:       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes)),
+			schemaSize:       size.String(int64(config.Passthrough.SizeInKibibytes)),
 		}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
@@ -254,7 +255,7 @@ func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *boo
 			schemaReadOnly:     config.Disk.ReadOnly,
 			schemaReplicate:    config.Disk.Replicate,
 			schemaSerial:       string(config.Disk.Serial),
-			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaSize:         size.String(int64(config.Disk.SizeInKibibytes)),
 			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
@@ -272,7 +273,7 @@ func terraform_Disks_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *boo
 			schemaReadOnly:   config.Passthrough.ReadOnly,
 			schemaReplicate:  config.Passthrough.Replicate,
 			schemaSerial:     string(config.Passthrough.Serial),
-			schemaSize:       convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes))}
+			schemaSize:       size.String(int64(config.Passthrough.SizeInKibibytes))}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
 			schemaPassthrough: []interface{}{mapParams}}}
@@ -336,7 +337,7 @@ func terraform_Disks_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema 
 			schemaReadOnly:     config.Disk.ReadOnly,
 			schemaReplicate:    config.Disk.Replicate,
 			schemaSerial:       string(config.Disk.Serial),
-			schemaSize:         convert_KibibytesToString(int64(config.Disk.SizeInKibibytes)),
+			schemaSize:         size.String(int64(config.Disk.SizeInKibibytes)),
 			schemaStorage:      string(config.Disk.Storage)}
 		terraformQemuDiskBandwidth(mapParams, config.Disk.Bandwidth)
 		return []interface{}{map[string]interface{}{
@@ -353,7 +354,7 @@ func terraform_Disks_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema 
 			schemaReadOnly:  config.Passthrough.ReadOnly,
 			schemaReplicate: config.Passthrough.Replicate,
 			schemaSerial:    string(config.Passthrough.Serial),
-			schemaSize:      convert_KibibytesToString(int64(config.Passthrough.SizeInKibibytes))}
+			schemaSize:      size.String(int64(config.Passthrough.SizeInKibibytes))}
 		terraformQemuDiskBandwidth(mapParams, config.Passthrough.Bandwidth)
 		return []interface{}{map[string]interface{}{
 			schemaPassthrough: []interface{}{mapParams}}}

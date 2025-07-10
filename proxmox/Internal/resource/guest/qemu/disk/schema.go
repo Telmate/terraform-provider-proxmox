@@ -1,10 +1,9 @@
 package disk
 
 import (
-	"regexp"
-
 	pveAPI "github.com/Telmate/proxmox-api-go/proxmox"
 	errorMSG "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/errormsg"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/helper/size"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -576,13 +575,13 @@ func subSchemaDiskSize(s schema.Schema) *schema.Schema {
 		if !ok {
 			return diag.Errorf(errorMSG.String, k)
 		}
-		if !regexp.MustCompile(`^[123456789]\d*[KMGT]?$`).MatchString(v) {
+		if !size.Regex.MatchString(v) {
 			return diag.Errorf("%s must match the following regex ^[123456789]\\d*[KMGT]?$", k)
 		}
 		return nil
 	}
 	s.DiffSuppressFunc = func(k, old, new string, d *schema.ResourceData) bool {
-		return convert_SizeStringToKibibytes_Unsafe(old) == convert_SizeStringToKibibytes_Unsafe(new)
+		return size.Parse_Unsafe(old) == size.Parse_Unsafe(new)
 	}
 	return &s
 }
