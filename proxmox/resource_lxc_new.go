@@ -31,7 +31,7 @@ func resourceLxcNew() *schema.Resource {
 		CreateContext: resourceLxcNewCreate,
 		ReadContext:   resourceLxcNewReadWithLock,
 		UpdateContext: resourceLxcNewUpdate,
-		DeleteContext: resourceVmQemuDelete,
+		DeleteContext: resourceLxcNewDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -193,6 +193,10 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	rootmount.Terraform(config.BootMount, d)
 	swap.Terraform(config.Swap, d)
 	return nil
+}
+
+func resourceLxcNewDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+	return guestDelete(ctx, d, meta, "LXC")
 }
 
 func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
