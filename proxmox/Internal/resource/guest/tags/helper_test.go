@@ -48,13 +48,13 @@ func Test_Split(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
-		output *[]pveSDK.Tag
+		output *pveSDK.Tags
 	}{
-		{name: `empty`, output: &[]pveSDK.Tag{}},
-		{name: `single`, input: "a", output: &[]pveSDK.Tag{"a"}},
-		{name: `multiple ,`, input: "b,a,c", output: &[]pveSDK.Tag{"b", "a", "c"}},
-		{name: `multiple ;`, input: "b;a;c", output: &[]pveSDK.Tag{"b", "a", "c"}},
-		{name: `multiple mixed`, input: "b,a;c,d;e", output: &[]pveSDK.Tag{"b", "a", "c", "d", "e"}},
+		{name: `empty`, output: &pveSDK.Tags{}},
+		{name: `single`, input: "a", output: &pveSDK.Tags{"a"}},
+		{name: `multiple ,`, input: "b,a,c", output: &pveSDK.Tags{"b", "a", "c"}},
+		{name: `multiple ;`, input: "b;a;c", output: &pveSDK.Tags{"b", "a", "c"}},
+		{name: `multiple mixed`, input: "b,a;c,d;e", output: &pveSDK.Tags{"b", "a", "c", "d", "e"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
