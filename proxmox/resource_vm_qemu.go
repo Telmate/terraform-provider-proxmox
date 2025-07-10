@@ -1083,7 +1083,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
 	vmID.Terraform(vmr.VmId(), d)
 	name.Terraform_Unsafe(config.Name, d)
-	d.Set("name", config.Name)
 	description.Terraform(config.Description, true, d)
 	d.Set("bios", config.Bios)
 	d.Set("onboot", config.Onboot)
