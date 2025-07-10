@@ -9,9 +9,9 @@ import (
 	"time"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -150,7 +150,7 @@ func resourceLxc() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"tags": tags.Schema(),
+			tags.Root: tags.Schema(),
 			"memory": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -479,7 +479,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
-	config.Tags = tags.String(tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))))
+	config.Tags = tags.SDK(d).String()
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -686,7 +686,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	config.Start = d.Get("start").(bool)
 	config.Startup = d.Get("startup").(string)
 	config.Swap = d.Get("swap").(int)
-	config.Tags = tags.String(tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))))
+	config.Tags = tags.SDK(d).String()
 	config.Template = d.Get("template").(bool)
 	config.Tty = d.Get("tty").(int)
 	config.Unique = d.Get("unique").(bool)
@@ -919,7 +919,13 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	d.Set("searchdomain", config.SearchDomain)
 	d.Set("startup", config.Startup)
 	d.Set("swap", config.Swap)
-	d.Set("tags", tags.String(tags.Split(config.Tags)))
+
+	rawTags := strings.Split(config.Tags, ",")
+	tmpTags := make(pveSDK.Tags, len(rawTags))
+	for i := range rawTags {
+		tmpTags[i] = pveSDK.Tag(rawTags[i])
+	}
+	tags.Terraform(&tmpTags, d)
 	d.Set("template", config.Template)
 	d.Set("tty", config.Tty)
 	d.Set("unique", config.Unique)

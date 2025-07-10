@@ -10,18 +10,18 @@ import (
 func Test_RemoveDuplicates(t *testing.T) {
 	tests := []struct {
 		name   string
-		input  *[]pveSDK.Tag
-		output *[]pveSDK.Tag
+		input  *pveSDK.Tags
+		output *pveSDK.Tags
 	}{
 		{name: `nil`},
-		{name: `empty`, input: &[]pveSDK.Tag{}},
-		{name: `single`, input: &[]pveSDK.Tag{"a"}, output: &[]pveSDK.Tag{"a"}},
-		{name: `multiple`, input: &[]pveSDK.Tag{"b", "a", "c"}, output: &[]pveSDK.Tag{"a", "b", "c"}},
-		{name: `duplicate`, input: &[]pveSDK.Tag{"b", "a", "c", "b", "a"}, output: &[]pveSDK.Tag{"a", "b", "c"}},
+		{name: `empty`, input: &pveSDK.Tags{}},
+		{name: `single`, input: &pveSDK.Tags{"a"}, output: &pveSDK.Tags{"a"}},
+		{name: `multiple`, input: &pveSDK.Tags{"b", "a", "c"}, output: &pveSDK.Tags{"a", "b", "c"}},
+		{name: `duplicate`, input: &pveSDK.Tags{"b", "a", "c", "b", "a"}, output: &pveSDK.Tags{"a", "b", "c"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			require.Equal(t, test.output, sortArray(RemoveDuplicates(test.input)))
+			require.Equal(t, test.output, sortArray(removeDuplicates(test.input)))
 		})
 	}
 }
@@ -29,13 +29,13 @@ func Test_RemoveDuplicates(t *testing.T) {
 func Test_sort(t *testing.T) {
 	tests := []struct {
 		name   string
-		input  *[]pveSDK.Tag
-		output *[]pveSDK.Tag
+		input  *pveSDK.Tags
+		output *pveSDK.Tags
 	}{
 		{name: `nil`},
-		{name: `empty`, input: &[]pveSDK.Tag{}},
-		{name: `single`, input: &[]pveSDK.Tag{"a"}, output: &[]pveSDK.Tag{"a"}},
-		{name: `multiple`, input: &[]pveSDK.Tag{"b", "a", "c"}, output: &[]pveSDK.Tag{"a", "b", "c"}},
+		{name: `empty`, input: &pveSDK.Tags{}},
+		{name: `single`, input: &pveSDK.Tags{"a"}, output: &pveSDK.Tags{"a"}},
+		{name: `multiple`, input: &pveSDK.Tags{"b", "a", "c"}, output: &pveSDK.Tags{"a", "b", "c"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -58,7 +58,7 @@ func Test_Split(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			require.Equal(t, test.output, Split(test.input))
+			require.Equal(t, test.output, split(test.input))
 		})
 	}
 }
@@ -66,17 +66,17 @@ func Test_Split(t *testing.T) {
 func Test_String(t *testing.T) {
 	tests := []struct {
 		name   string
-		input  *[]pveSDK.Tag
+		input  *pveSDK.Tags
 		output string
 	}{
 		{name: `nil`},
-		{name: `empty`, input: &[]pveSDK.Tag{}},
-		{name: `single`, input: &[]pveSDK.Tag{"a"}, output: "a"},
-		{name: `multiple`, input: &[]pveSDK.Tag{"b", "a", "c"}, output: "b;a;c"},
+		{name: `empty`, input: &pveSDK.Tags{}},
+		{name: `single`, input: &pveSDK.Tags{"a"}, output: "a"},
+		{name: `multiple`, input: &pveSDK.Tags{"b", "a", "c"}, output: "b;a;c"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			require.Equal(t, test.output, String(test.input))
+			require.Equal(t, test.output, toString(test.input))
 		})
 	}
 }

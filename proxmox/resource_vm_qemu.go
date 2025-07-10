@@ -24,7 +24,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/pve/guest/tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
@@ -38,6 +37,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/tpm"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
@@ -217,7 +217,7 @@ func resourceVmQemu() *schema.Resource {
 					return strings.TrimSpace(old) == strings.TrimSpace(new)
 				},
 			},
-			"tags": tags.Schema(),
+			tags.Root: tags.Schema(),
 			"args": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -601,7 +601,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		HaState:     d.Get("hastate").(string),
 		HaGroup:     d.Get("hagroup").(string),
 		QemuOs:      d.Get("qemu_os").(string),
-		Tags:        tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
+		Tags:        tags.SDK(d),
 		Args:        d.Get("args").(string),
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -838,7 +838,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		HaState:     d.Get("hastate").(string),
 		HaGroup:     d.Get("hagroup").(string),
 		QemuOs:      d.Get("qemu_os").(string),
-		Tags:        tags.RemoveDuplicates(tags.Split(d.Get("tags").(string))),
+		Tags:        tags.SDK(d),
 		Args:        d.Get("args").(string),
 		Serials:     serial.SDK(d),
 		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
@@ -1101,7 +1101,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	d.Set("hastate", vmr.HaState())
 	d.Set("hagroup", vmr.HaGroup())
 	d.Set("qemu_os", config.QemuOs)
-	d.Set("tags", tags.String(config.Tags))
+	tags.Terraform(config.Tags, d)
 	d.Set("args", config.Args)
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
 	d.Set("linked_vmid", config.LinkedVmId)
