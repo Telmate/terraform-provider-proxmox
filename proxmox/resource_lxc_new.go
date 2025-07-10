@@ -26,7 +26,7 @@ import (
 
 var lxcNewResourceDef *schema.Resource
 
-func resourceLxcNew() *schema.Resource {
+func ResourceLxcNew() *schema.Resource {
 	lxcNewResourceDef = &schema.Resource{
 		CreateContext: resourceLxcNewCreate,
 		ReadContext:   resourceLxcNewReadWithLock,
