@@ -1,6 +1,7 @@
 package errorMSG
 
 import (
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
@@ -30,4 +31,31 @@ func StringDiagnostic(k string) diag.Diagnostic {
 
 func StringDiagnostics(k string) diag.Diagnostics {
 	return diag.Diagnostics{StringDiagnostic(k)}
+}
+
+type Diagnostic struct {
+	Severity         diag.Severity
+	Summary          string
+	Detail           string
+	AttributePath    cty.Path
+	UseAttributePath bool
+}
+
+func (d Diagnostic) Diagnostic() diag.Diagnostic {
+	var k cty.Path
+	if d.UseAttributePath {
+		k = d.AttributePath
+	}
+	if d.Summary == "" {
+		d.Summary = d.Detail
+	}
+	return diag.Diagnostic{
+		AttributePath: k,
+		Detail:        d.Detail,
+		Severity:      d.Severity,
+		Summary:       d.Summary}
+}
+
+func (d Diagnostic) Diagnostics() diag.Diagnostics {
+	return diag.Diagnostics{d.Diagnostic()}
 }

@@ -56,7 +56,7 @@ func SDK(d *schema.ResourceData) (pveAPI.QemuNetworkInterfaces, diag.Diagnostics
 			NativeVlan:    util.Pointer(pveAPI.Vlan(networkMap[schemaNativeVlan].(int))),
 			Model:         util.Pointer(model),
 			MultiQueue:    util.Pointer(pveAPI.QemuNetworkQueue(networkMap[schemaQueues].(int))),
-			RateLimitKBps: util.Pointer(pveAPI.QemuNetworkRate(rate))}
+			RateLimitKBps: util.Pointer(pveAPI.GuestNetworkRate(rate))}
 	}
 	return networks, diags
 }
