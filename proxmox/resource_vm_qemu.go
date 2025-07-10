@@ -1154,7 +1154,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		d.Set("features", UpdateDeviceConfDefaults(config.QemuVga, activeVgaSet))
 	}
 
-	d.Set(pool.Root, config.Pool)
+	pool.Terraform(config.Pool, d)
 
 	// Reset reboot_required variable. It should change only during updates.
 	d.Set("reboot_required", false)

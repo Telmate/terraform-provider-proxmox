@@ -818,7 +818,7 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		return err
 	}
 	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
-	node.Terraform(d, vmr.Node())
+	node.Terraform(vmr.Node(), d)
 
 	// Read Features
 	defaultFeatures := d.Get("features").(*schema.Set)
