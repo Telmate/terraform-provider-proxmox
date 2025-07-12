@@ -16,13 +16,13 @@ const (
 
 func SchemaLegacyCores() *schema.Schema {
 	return subSchemaCores(RootLegacyCores, schema.Schema{
-		Deprecated:    "use " + Root + "." + RootLegacyCores + " instead",
+		Deprecated:    "use '" + Root + " { " + RootLegacyCores + " = }' instead",
 		ConflictsWith: []string{Root}})
 }
 
 func SchemaLegacyType() *schema.Schema {
 	return subSchemaType(schema.Schema{
-		Deprecated:    "use " + Root + "." + RootLegacyCpuType + " instead",
+		Deprecated:    "use '" + Root + " { " + RootLegacyCpuType + " = }' instead",
 		ConflictsWith: []string{Root},
 		DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 			newNew := defaultType
@@ -35,13 +35,13 @@ func SchemaLegacyType() *schema.Schema {
 
 func SchemaLegacyNuma() *schema.Schema {
 	return subSchemaNuma(schema.Schema{
-		Deprecated:    "use " + Root + "." + RootLegacyNuma + " instead",
+		Deprecated:    "use '" + Root + " { " + RootLegacyNuma + " = }' instead",
 		ConflictsWith: []string{Root}})
 }
 
 func SchemaLegacySockets() *schema.Schema {
 	return subSchemaSockets(RootLegacySockets, schema.Schema{
-		Deprecated:    "use " + Root + "." + RootLegacySockets + " instead",
+		Deprecated:    "use '" + Root + " { " + RootLegacySockets + " = }' instead",
 		ConflictsWith: []string{Root},
 		DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 			newNew := strconv.Itoa(defaultSockets)
@@ -54,6 +54,6 @@ func SchemaLegacySockets() *schema.Schema {
 
 func SchemaLegacyVirtualCores() *schema.Schema {
 	return subSchemaVirtualCores(RootLegacyVirtualCores, schema.Schema{
-		Deprecated:    "use " + Root + "." + RootLegacyVirtualCores + " instead",
+		Deprecated:    "use '" + Root + " { " + RootLegacyVirtualCores + " = }' instead",
 		ConflictsWith: []string{Root}})
 }
