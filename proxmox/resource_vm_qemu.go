@@ -893,8 +893,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		"agent",
 		"qemu_os",
 		"balloon",
-		"cpu",
-		"numa",
 		"machine",
 		"hotplug",
 		"scsihw",
@@ -912,11 +910,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	// reboot is only required when memory hotplug is disabled
 	if d.HasChange("memory") && !strings.Contains(d.Get("hotplug").(string), "memory") {
-		rebootRequired = true
-	}
-
-	// reboot is only required when cpu hotplug is disabled
-	if d.HasChanges("sockets", "cores", "vcpus") && !strings.Contains(d.Get("hotplug").(string), "cpu") {
 		rebootRequired = true
 	}
 
