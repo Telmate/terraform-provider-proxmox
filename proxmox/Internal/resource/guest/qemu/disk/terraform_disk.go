@@ -100,7 +100,7 @@ func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, 
 		schema[schemaReplicate] = config.Passthrough.Replicate
 		schema[schemaSerial] = string(config.Passthrough.Serial)
 		schema[schemaSize] = size.String(int64(config.Passthrough.SizeInKibibytes))
-		schema[schemaType] = schemaDisk
+		schema[schemaType] = schemaPassthrough
 		schema[schemaWorldWideName] = string(config.Passthrough.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
 	} else if config.CdRom != nil {
