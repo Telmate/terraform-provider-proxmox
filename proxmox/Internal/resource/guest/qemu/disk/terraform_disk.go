@@ -100,7 +100,7 @@ func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, 
 		schema[schemaReplicate] = config.Passthrough.Replicate
 		schema[schemaSerial] = string(config.Passthrough.Serial)
 		schema[schemaSize] = size.String(int64(config.Passthrough.SizeInKibibytes))
-		schema[schemaType] = schemaPassthrough
+		schema[schemaType] = schemaDisk // yes, passthrough is a disk type
 		schema[schemaWorldWideName] = string(config.Passthrough.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
 	} else if config.CdRom != nil {
@@ -178,7 +178,7 @@ func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *bool
 		schema[schemaReplicate] = config.Passthrough.Replicate
 		schema[schemaSerial] = string(config.Passthrough.Serial)
 		schema[schemaSize] = size.String(int64(config.Passthrough.SizeInKibibytes))
-		schema[schemaType] = schemaPassthrough
+		schema[schemaType] = schemaDisk // yes, passthrough is a disk type
 		schema[schemaWorldWideName] = string(config.Passthrough.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
 	} else if config.CdRom != nil {
@@ -335,7 +335,7 @@ func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *bool
 		schema[schemaReplicate] = config.Passthrough.Replicate
 		schema[schemaSerial] = string(config.Passthrough.Serial)
 		schema[schemaSize] = size.String(int64(config.Passthrough.SizeInKibibytes))
-		schema[schemaType] = schemaPassthrough
+		schema[schemaType] = schemaDisk // yes, passthrough is a disk type
 		schema[schemaWorldWideName] = string(config.Passthrough.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
 	} else if config.CdRom != nil {
@@ -445,7 +445,7 @@ func terraform_Disk_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema m
 		schema[schemaReplicate] = config.Passthrough.Replicate
 		schema[schemaSerial] = string(config.Passthrough.Serial)
 		schema[schemaSize] = size.String(int64(config.Passthrough.SizeInKibibytes))
-		schema[schemaType] = schemaPassthrough
+		schema[schemaType] = schemaDisk // yes, passthrough is a disk type
 		schema[schemaWorldWideName] = string(config.Passthrough.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
 	} else if config.CdRom != nil {
