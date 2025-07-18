@@ -31,6 +31,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/pci"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/rng"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/tpm"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
@@ -388,6 +389,7 @@ func resourceVmQemu() *schema.Resource {
 			serial.Root:  serial.Schema(),
 			usb.RootUSB:  usb.SchemaUSB(),
 			usb.RootUSBs: usb.SchemaUSBs(),
+			rng.Root:     rng.Schema(),
 			"os_type": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -579,32 +581,33 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	qemuEfiDisks, _ := ExpandDevicesList(d.Get("efidisk").([]interface{}))
 
 	config := pveSDK.ConfigQemu{
-		Name:        &guestName,
-		CPU:         cpu.SDK(d),
-		Description: description.SDK(true, d),
-		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
-		Bios:        d.Get("bios").(string),
-		Onboot:      util.Pointer(d.Get("onboot").(bool)),
-		Startup:     d.Get("startup").(string),
-		Protection:  util.Pointer(d.Get("protection").(bool)),
-		Tablet:      util.Pointer(d.Get("tablet").(bool)),
-		Boot:        d.Get("boot").(string),
-		BootDisk:    d.Get("bootdisk").(string),
-		Agent:       mapToSDK_QemuGuestAgent(d),
-		Memory:      mapToSDK_Memory(d),
-		Machine:     d.Get("machine").(string),
-		QemuKVM:     util.Pointer(d.Get("kvm").(bool)),
-		Hotplug:     d.Get("hotplug").(string),
-		Scsihw:      d.Get("scsihw").(string),
-		HaState:     d.Get("hastate").(string),
-		HaGroup:     d.Get("hagroup").(string),
-		QemuOs:      d.Get("qemu_os").(string),
-		Tags:        tags.SDK(d),
-		Args:        d.Get("args").(string),
-		Serials:     serial.SDK(d),
-		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		CloudInit:   cloudinit.SDK(d),
-		TPM:         tpm.SDK(d),
+		Agent:            mapToSDK_QemuGuestAgent(d),
+		Args:             d.Get("args").(string),
+		Bios:             d.Get("bios").(string),
+		Boot:             d.Get("boot").(string),
+		BootDisk:         d.Get("bootdisk").(string),
+		CPU:              cpu.SDK(d),
+		CloudInit:        cloudinit.SDK(d),
+		Description:      description.SDK(true, d),
+		HaGroup:          d.Get("hagroup").(string),
+		HaState:          d.Get("hastate").(string),
+		Hotplug:          d.Get("hotplug").(string),
+		Machine:          d.Get("machine").(string),
+		Memory:           mapToSDK_Memory(d),
+		Name:             &guestName,
+		Onboot:           util.Pointer(d.Get("onboot").(bool)),
+		Pool:             util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
+		Protection:       util.Pointer(d.Get("protection").(bool)),
+		QemuKVM:          util.Pointer(d.Get("kvm").(bool)),
+		QemuOs:           d.Get("qemu_os").(string),
+		RandomnessDevice: rng.SDK(d),
+		Scsihw:           d.Get("scsihw").(string),
+		Serials:          serial.SDK(d),
+		Smbios1:          BuildSmbiosArgs(d.Get("smbios").([]any)),
+		Startup:          d.Get("startup").(string),
+		TPM:              tpm.SDK(d),
+		Tablet:           util.Pointer(d.Get("tablet").(bool)),
+		Tags:             tags.SDK(d),
 	}
 
 	var diags, tmpDiags diag.Diagnostics
@@ -816,32 +819,33 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	qemuVgaList := vga.List()
 
 	config := pveSDK.ConfigQemu{
-		Name:        util.Pointer(name.SDK(d)),
-		CPU:         cpu.SDK(d),
-		Description: description.SDK(true, d),
-		Pool:        util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
-		Bios:        d.Get("bios").(string),
-		Onboot:      util.Pointer(d.Get("onboot").(bool)),
-		Startup:     d.Get("startup").(string),
-		Protection:  util.Pointer(d.Get("protection").(bool)),
-		Tablet:      util.Pointer(d.Get("tablet").(bool)),
-		Boot:        d.Get("boot").(string),
-		BootDisk:    d.Get("bootdisk").(string),
-		Agent:       mapToSDK_QemuGuestAgent(d),
-		Memory:      mapToSDK_Memory(d),
-		Machine:     d.Get("machine").(string),
-		QemuKVM:     util.Pointer(d.Get("kvm").(bool)),
-		Hotplug:     d.Get("hotplug").(string),
-		Scsihw:      d.Get("scsihw").(string),
-		HaState:     d.Get("hastate").(string),
-		HaGroup:     d.Get("hagroup").(string),
-		QemuOs:      d.Get("qemu_os").(string),
-		Tags:        tags.SDK(d),
-		Args:        d.Get("args").(string),
-		Serials:     serial.SDK(d),
-		Smbios1:     BuildSmbiosArgs(d.Get("smbios").([]interface{})),
-		CloudInit:   cloudinit.SDK(d),
-		TPM:         tpm.SDK(d),
+		Agent:            mapToSDK_QemuGuestAgent(d),
+		Args:             d.Get("args").(string),
+		Bios:             d.Get("bios").(string),
+		Boot:             d.Get("boot").(string),
+		BootDisk:         d.Get("bootdisk").(string),
+		CPU:              cpu.SDK(d),
+		CloudInit:        cloudinit.SDK(d),
+		Description:      description.SDK(true, d),
+		HaGroup:          d.Get("hagroup").(string),
+		HaState:          d.Get("hastate").(string),
+		Hotplug:          d.Get("hotplug").(string),
+		Machine:          d.Get("machine").(string),
+		Memory:           mapToSDK_Memory(d),
+		Name:             util.Pointer(name.SDK(d)),
+		Onboot:           util.Pointer(d.Get("onboot").(bool)),
+		Pool:             util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
+		Protection:       util.Pointer(d.Get("protection").(bool)),
+		QemuKVM:          util.Pointer(d.Get("kvm").(bool)),
+		QemuOs:           d.Get("qemu_os").(string),
+		RandomnessDevice: rng.SDK(d),
+		Scsihw:           d.Get("scsihw").(string),
+		Serials:          serial.SDK(d),
+		Smbios1:          BuildSmbiosArgs(d.Get("smbios").([]any)),
+		Startup:          d.Get("startup").(string),
+		TPM:              tpm.SDK(d),
+		Tablet:           util.Pointer(d.Get("tablet").(bool)),
+		Tags:             tags.SDK(d),
 	}
 
 	tmpNode, err := node.SdkUpdate(d, vmr.Node())
@@ -1108,6 +1112,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 	if len(config.PciDevices) != 0 {
 		pci.Terraform(config.PciDevices, d)
+	}
+	if config.RandomnessDevice != nil {
+		rng.Terraform(*config.RandomnessDevice, d)
 	}
 	if len(config.Serials) != 0 {
 		serial.Terraform(config.Serials, d)
