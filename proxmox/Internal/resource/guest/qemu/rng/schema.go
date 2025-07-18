@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	Root = "virtio_rng"
+	Root = "rng"
 
 	schemaLimit  = "limit"
 	schemaPeriod = "period"

@@ -781,6 +781,16 @@ resource "proxmox_vm_qemu" "resource-name" {
 | -------- | ------ | ------------- | ----------- |
 | `usb3`   | `bool` | `false`       | Specifies whether the USB device or port is USB3. |
 
+### RNG Block
+
+The `rng` block is used to configure a random number generator device. It can only be specified once.
+
+| Argument | Type     | Default Value | Description |
+| -------- | -------- | ------------- | ----------- |
+| `limit`  | `int`    | `1024`        | The maximum number of bytes per `period` to read from the RNG device.|
+| `period` | `int`    |               | The period in milliseconds to read from the RNG device. `0` for unlimited.|
+| `source` | `string` | `/dev/urandom`| The source of the random number generator. Options: `/dev/random`, `/dev/urandom`, `/dev/hwrng`. |
+
 ## SMBIOS Block
 
 The `smbios` block sets SMBIOS type 1 settings for the VM.
