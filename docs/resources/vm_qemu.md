@@ -120,7 +120,8 @@ The following arguments are supported in the top level resource block.
 | `scsihw`                      | `str`    | `"lsi"`              | The SCSI controller to emulate. Options: `lsi`, `lsi53c810`, `megasas`, `pvscsi`, `virtio-scsi-pci`, `virtio-scsi-single`. |
 | `pool`                        | `str`    |                      | The resource pool to which the VM will be added. |
 | `tags`                        | `str`    |                      | Tags of the VM. Comma-separated values (e.g. `tag1,tag2,tag3`). Tag may not start with `-` and may only include the following characters: `[a-z]`, `[0-9]`, `_` and `-`. This is only meta information. |
-| `rng`                         | `struct` |                      | The RNG device to add to the VM, more info in [RNG](#rng-block) section. |
+| `rng`                         | `struct` |                      | The RNG device to add to the VM, more info in [RNG Block](#rng-block) section. |
+| `tpm_state`                   | `struct` |                      | The TPM device to add to the VM, more info in [TPM Block](#tpm-block) section. |
 | `force_create`                | `bool`   | `false`              | If `false`, and a vm of the same name, on the same node exists, terraform will attempt to reconfigure that VM with these settings. Set to true to always create a new VM (note, the name of the VM must still be unique, otherwise an error will be produced.) |
 | `os_type`                     | `str`    |                      | Which provisioning method to use, based on the OS type. Options: `ubuntu`, `centos`, `cloud-init`. |
 | `force_recreate_on_change_of` | `str`    |                      | If the value of this string changes, the VM will be recreated. Useful for allowing this resource to be recreated when arbitrary attributes change. An example where this is useful is a cloudinit configuration (as the `cicustom` attribute points to a file not the content). |
@@ -694,6 +695,15 @@ details.
 | -------- | ----- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `id`     | `int` |               | **Required** The ID of the serial device. Must be unique, and between `0-3`.                                           |
 | `type`   | `str` | `socket`      | The type of serial device to create. Options: `socket`, or the path to a serial device like `/dev/ttyS0`. |
+
+### TPM Block
+
+The `tpm_state` block is used to configure a TPM disk. It may only be specified once.
+
+| Argumane | Type | Default Value | Description |
+| -------- | ---- | ------------- | ----------- |
+| `storage`| `str`|               | **Required** The name of the storage backend on which to store the TPM disk.|
+| `version`| `str`| `v2.0`        | The version of the TPM to use. Options: `v1.2`, `v2.0`.|
 
 ### USB Block
 
