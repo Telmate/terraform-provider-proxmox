@@ -31,7 +31,7 @@ terraform init
 
 When developing this provider, it's useful to bootstrap a development as quick as possible. You can use
 the [Proxmox VE vagrant VM](https://github.com/rgl/proxmox-ve) project for instance. Check out
-the [examples](../../examples/vagrant_example.tf) for a `main.tf` to use.
+the [examples](../examples/vagrant_example.tf) for a `main.tf` to use.
 
 ### How to get terraform to recognize third party provider
 
