@@ -1094,7 +1094,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	tags.Terraform(config.Tags, d)
 	d.Set("args", config.Args)
 	d.Set("smbios", ReadSmbiosArgs(config.Smbios1))
-	d.Set("linked_vmid", config.LinkedVmId)
+	d.Set("linked_vmid", config.LinkedID)
 	mapFromStruct_QemuGuestAgent(d, config.Agent)
 	if config.CPU != nil {
 		cpu.Terraform(*config.CPU, d)
