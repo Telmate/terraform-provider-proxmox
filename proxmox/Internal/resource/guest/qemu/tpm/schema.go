@@ -1,3 +1,4 @@
+// Package tpm provides the TPM disk.
 package tpm
 
 import (
