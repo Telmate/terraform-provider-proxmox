@@ -89,8 +89,7 @@ func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, 
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Disk.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Disk.Bandwidth)
-	}
-	if config.Passthrough != nil {
+	} else if config.Passthrough != nil {
 		schema[schemaAsyncIO] = string(config.Disk.AsyncIO)
 		schema[schemaBackup] = config.Disk.Backup
 		schema[schemaCache] = string(config.Disk.Cache)
@@ -104,11 +103,9 @@ func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, 
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Disk.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
-	}
-	if config.CdRom != nil {
+	} else if config.CdRom != nil {
 		terraform_Disk_QemuCdRom_unsafe(config.CdRom, schema)
-	}
-	if config.CloudInit != nil {
+	} else if config.CloudInit != nil {
 		*ciDisk = true
 		terraform_Disk_QemuCloudInit_unsafe(config.CloudInit, schema)
 	}
@@ -170,8 +167,7 @@ func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *bool
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Disk.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Disk.Bandwidth)
-	}
-	if config.Passthrough != nil {
+	} else if config.Passthrough != nil {
 		schema[schemaAsyncIO] = string(config.Disk.AsyncIO)
 		schema[schemaBackup] = config.Disk.Backup
 		schema[schemaCache] = string(config.Disk.Cache)
@@ -185,11 +181,9 @@ func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *bool
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Disk.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
-	}
-	if config.CdRom != nil {
+	} else if config.CdRom != nil {
 		terraform_Disk_QemuCdRom_unsafe(config.CdRom, schema)
-	}
-	if config.CloudInit != nil {
+	} else if config.CloudInit != nil {
 		*ciDisk = true
 		terraform_Disk_QemuCloudInit_unsafe(config.CloudInit, schema)
 	}
@@ -328,8 +322,7 @@ func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *bool
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Disk.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Disk.Bandwidth)
-	}
-	if config.Passthrough != nil {
+	} else if config.Passthrough != nil {
 		schema[schemaAsyncIO] = string(config.Disk.AsyncIO)
 		schema[schemaBackup] = config.Disk.Backup
 		schema[schemaCache] = string(config.Disk.Cache)
@@ -345,11 +338,9 @@ func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *bool
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Disk.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
-	}
-	if config.CdRom != nil {
+	} else if config.CdRom != nil {
 		terraform_Disk_QemuCdRom_unsafe(config.CdRom, schema)
-	}
-	if config.CloudInit != nil {
+	} else if config.CloudInit != nil {
 		*ciDisk = true
 		terraform_Disk_QemuCloudInit_unsafe(config.CloudInit, schema)
 	}
@@ -442,8 +433,7 @@ func terraform_Disk_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema m
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Disk.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Disk.Bandwidth)
-	}
-	if config.Passthrough != nil {
+	} else if config.Passthrough != nil {
 		schema[schemaAsyncIO] = string(config.Passthrough.AsyncIO)
 		schema[schemaBackup] = config.Passthrough.Backup
 		schema[schemaCache] = string(config.Passthrough.Cache)
@@ -458,8 +448,7 @@ func terraform_Disk_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema m
 		schema[schemaType] = schemaDisk
 		schema[schemaWorldWideName] = string(config.Passthrough.WorldWideName)
 		terraformQemuDiskBandwidth(schema, config.Passthrough.Bandwidth)
-	}
-	if config.CdRom != nil {
+	} else if config.CdRom != nil {
 		terraform_Disk_QemuCdRom_unsafe(config.CdRom, schema)
 	}
 	return schema
