@@ -64,7 +64,10 @@ func terraform_Disk_QemuIdeDisks(config *pveAPI.QemuIdeDisks, ciDisk *bool, sche
 }
 
 func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, schema map[string]any) map[string]any {
-	if schema != nil && schema[schemaType] == enumIgnore {
+	if schema == nil {
+		return nil
+	}
+	if schema[schemaType] == enumIgnore {
 		return schema
 	}
 	if config == nil {
@@ -142,7 +145,10 @@ func terraform_Disk_QemuSataDisks(config *pveAPI.QemuSataDisks, ciDisk *bool, sc
 }
 
 func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *bool, schema map[string]any) map[string]any {
-	if schema != nil && schema[schemaType] == enumIgnore {
+	if schema == nil {
+		return nil
+	}
+	if schema[schemaType] == enumIgnore {
 		return schema
 	}
 	if config == nil {
@@ -295,7 +301,10 @@ func terraform_Disk_QemuScsiDisks(config *pveAPI.QemuScsiDisks, ciDisk *bool, sc
 }
 
 func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *bool, schema map[string]any) map[string]any {
-	if schema != nil && schema[schemaType] == enumIgnore {
+	if schema == nil {
+		return nil
+	}
+	if schema[schemaType] == enumIgnore {
 		return schema
 	}
 	if config == nil {
@@ -407,7 +416,10 @@ func terraform_Disk_QemuVirtIODisks(config *pveAPI.QemuVirtIODisks, schema map[s
 }
 
 func terraform_Disk_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema map[string]any) map[string]any {
-	if schema != nil && schema[schemaType] == enumIgnore {
+	if schema == nil {
+		return nil
+	}
+	if schema[schemaType] == enumIgnore {
 		return schema
 	}
 	if config == nil {
