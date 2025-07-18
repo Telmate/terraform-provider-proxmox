@@ -1,3 +1,4 @@
+// Package node provides functions to handle PVE nodes for Guest systems in Terraform.
 package node
 
 import (

@@ -12,10 +12,12 @@ func Terraform(currentNode pveAPI.NodeName, d *schema.ResourceData) {
 		d.Set(RootNode, current)
 		return
 	}
-	nodes := d.Get(RootNodes).(*schema.Set).List()
-	if inArray(nodes, current) {
-		d.Set(RootNodes, nodes)
-		return
+	if v, ok := d.GetOk(RootNodes); ok && v != nil {
+		nodes := v.(*schema.Set).List()
+		if inArray(nodes, current) {
+			d.Set(RootNodes, nodes)
+			return
+		}
 	}
-	d.Set(RootNodes, []interface{}{current})
+	d.Set(RootNodes, []any{current})
 }

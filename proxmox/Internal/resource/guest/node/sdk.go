@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-const error_NoNodeConfigured = "no target node specified"
+const errorNoNodeConfigured = "no target node specified"
 
 func SdkUpdate(d *schema.ResourceData, current pveAPI.NodeName) (pveAPI.NodeName, error) {
 	if node, ok := d.GetOk(RootNode); ok {
@@ -19,7 +19,7 @@ func SdkUpdate(d *schema.ResourceData, current pveAPI.NodeName) (pveAPI.NodeName
 	currentNode := string(current)
 	switch len(nodes) {
 	case 0:
-		return "", errors.New(error_NoNodeConfigured)
+		return "", errors.New(errorNoNodeConfigured)
 	case 1:
 		if currentNode != nodes[0].(string) {
 			return pveAPI.NodeName(nodes[0].(string)), nil
@@ -40,7 +40,7 @@ func SdkCreate(d *schema.ResourceData) (pveAPI.NodeName, error) {
 	nodes := d.Get(RootNodes).(*schema.Set).List()
 	switch len(nodes) {
 	case 0:
-		return "", errors.New(error_NoNodeConfigured)
+		return "", errors.New(errorNoNodeConfigured)
 	case 1:
 		return pveAPI.NodeName(nodes[0].(string)), nil
 	}
