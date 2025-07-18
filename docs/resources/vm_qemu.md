@@ -700,7 +700,7 @@ details.
 
 The `tpm_state` block is used to configure a TPM disk. It may only be specified once.
 
-| Argumane | Type | Default Value | Description |
+| Argument | Type | Default Value | Description |
 | -------- | ---- | ------------- | ----------- |
 | `storage`| `str`|               | **Required** The name of the storage backend on which to store the TPM disk.|
 | `version`| `str`| `v2.0`        | The version of the TPM to use. Options: `v1.2`, `v2.0`.|
