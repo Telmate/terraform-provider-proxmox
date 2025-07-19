@@ -600,10 +600,11 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 See the [docs about EFI disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_bios_and_uefi) for more details.
 
-| Argument  | Type  | Default Value | Description                                                           |
-| --------- | ----- | ------------- | --------------------------------------------------------------------- |
-| `efitype` | `str` | `"4m"`        | The type of efi disk device to add. Options: `2m`, `4m`               |
-| `storage` | `str` |               | **Required** The name of the storage pool on which to store the disk. |
+| Argument            | Type   | Default Value | Description                                                           |
+| ------------------- | ------ | ------------- | --------------------------------------------------------------------- |
+| `pre_enrolled_keys` | `bool` | `false`       | Whether or not to pre-enroll secure boot keys and thus enable secure boot |
+| `efitype`           | `str`  | `"4m"`        | The type of efi disk device to add. Options: `2m`, `4m`               |
+| `storage`           | `str`  |               | **Required** The name of the storage pool on which to store the disk. |
 
 ### PCI Block
 
