@@ -600,10 +600,11 @@ resource "proxmox_vm_qemu" "resource-name" {
 
 See the [docs about EFI disks](https://pve.proxmox.com/pve-docs/chapter-qm.html#qm_bios_and_uefi) for more details.
 
-| Argument  | Type  | Default Value | Description                                                           |
-| --------- | ----- | ------------- | --------------------------------------------------------------------- |
-| `efitype` | `str` | `"4m"`        | The type of efi disk device to add. Options: `2m`, `4m`               |
-| `storage` | `str` |               | **Required** The name of the storage pool on which to store the disk. |
+| Argument            | Type   | Default Value | Description                                                           |
+| ------------------- | ------ | ------------- | --------------------------------------------------------------------- |
+| `pre_enrolled_keys` | `bool` | `false`       | Whether or not to pre-enroll secure boot keys and thus enable secure boot |
+| `efitype`           | `str`  | `"4m"`        | The type of efi disk device to add. Options: `2m`, `4m`               |
+| `storage`           | `str`  |               | **Required** The name of the storage pool on which to store the disk. |
 
 ### PCI Block
 
@@ -831,5 +832,15 @@ In addition to the arguments above, the following attributes can be referenced f
 A VM Qemu Resource can be imported using its node, type and VM ID i.e.:
 
 ```bash
-terraform import [options] [node]/[type]/[vmId]
+ terraform [global options] import [options] ADDRESS <node>/<type>/<vmId>
 ```
+
+`ADDRESS` must correspond to a resource block. `<type>` will always be `qemu` for VMs.
+
+#### Example
+
+> Creating a VM via the Proxmox GUI Wizard and importing it to Terraform to understand how different options maps to Terraform config code
+
+1. Create a dummy file, e.g. `test.tf`, containing a dummy resource block `resource "proxmox_vm_qemu" "import_test" { }`
+2. Run the Terraform import `terraform import proxmox_vm_qemu.import_test mynode/qemu/106`
+3. The state gets imported to your `terraform.tfstate`, you can open that file and explore the imported state as Terraform config code
