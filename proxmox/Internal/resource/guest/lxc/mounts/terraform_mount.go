@@ -18,11 +18,15 @@ func terraformMount(config pveSDK.LxcMounts, tfConfig []any) []map[string]any {
 		}
 		var params map[string]any
 		if v.DataMount != nil {
+			var quota bool
+			if v.DataMount.Quota != nil {
+				quota = *v.DataMount.Quota
+			}
 			params = map[string]any{
 				schemaACL:       acl.Terraform(v.DataMount.ACL),
 				schemaBackup:    *v.DataMount.Backup,
 				schemaGuestPath: v.DataMount.Path.String(),
-				schemaQuota:     *v.DataMount.Quota,
+				schemaQuota:     quota,
 				schemaReadOnly:  *v.DataMount.ReadOnly,
 				schemaReplicate: *v.DataMount.Replicate,
 				schemaSize:      size.String(int64(*v.DataMount.SizeInKibibytes)),
