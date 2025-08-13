@@ -33,7 +33,7 @@ func terraformMounts(config pveSDK.LxcMounts) []any {
 				schemaGuestPath: v.BindMount.GuestPath.String(),
 				schemaReadOnly:  *v.BindMount.ReadOnly,
 				schemaReplicate: *v.BindMount.Replicate}
-			terraformSetOptions(bindMount, v.DataMount.Options)
+			terraformSetOptions(bindMount, v.BindMount.Options)
 			settings[schemaBindMount] = []any{bindMount}
 		}
 		mapParams[index] = []any{settings}
