@@ -39,7 +39,7 @@ func sdkMount(privileged bool, schema []any) (pveSDK.LxcMounts, diag.Diagnostics
 					Summary:  schemaHostPath + " is required for " + typeBindMount + " mount",
 					Severity: diag.Error})
 			}
-			// warnigns for unused settings
+			// warnings for unused settings
 			if schemaMap[schemaACL].(string) != acl.Default {
 				diags = append(diags, warning(schemaACL, typeBindMount))
 			}
@@ -75,7 +75,7 @@ func sdkMount(privileged bool, schema []any) (pveSDK.LxcMounts, diag.Diagnostics
 					Summary:  schemaStorage + " is required for " + typeDataMount + " mount",
 					Severity: diag.Error})
 			}
-			// warnigns for unused settings
+			// warnings for unused settings
 			if schemaMap[schemaHostPath].(string) != "" {
 				diags = append(diags, warning(schemaHostPath, typeDataMount))
 			}
