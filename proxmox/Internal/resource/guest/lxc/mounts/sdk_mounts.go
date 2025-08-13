@@ -9,7 +9,6 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
-// TODO implement
 func sdkMounts(privileged bool, schema map[string]any) pveSDK.LxcMounts {
 	config := make(pveSDK.LxcMounts, len(schema))
 	for k, v := range schema {
