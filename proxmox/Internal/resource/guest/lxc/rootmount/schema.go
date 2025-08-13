@@ -3,6 +3,7 @@ package rootmount
 import (
 	errorMSG "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/errormsg"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/helper/size"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/_sub/acl"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -12,7 +13,7 @@ import (
 const (
 	Root = "root_mount"
 
-	schemaACL       = "acl"
+	schemaACL       = acl.Root
 	schemaOptions   = "options"
 	schemaQuota     = "quota"
 	schemaReplicate = "replicate"
@@ -23,10 +24,6 @@ const (
 	schemaLazyTime = "lazy_time"
 	schemaNoATime  = "no_atime"
 	schemaNoSuid   = "no_suid"
-
-	flagDefault = "default"
-	flagTrue    = "true"
-	flagFalse   = "false"
 )
 
 func Schema() *schema.Schema {
@@ -37,35 +34,7 @@ func Schema() *schema.Schema {
 		MinItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				schemaACL: {
-					Type:     schema.TypeString,
-					Optional: true,
-					Default:  "",
-					DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-						if old == new {
-							return true
-						}
-						switch new {
-						case flagDefault, "":
-							return true
-						}
-						return false
-					},
-					ValidateDiagFunc: func(i any, k cty.Path) diag.Diagnostics {
-						v, ok := i.(string)
-						if !ok {
-							return errorMSG.StringDiagnostics(schemaACL)
-						}
-						switch v {
-						case flagDefault, flagTrue, flagFalse, "":
-							return nil
-						}
-						return diag.Diagnostics{
-							diag.Diagnostic{
-								Severity: diag.Error,
-								Detail:   "expected value for " + schemaACL + " to be one of: " + flagDefault + ", " + flagTrue + ", " + flagFalse,
-								Summary:  "Invalid ACL value"}}
-					}},
+				schemaACL: acl.Schema(),
 				schemaOptions: {
 					Type:     schema.TypeList,
 					Optional: true,
