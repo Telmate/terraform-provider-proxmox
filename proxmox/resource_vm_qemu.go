@@ -53,10 +53,11 @@ const (
 )
 
 const (
-	schemaAdditionalWait = "additional_wait"
-	schemaAgentTimeout   = "agent_timeout"
-	schemaSkipIPv4       = "skip_ipv4"
-	schemaSkipIPv6       = "skip_ipv6"
+	schemaAdditionalWait      = "additional_wait"
+	schemaAgentTimeout        = "agent_timeout"
+	schemaSkipIPv4            = "skip_ipv4"
+	schemaSkipIPv6            = "skip_ipv6"
+	schemaUsePrimaryInterface = "use_primary_interface"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -498,6 +499,12 @@ func resourceVmQemu() *schema.Resource {
 				Optional:      true,
 				Default:       false,
 				ConflictsWith: []string{schemaSkipIPv4},
+			},
+			schemaUsePrimaryInterface: {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "When true (default), uses only the primary network interface. When false, tries all available network interfaces to find an IP address.",
 			},
 			"reboot_required": {
 				Type:        schema.TypeBool,
@@ -1398,7 +1405,8 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 		ciAgentEnabled,
 		d.Get(schemaSkipIPv4).(bool),
 		d.Get(schemaSkipIPv6).(bool),
-		hasCiDisk)
+		hasCiDisk,
+		d.Get(schemaUsePrimaryInterface).(bool))
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1436,7 +1444,7 @@ func getPrimaryIP(
 	networks pveSDK.QemuNetworkInterfaces,
 	vmr *pveSDK.VmRef,
 	retryDuration, retryInterval time.Duration,
-	ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool) (primaryIPs, diag.Diagnostics) {
+	ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk, usePrimaryInterface bool) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1452,9 +1460,10 @@ func getPrimaryIP(
 			if cloudInit.Custom != nil && cloudInit.Custom.Network != nil {
 				cicustom = true
 			}
+
 			conn = parseCloudInitInterface(cloudInit.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
 			// early return, we have all information we wanted
-			if conn.hasRequiredIP() {
+			if conn.hasRequiredIP() && usePrimaryInterface {
 				if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
 					return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
 						Severity: diag.Warning,
@@ -1473,16 +1482,17 @@ func getPrimaryIP(
 	if !ciAgentEnabled {
 		return conn.IPs, diag.Diagnostics{}
 	}
-
 	// get all information we can from qemu agent until the timer runs out
 	var (
 		primaryMacAddress net.HardwareAddr
 		err               error
 	)
-	for i := 0; i < network.AmountNetworkInterfaces; i++ {
-		if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
-			primaryMacAddress = *v.MAC
-			break
+	if usePrimaryInterface {
+		for i := 0; i < network.AmountNetworkInterfaces; i++ {
+			if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+				primaryMacAddress = *v.MAC
+				break
+			}
 		}
 	}
 	endTime := time.Now().Add(retryDuration)
@@ -1503,9 +1513,22 @@ func getPrimaryIP(
 			if len(interfaces) > 0 { // agent returned some information
 				log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
 				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
-				conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
-				if conn.hasRequiredIP() {
-					return conn.IPs, diag.Diagnostics{}
+				if usePrimaryInterface {
+					conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
+					if conn.hasRequiredIP() {
+						return conn.IPs, diag.Diagnostics{}
+					}
+				} else {
+					// Try to get IP from any available network interface
+					multiConn := connectionInfo{}
+					for i := 0; i < network.AmountNetworkInterfaces; i++ {
+						if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+							conn = multiConn.parsePrimaryIPs(interfaces, *v.MAC)
+							if conn.hasRequiredIP() {
+								return conn.IPs, diag.Diagnostics{}
+							}
+						}
+					}
 				}
 			}
 		}
