@@ -254,7 +254,6 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 		"VM.Config.Network",
 		"VM.Config.Options",
 		"VM.Migrate",
-		"VM.Monitor",
 		"VM.PowerMgmt",
 	}
 	if v, ok := d.GetOk(schemaMinimumPermissionList); ok {
