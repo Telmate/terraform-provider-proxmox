@@ -53,11 +53,11 @@ const (
 )
 
 const (
-	schemaAdditionalWait      = "additional_wait"
-	schemaAgentTimeout        = "agent_timeout"
-	schemaSkipIPv4            = "skip_ipv4"
-	schemaSkipIPv6            = "skip_ipv6"
-	schemaUsePrimaryInterface = "use_primary_interface"
+	schemaAdditionalWait = "additional_wait"
+	schemaAgentTimeout   = "agent_timeout"
+	schemaSkipIPv4       = "skip_ipv4"
+	schemaSkipIPv6       = "skip_ipv6"
+	schemaPrimaryNetwork = "primary_network"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -500,11 +500,10 @@ func resourceVmQemu() *schema.Resource {
 				Default:       false,
 				ConflictsWith: []string{schemaSkipIPv4},
 			},
-			schemaUsePrimaryInterface: {
-				Type:        schema.TypeBool,
+			schemaPrimaryNetwork: {
+				Type:        schema.TypeInt,
 				Optional:    true,
-				Default:     true,
-				Description: "When true (default), uses only the primary network interface. When false, tries all available network interfaces to find an IP address.",
+				Description: "The index or ID of the network interface to use for IP address discovery. If set to a positive number N, it selects the Nth network interface. If set to a specific interface ID (e.g., 7 for net7), it uses that interface. If set to -1, it tries all available interfaces. If not set or set to 0, the primary interface is used.",
 			},
 			"reboot_required": {
 				Type:        schema.TypeBool,
@@ -1406,7 +1405,8 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 		d.Get(schemaSkipIPv4).(bool),
 		d.Get(schemaSkipIPv6).(bool),
 		hasCiDisk,
-		d.Get(schemaUsePrimaryInterface).(bool))
+		d.Get(schemaPrimaryNetwork).(int),
+	)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
 	}
@@ -1444,7 +1444,8 @@ func getPrimaryIP(
 	networks pveSDK.QemuNetworkInterfaces,
 	vmr *pveSDK.VmRef,
 	retryDuration, retryInterval time.Duration,
-	ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk, usePrimaryInterface bool) (primaryIPs, diag.Diagnostics) {
+	ciAgentEnabled, skipIPv4, skipIPv6, hasCiDisk bool,
+	primaryNetwork int) (primaryIPs, diag.Diagnostics) {
 	logger, _ := CreateSubLogger("getPrimaryIP")
 	// TODO allow the primary interface to be a different one than the first
 
@@ -1463,7 +1464,7 @@ func getPrimaryIP(
 
 			conn = parseCloudInitInterface(cloudInit.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
 			// early return, we have all information we wanted
-			if conn.hasRequiredIP() && usePrimaryInterface {
+			if conn.hasRequiredIP() && primaryNetwork == 0 {
 				if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
 					return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
 						Severity: diag.Warning,
@@ -1487,11 +1488,34 @@ func getPrimaryIP(
 		primaryMacAddress net.HardwareAddr
 		err               error
 	)
-	if usePrimaryInterface {
+
+	// Determine which network interface to use based on primaryNetwork setting
+	if primaryNetwork == 0 {
+		// Use primary interface
 		for i := 0; i < network.AmountNetworkInterfaces; i++ {
 			if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
 				primaryMacAddress = *v.MAC
 				break
+			}
+		}
+	} else if primaryNetwork == -1 {
+		// primaryMacAddress will remain nil, which will trigger the "try all interfaces" logic
+	} else if primaryNetwork > 0 {
+		// primaryNetwork is either an index (Nth interface) or a specific interface ID
+		// First, try to find it as a specific interface ID
+		if v, ok := networks[pveSDK.QemuNetworkInterfaceID(primaryNetwork)]; ok && v.MAC != nil {
+			primaryMacAddress = *v.MAC
+		} else {
+			// If not found as specific ID, treat it as Nth interface (1-based index)
+			interfaceCount := 0
+			for i := 0; i < network.AmountNetworkInterfaces; i++ {
+				if v, ok := networks[pveSDK.QemuNetworkInterfaceID(i)]; ok && v.MAC != nil {
+					interfaceCount++
+					if interfaceCount == primaryNetwork {
+						primaryMacAddress = *v.MAC
+						break
+					}
+				}
 			}
 		}
 	}
@@ -1513,7 +1537,7 @@ func getPrimaryIP(
 			if len(interfaces) > 0 { // agent returned some information
 				log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
 				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
-				if usePrimaryInterface {
+				if primaryMacAddress != nil {
 					conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
 					if conn.hasRequiredIP() {
 						return conn.IPs, diag.Diagnostics{}
