@@ -770,7 +770,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 				Summary:  err.Error(),
 				Severity: diag.Error}}
 		}
-		switch guestState.State() {
+		switch guestState.GetState() {
 		case pveSDK.PowerStateStopped:
 			if d.Get("start").(bool) {
 				log.Print("[DEBUG][LXCUpdate] starting LXC")
