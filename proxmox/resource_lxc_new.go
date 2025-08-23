@@ -176,14 +176,14 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 			Severity: diag.Error}}
 	}
 
-	raw, err := pveSDK.NewConfigLXCFromApi(ctx, vmr, client)
+	raw, err := pveSDK.NewRawConfigLXCFromAPI(ctx, vmr, client)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.Diagnostic{
 				Summary:  err.Error(),
 				Severity: diag.Error}}
 	}
-	config := raw.ALL(*vmr, pveSDK.PowerStateUnknown)
+	config := raw.Get(*vmr, pveSDK.PowerStateUnknown)
 
 	architecture.Terraform(config.Architecture, d)
 	cpu.Terraform(config.CPU, d)
@@ -196,7 +196,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	node.Terraform(*config.Node, d)
 	operatingsystem.Terraform(config.OperatingSystem, d)
 	pool.Terraform(config.Pool, d)
-	powerstate.Terraform(guestStatus.State(), d)
+	powerstate.Terraform(guestStatus.GetState(), d)
 	privilege.Terraform(*config.Privileged, d)
 	rootmount.Terraform(config.BootMount, d)
 	swap.Terraform(config.Swap, d)

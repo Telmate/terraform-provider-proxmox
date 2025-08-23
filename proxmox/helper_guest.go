@@ -2,9 +2,9 @@ package proxmox
 
 import (
 	"context"
+	"errors"
 	"path"
 	"strconv"
-	"time"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -16,36 +16,15 @@ func guestDelete(ctx context.Context, d *schema.ResourceData, meta any, kind str
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
-	client := pconf.Client
-	vmId, _ := strconv.Atoi(path.Base(d.Id()))
-	vmr := pveSDK.NewVmRef(pveSDK.GuestID(vmId))
-	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
-	if err != nil {
-		return diag.Diagnostics{{
-			Summary:  "Error getting " + kind + " state",
-			Severity: diag.Error}}
-	}
-	if guestStatus.State() != pveSDK.PowerStateStopped {
-		if _, err := client.StopVm(ctx, vmr); err != nil {
-			return diag.FromErr(err)
+	rawID, _ := strconv.Atoi(path.Base(d.Id()))
+	guestID := pveSDK.GuestID(rawID)
+	if err := pveSDK.NewVmRef(guestID).Delete(ctx, pconf.Client); err != nil {
+		if errors.Is(err, pveSDK.Error.GuestDoesNotExist()) {
+			return diag.Diagnostics{{
+				Summary:  "guest of type " + kind + " with ID " + guestID.String() + " already removed",
+				Severity: diag.Warning}}
 		}
-
-		// Wait until vm is stopped. Otherwise, deletion will fail.
-		// ugly way to wait 5 minutes(300s)
-		waited := 0
-		for waited < 300 {
-			guestStatus, err = vmr.GetRawGuestStatus(ctx, client)
-			if err == nil && guestStatus.State() == pveSDK.PowerStateStopped {
-				break
-			} else if err != nil {
-				return diag.FromErr(err)
-			}
-			// wait before next try
-			time.Sleep(5 * time.Second)
-			waited += 5
-		}
+		return diag.FromErr(err)
 	}
-
-	_, err = client.DeleteVm(ctx, vmr)
-	return diag.FromErr(err)
+	return nil
 }

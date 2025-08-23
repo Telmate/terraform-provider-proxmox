@@ -754,7 +754,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
-		client.StopVm(ctx, vmr)
+		vmr.Stop(ctx, client) // Why do we not check for error here?
 
 		rebootRequired, err = config.Update(ctx, false, vmr, client)
 		if err != nil {
@@ -947,7 +947,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	if err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
-	switch guestStatus.State() { // manage the VM state to match the `vm_state` attribute
+	switch guestStatus.GetState() { // manage the VM state to match the `vm_state` attribute
 	// case stateStarted: does nothing during update as we don't enforce the VM state
 	case pveSDK.PowerStateStopped:
 		if d.Get("vm_state").(string) == stateRunning { // start the VM
@@ -963,7 +963,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 			// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
 			if err != nil {
 				log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
-				if _, err = client.StopVm(ctx, vmr); err != nil {
+
+				if err = vmr.Stop(ctx, client); err != nil {
 					return append(diags, diag.FromErr(err)...)
 				}
 			}
@@ -974,7 +975,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
 				if err != nil {
 					log.Print("[DEBUG][QemuVmUpdate] reboot failed, stopping VM forcefully")
-					if _, err := client.StopVm(ctx, vmr); err != nil {
+					if err = vmr.Stop(ctx, client); err != nil {
 						return append(diags, diag.FromErr(err)...)
 					}
 					// give sometime to proxmox to catchup
@@ -1058,7 +1059,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 			Summary:  err.Error(),
 			Severity: diag.Error}}
 	}
-	state := guestStatus.State()
+	state := guestStatus.GetState()
 	log.Print("[DEBUG] Getting VM state" + state.String())
 	d.Set("vm_state", state.String())
 	if state == pveSDK.PowerStateRunning {
