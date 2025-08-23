@@ -94,7 +94,7 @@ The following arguments are supported in the top level resource block.
 | `name`                        | `str`    |                      | **Required** The name of the VM within Proxmox. |
 | `target_node`                 | `str`    |                      | The name of the PVE Node on which to place the VM.|
 | `target_nodes`                | `str`    |                      | A list of PVE node names on which to place the VM.|
-| `vmid`                        | `int`    | `0`                  | The ID of the VM in Proxmox. The default value of `0` indicates it should use the next available ID in the sequence. |
+| `vmid`                        | `int`    |                      | The ID of the VM in Proxmox. When unset it should use the next available ID in the sequence. |
 | `desc`                        | `str`    |                      | The description of the VM. Shows as the 'Notes' field in the Proxmox GUI. |
 | `define_connection_info`      | `bool`   | `true`               | Whether to let terraform define the (SSH) connection parameters for preprovisioners, see config block below. |
 | `bios`                        | `str`    | `"seabios"`          | The BIOS to use, options are `seabios` or `ovmf` for UEFI. |
