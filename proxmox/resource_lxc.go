@@ -782,8 +782,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		case pveSDK.PowerStateRunning:
 			if !d.Get("start").(bool) {
 				log.Print("[DEBUG][LXCUpdate] stopping LXC")
-				_, err = client.StopVm(ctx, vmr)
-				if err != nil {
+				if err = vmr.Stop(ctx, client); err != nil {
 					return diag.FromErr(err)
 				}
 			}

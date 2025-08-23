@@ -754,7 +754,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
-		client.StopVm(ctx, vmr)
+		vmr.Stop(ctx, client) // Why do we not check for error here?
 
 		rebootRequired, err = config.Update(ctx, false, vmr, client)
 		if err != nil {
@@ -963,7 +963,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 			// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
 			if err != nil {
 				log.Print("[DEBUG][QemuVmUpdate] shutdown failed, stopping VM forcefully")
-				if _, err = client.StopVm(ctx, vmr); err != nil {
+
+				if err = vmr.Stop(ctx, client); err != nil {
 					return append(diags, diag.FromErr(err)...)
 				}
 			}
@@ -974,7 +975,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 				// note: the default timeout is 3 min, configurable per VM: Options/Start-Shutdown Order/Shutdown timeout
 				if err != nil {
 					log.Print("[DEBUG][QemuVmUpdate] reboot failed, stopping VM forcefully")
-					if _, err := client.StopVm(ctx, vmr); err != nil {
+					if err = vmr.Stop(ctx, client); err != nil {
 						return append(diags, diag.FromErr(err)...)
 					}
 					// give sometime to proxmox to catchup
