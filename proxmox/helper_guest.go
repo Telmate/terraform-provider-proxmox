@@ -28,3 +28,57 @@ func guestDelete(ctx context.Context, d *schema.ResourceData, meta any, kind str
 	}
 	return nil
 }
+
+func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.GuestName, id pveSDK.GuestID, preferredNode pveSDK.NodeName, guest pveSDK.GuestType) (*pveSDK.VmRef, error) {
+	if name != "" {
+		rawGuests, err := pveSDK.ListGuests(ctx, client)
+		if err != nil {
+			return nil, err
+		}
+		return guestGetSourceVmrByNode(rawGuests, name, preferredNode, guest)
+	} else if id != 0 {
+		rawGuests, err := pveSDK.ListGuests(ctx, client)
+		if err != nil {
+			return nil, err
+		}
+		rawGuest, err := rawGuests.SelectID(id)
+		if err != nil {
+			return nil, err
+		}
+		guestType := rawGuest.GetType()
+		if guestType != guest {
+			return nil, errors.New("guest with ID '" + id.String() + "' is not of type '" + string(guest) + "'")
+		}
+		guestRef := pveSDK.NewVmRef(rawGuest.GetID())
+		guestRef.SetNode(string(rawGuest.GetNode()))
+		guestRef.SetVmType(guestType)
+		guestRef.SetVmType(guest)
+		return guestRef, nil
+	}
+	return nil, errors.New("either 'clone' name or 'clone_id' must be specified")
+}
+
+func guestGetSourceVmrByNode(raw pveSDK.RawGuestResources, name pveSDK.GuestName, preferredNode pveSDK.NodeName, guest pveSDK.GuestType) (*pveSDK.VmRef, error) {
+	var guestRef *pveSDK.VmRef
+	for i := range raw {
+		if raw[i].GetType() == guest {
+			if raw[i].GetName() == name {
+				if raw[i].GetNode() == preferredNode { // Prefer source VM on the same node
+					guestRef = pveSDK.NewVmRef(raw[i].GetID())
+					guestRef.SetNode(string(raw[i].GetNode()))
+					guestRef.SetVmType(guest)
+					return guestRef, nil
+				}
+				if guestRef == nil { // remember the first we find
+					guestRef = pveSDK.NewVmRef(raw[i].GetID())
+					guestRef.SetNode(string(raw[i].GetNode()))
+					guestRef.SetVmType(guest)
+				}
+			}
+		}
+	}
+	if guestRef == nil {
+		return nil, errors.New("no guest with name '" + name.String() + "' found")
+	}
+	return guestRef, nil
+}
