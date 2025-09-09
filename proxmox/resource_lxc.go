@@ -519,7 +519,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	var vmr *pveSDK.VmRef
 	if d.Get("clone").(string) != "" { // Clone
 		var sourceVmr *pveSDK.VmRef
-		sourceVmr, err = getSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), 0, targetNode)
+		sourceVmr, err = guestGetSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), 0, targetNode, pveSDK.GuestLxc)
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
@@ -964,7 +964,7 @@ func processLxcDiskChanges(
 		}
 		params := map[string]interface{}{}
 		params["delete"] = strings.Join(deleteDiskKeys, ", ")
-		if vmr.GetVmType() == "lxc" {
+		if vmr.GetVmType() == pveSDK.GuestLxc {
 			if _, err := pconf.Client.SetLxcConfig(ctx, vmr, params); err != nil {
 				return err
 			}
@@ -995,7 +995,7 @@ func processLxcDiskChanges(
 		}
 	}
 	if len(newParams) > 0 {
-		if vmr.GetVmType() == "lxc" {
+		if vmr.GetVmType() == pveSDK.GuestLxc {
 			if _, err := pconf.Client.SetLxcConfig(ctx, vmr, newParams); err != nil {
 				return err
 			}
@@ -1014,7 +1014,7 @@ func processLxcDiskChanges(
 			// 2. Move disks with mismatching storage
 			newStorage, ok := newDisk["storage"].(string)
 			if ok && newStorage != prevDisk["storage"] {
-				if vmr.GetVmType() == "lxc" {
+				if vmr.GetVmType() == pveSDK.GuestLxc {
 					_, err := pconf.Client.MoveLxcDisk(ctx, vmr, diskSlotName(prevDisk), newStorage)
 					if err != nil {
 						return err
@@ -1107,7 +1107,7 @@ func processLxcNetworkChanges(ctx context.Context, prevNetworks []map[string]int
 		params := map[string]interface{}{
 			"delete": strings.Join(deleteNetKeys, ", "),
 		}
-		if vmr.GetVmType() == "lxc" {
+		if vmr.GetVmType() == pveSDK.GuestLxc {
 			if _, err := pconf.Client.SetLxcConfig(ctx, vmr, params); err != nil {
 				return err
 			}
