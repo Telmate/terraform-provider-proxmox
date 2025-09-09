@@ -123,7 +123,7 @@ func resourceLxcDiskCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 	client := pconf.Client
 	vmr := pveSDK.NewVmRef(vmID)
-	vmr.SetVmType("lxc")
+	vmr.SetVmType(pveSDK.GuestLxc)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
