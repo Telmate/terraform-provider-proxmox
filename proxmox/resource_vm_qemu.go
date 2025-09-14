@@ -35,6 +35,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/tpm"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
@@ -520,12 +521,7 @@ func resourceVmQemu() *schema.Resource {
 				Default:     true,
 				Description: "By default define SSH for provisioner info",
 			},
-			"automatic_reboot": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
-				Description: "Automatically reboot the VM if any of the modified parameters requires a reboot to take effect.",
-			},
+			reboot.Root: reboot.Schema(),
 			"linked_vmid": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -882,10 +878,13 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
-	automaticReboot := d.Get("automatic_reboot").(bool)
+	automaticReboot := reboot.SDK(d)
 	// don't let the update function handel the reboot as it can't deal with cloud init changes yet
 	rebootRequired, err = config.Update(ctx, automaticReboot, vmr, client)
 	if err != nil {
+		if err.Error() == pveSDK.ConfigQemu_Error_UnableToUpdateWithoutReboot {
+			return append(diags, reboot.ErrorQemu())
+		}
 		return diag.FromErr(err)
 	}
 
@@ -940,14 +939,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 					}
 				}
 			} else { // automatic reboots is disabled
-				// Automatic reboots is not enabled, show the user a warning message that
+				// Automatic reboots is not enabled, show the user a error message that
 				// the VM needs a reboot for the changed parameters to take in effect.
-				diags = append(diags, diag.Diagnostic{
-					Severity:      diag.Warning,
-					Summary:       "VM needs to be rebooted and automatic_reboot is disabled",
-					Detail:        "One or more parameters are modified that only take effect after a reboot (shutdown & start).",
-					AttributePath: cty.Path{},
-				})
+				return append(diags, reboot.ErrorQemu())
 			}
 		}
 	}

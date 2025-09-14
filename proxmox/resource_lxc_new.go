@@ -21,6 +21,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/powerstate"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -57,6 +58,7 @@ func ResourceLxcNew() *schema.Resource {
 			powerstate.Root:            powerstate.Schema(),
 			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
 			privilege.RootUnprivileged: privilege.SchemaUnprivileged(),
+			reboot.Root:                reboot.Schema(),
 			rootmount.Root:             rootmount.Schema(),
 			swap.Root:                  swap.Schema(),
 			template.Root:              template.Schema(),
@@ -143,7 +145,10 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 	config.Node = &targetNode
 	config.Pool = util.Pointer(pool.SDK(d))
 
-	if err = config.Update(ctx, true, vmr, client); err != nil {
+	if err = config.Update(ctx, reboot.SDK(d), vmr, client); err != nil {
+		if err.Error() == "<this should be the reboot error>" { // TODO catch the error but we need upstream support for that
+			return append(diags, reboot.ErrorLxc())
+		}
 		return append(diags, diag.Diagnostic{
 			Summary:  err.Error(),
 			Severity: diag.Error})
