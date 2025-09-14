@@ -889,56 +889,9 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.FromErr(err)
 	}
 
-	// If any of the "critical" keys are changed then a reboot is required.
-	if d.HasChanges(
-		"bios",
-		"boot",
-		"bootdisk",
-		"agent",
-		"qemu_os",
-		"balloon",
-		"machine",
-		"hotplug",
-		"scsihw",
-		"os_type",
-		"sshkeys",
-		"kvm",
-		"vga",
-		"serial",
-		"usb",
-		"hostpci",
-		"smbios",
-	) || cloudinit.NeedsReboot(config.CloudInit, d) {
+	// If cloud-init changes, a reboot is required
+	if cloudinit.NeedsReboot(config.CloudInit, d) {
 		rebootRequired = true
-	}
-
-	// reboot is only required when memory hotplug is disabled
-	if d.HasChange("memory") && !strings.Contains(d.Get("hotplug").(string), "memory") {
-		rebootRequired = true
-	}
-
-	// if network hot(un)plug is not enabled, then check if some of the "critical" parameters have changes
-	if d.HasChange("network") && !strings.Contains(d.Get("hotplug").(string), "network") {
-		oldValuesRaw, newValuesRaw := d.GetChange("network")
-		oldValues := oldValuesRaw.([]interface{})
-		newValues := newValuesRaw.([]interface{})
-		if len(oldValues) != len(newValues) {
-			// network interface added or removed
-			rebootRequired = true
-		} else {
-			// some of the existing interface parameters have changed
-			for i := range oldValues { // loop through the interfaces
-				if oldValues[i].(map[string]interface{})["model"] != newValues[i].(map[string]interface{})["model"] {
-					rebootRequired = true
-				}
-				if oldValues[i].(map[string]interface{})["macaddr"] != newValues[i].(map[string]interface{})["macaddr"] {
-					rebootRequired = true
-				}
-				if oldValues[i].(map[string]interface{})["queues"] != newValues[i].(map[string]interface{})["queues"] {
-					rebootRequired = true
-				}
-			}
-		}
 	}
 
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
