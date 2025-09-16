@@ -45,13 +45,11 @@ func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.G
 		if err != nil {
 			return nil, err
 		}
-		guestType := rawGuest.GetType()
-		if guestType != guest {
+		if rawGuest.GetType() != guest {
 			return nil, errors.New("guest with ID '" + id.String() + "' is not of type '" + string(guest) + "'")
 		}
 		guestRef := pveSDK.NewVmRef(rawGuest.GetID())
 		guestRef.SetNode(string(rawGuest.GetNode()))
-		guestRef.SetVmType(guestType)
 		guestRef.SetVmType(guest)
 		return guestRef, nil
 	}
@@ -61,11 +59,11 @@ func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.G
 func guestGetSourceVmrByNode(raw pveSDK.RawGuestResources, name pveSDK.GuestName, preferredNode pveSDK.NodeName, guest pveSDK.GuestType) (*pveSDK.VmRef, error) {
 	var guestRef *pveSDK.VmRef
 	for i := range raw {
-		if raw[i].GetType() == guest {
-			if raw[i].GetName() == name {
-				if raw[i].GetNode() == preferredNode { // Prefer source VM on the same node
+		if raw[i].GetName() == name {
+			if raw[i].GetType() == guest {
+				if node := raw[i].GetNode(); node == preferredNode { // Prefer source VM on the same node
 					guestRef = pveSDK.NewVmRef(raw[i].GetID())
-					guestRef.SetNode(string(raw[i].GetNode()))
+					guestRef.SetNode(string(node))
 					guestRef.SetVmType(guest)
 					return guestRef, nil
 				}
