@@ -59,6 +59,7 @@ func ResourceLxcNew() *schema.Resource {
 			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
 			privilege.RootUnprivileged: privilege.SchemaUnprivileged(),
 			reboot.Root:                reboot.Schema(),
+			reboot.RootSeverity:        reboot.SchemaSeverity(),
 			rootmount.Root:             rootmount.Schema(),
 			swap.Root:                  swap.Schema(),
 			template.Root:              template.Schema(),
@@ -147,7 +148,7 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 
 	if err = config.Update(ctx, reboot.SDK(d), vmr, client); err != nil {
 		if err.Error() == "<this should be the reboot error>" { // TODO catch the error but we need upstream support for that
-			return append(diags, reboot.ErrorLxc())
+			return append(diags, reboot.ErrorLxc(d))
 		}
 		return append(diags, diag.Diagnostic{
 			Summary:  err.Error(),

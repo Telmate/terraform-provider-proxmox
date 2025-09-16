@@ -520,7 +520,8 @@ func resourceVmQemu() *schema.Resource {
 				Default:     true,
 				Description: "By default define SSH for provisioner info",
 			},
-			reboot.Root: reboot.Schema(),
+			reboot.Root:         reboot.Schema(),
+			reboot.RootSeverity: reboot.SchemaSeverity(),
 			"linked_vmid": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -861,7 +862,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	rebootRequired, err = config.Update(ctx, automaticReboot, vmr, client)
 	if err != nil {
 		if err.Error() == pveSDK.ConfigQemu_Error_UnableToUpdateWithoutReboot {
-			return append(diags, reboot.ErrorQemu())
+			return append(diags, reboot.ErrorQemu(d))
 		}
 		return diag.FromErr(err)
 	}
@@ -919,7 +920,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 			} else { // automatic reboots is disabled
 				// Automatic reboots is not enabled, show the user a error message that
 				// the VM needs a reboot for the changed parameters to take in effect.
-				return append(diags, reboot.ErrorQemu())
+				return append(diags, reboot.ErrorQemu(d))
 			}
 		}
 	}
