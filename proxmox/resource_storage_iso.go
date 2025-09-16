@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -115,11 +115,7 @@ func resourceStorageIsoRead(ctx context.Context, d *schema.ResourceData, meta in
 	client := pconf.Client
 
 	var isoFound bool
-	pveNode := d.Get("pve_node").(string)
-	vmRef := &proxmox.VmRef{}
-	vmRef.SetNode(pveNode)
-	vmRef.SetVmType(isoContentType)
-	storageContent, err := client.GetStorageContent(ctx, vmRef, d.Get("storage").(string))
+	storageContent, err := client.GetStorageContent(ctx, d.Get("storage").(string), pveSDK.NodeName(d.Get("pve_node").(string)))
 	if err != nil {
 		return diag.FromErr(err)
 	}

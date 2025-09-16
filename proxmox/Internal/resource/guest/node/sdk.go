@@ -33,6 +33,7 @@ func SdkUpdate(d *schema.ResourceData, current pveAPI.NodeName) (pveAPI.NodeName
 	return pveAPI.NodeName(nodes[randomIndex].(string)), nil
 }
 
+// SdkCreate selects a node for resource creation.
 func SdkCreate(d *schema.ResourceData) (pveAPI.NodeName, error) {
 	if node, ok := d.GetOk(RootNode); ok {
 		return pveAPI.NodeName(node.(string)), nil

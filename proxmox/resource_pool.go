@@ -85,20 +85,17 @@ func _resourcePoolRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	logger, _ := CreateSubLogger("resource_pool_read")
 	logger.Info().Str("poolid", poolID).Msg("Reading configuration for poolid")
 
-	poolInfo, err := pool.Get(ctx, client)
+	rawPool, err := pool.Get(ctx, client)
 	if err != nil {
 		d.SetId("")
 		return nil
 	}
 
 	d.SetId(clusterResourceId("pools", poolID))
-	d.Set("comment", "")
-	if poolInfo.Comment != nil {
-		d.Set("comment", poolInfo.Comment)
-	}
+	d.Set("comment", rawPool.GetComment())
 
 	// DEBUG print the read result
-	logger.Debug().Str("poolid", poolID).Msgf("Finished pool read resulting in data: '%+v'", poolInfo)
+	logger.Debug().Str("poolid", poolID).Msgf("Finished pool read resulting in data: '%+v'", rawPool.Get())
 	return nil
 }
 

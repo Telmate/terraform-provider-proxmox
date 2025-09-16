@@ -8,7 +8,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
+	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/kdomanski/iso9660"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -150,11 +150,7 @@ func resourceCloudInitDiskRead(ctx context.Context, d *schema.ResourceData, m in
 	client := pconf.Client
 
 	var isoFound bool
-	pveNode := d.Get("pve_node").(string)
-	vmRef := &proxmox.VmRef{}
-	vmRef.SetNode(pveNode)
-	vmRef.SetVmType("qemu")
-	storageContent, err := client.GetStorageContent(ctx, vmRef, d.Get("storage").(string))
+	storageContent, err := client.GetStorageContent(ctx, d.Get("storage").(string), pveSDK.NodeName(d.Get("pve_node").(string)))
 	if err != nil {
 		return diag.FromErr(err)
 	}

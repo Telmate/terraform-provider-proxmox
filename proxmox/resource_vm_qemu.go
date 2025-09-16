@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -536,27 +535,6 @@ func resourceVmQemu() *schema.Resource {
 	return thisResource
 }
 
-func getSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.GuestName, id pveSDK.GuestID, preferredNode pveSDK.NodeName) (*pveSDK.VmRef, error) {
-	if name != "" {
-		sourceVmrs, err := client.GetVmRefsByName(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-		// Prefer source VM on the same node
-		sourceVmr := sourceVmrs[0]
-		for _, candVmr := range sourceVmrs {
-			if candVmr.Node() == preferredNode {
-				sourceVmr = candVmr
-			}
-		}
-		return sourceVmr, nil
-	} else if id != 0 {
-		return client.GetVmRefById(ctx, id)
-	}
-
-	return nil, errors.New("either 'clone' name or 'clone_id' must be specified")
-}
-
 func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// create a logger for this function
 	logger, _ := CreateSubLogger("resource_vm_create")
@@ -668,7 +646,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		// check if clone, or PXE boot
 		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 { // Clone
 
-			sourceVmr, err := getSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode)
+			sourceVmr, err := guestGetSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode, pveSDK.GuestQemu)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
