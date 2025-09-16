@@ -8,6 +8,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/dns"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/features"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/mounts"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/networks"
@@ -43,6 +44,7 @@ func ResourceLxcNew() *schema.Resource {
 			cpu.Root:                   cpu.Schema(),
 			description.Root:           description.Schema(),
 			dns.Root:                   dns.Schema(),
+			features.Root:              features.Schema(),
 			memory.Root:                memory.Schema(),
 			mounts.RootMount:           mounts.SchemaMount(),
 			mounts.RootMounts:          mounts.SchemaMounts(),
@@ -189,6 +191,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	cpu.Terraform(config.CPU, d)
 	description.Terraform(config.Description, false, d)
 	dns.Terraform(config.DNS, d)
+	features.Terraform(config.Features, d)
 	memory.Terraform(config.Memory, d)
 	mounts.Terraform(config.Mounts, d)
 	name.Terraform_Unsafe(config.Name, d)
@@ -217,6 +220,7 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 		CPU:         cpu.SDK(d),
 		DNS:         dns.SDK(d),
 		Description: description.SDK(false, d),
+		Features:    features.SDK(privilidged, d),
 		Memory:      memory.SDK(d),
 		Name:        guestName,
 		State:       powerstate.SDK(d),
