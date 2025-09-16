@@ -182,7 +182,8 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 			Severity: diag.Error}}
 	}
 
-	raw, err := pveSDK.NewRawConfigLXCFromAPI(ctx, vmr, client)
+	var raw pveSDK.RawConfigLXC
+	raw, _, err = pveSDK.NewActiveRawConfigLXCFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.Diagnostic{

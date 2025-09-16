@@ -968,7 +968,13 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		return append(diags, diag.FromErr(err)...)
 	}
 
-	config, err := pveSDK.NewConfigQemuFromApi(ctx, vmr, client)
+	var raw pveSDK.RawConfigQemu
+	raw, _, err = pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	var config *pveSDK.ConfigQemu
+	config, err = raw.Get(vmr)
 	if err != nil {
 		return diag.FromErr(err)
 	}
