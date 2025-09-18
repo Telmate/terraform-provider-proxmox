@@ -22,6 +22,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/powerstate"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -38,30 +39,34 @@ func ResourceLxcNew() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
+		CustomizeDiff: reboot.CustomizeDiff(),
 
 		Schema: map[string]*schema.Schema{
-			architecture.Root:          architecture.Schema(),
-			cpu.Root:                   cpu.Schema(),
-			description.Root:           description.Schema(),
-			dns.Root:                   dns.Schema(),
-			features.Root:              features.Schema(),
-			memory.Root:                memory.Schema(),
-			mounts.RootMount:           mounts.SchemaMount(),
-			mounts.RootMounts:          mounts.SchemaMounts(),
-			name.Root:                  name.Schema(),
-			networks.RootNetwork:       networks.SchemaNetwork(),
-			networks.RootNetworks:      networks.SchemaNetworks(),
-			node.RootNode:              node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
-			node.RootNodes:             node.SchemaNodes("lxc"),
-			operatingsystem.Root:       operatingsystem.Schema(),
-			password.Root:              password.Schema(),
-			pool.Root:                  pool.Schema(),
-			powerstate.Root:            powerstate.Schema(),
-			privilege.RootPrivileged:   privilege.SchemaPrivileged(),
-			privilege.RootUnprivileged: privilege.SchemaUnprivileged(),
-			rootmount.Root:             rootmount.Schema(),
-			swap.Root:                  swap.Schema(),
-			template.Root:              template.Schema(),
+			architecture.Root:            architecture.Schema(),
+			cpu.Root:                     cpu.Schema(),
+			description.Root:             description.Schema(),
+			dns.Root:                     dns.Schema(),
+      features.Root:                features.Schema(),
+			memory.Root:                  memory.Schema(),
+			mounts.RootMount:             mounts.SchemaMount(),
+			mounts.RootMounts:            mounts.SchemaMounts(),
+			name.Root:                    name.Schema(),
+			networks.RootNetwork:         networks.SchemaNetwork(),
+			networks.RootNetworks:        networks.SchemaNetworks(),
+			node.RootNode:                node.SchemaNode(schema.Schema{ConflictsWith: []string{node.RootNodes}}, "lxc"),
+			node.RootNodes:               node.SchemaNodes("lxc"),
+			operatingsystem.Root:         operatingsystem.Schema(),
+			password.Root:                password.Schema(),
+			pool.Root:                    pool.Schema(),
+			powerstate.Root:              powerstate.Schema(),
+			privilege.RootPrivileged:     privilege.SchemaPrivileged(),
+			privilege.RootUnprivileged:   privilege.SchemaUnprivileged(),
+			reboot.RootAutomatic:         reboot.SchemaAutomatic(),
+			reboot.RootAutomaticSeverity: reboot.SchemaAutomaticSeverity(),
+			reboot.RootRequired:          reboot.SchemaRequired(),
+			rootmount.Root:               rootmount.Schema(),
+			swap.Root:                    swap.Schema(),
+			template.Root:                template.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -145,7 +150,10 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 	config.Node = &targetNode
 	config.Pool = util.Pointer(pool.SDK(d))
 
-	if err = config.Update(ctx, true, vmr, client); err != nil {
+	if err = config.Update(ctx, reboot.GetAutomatic(d), vmr, client); err != nil {
+		if err.Error() == "<this should be the reboot error>" { // TODO catch the error but we need upstream support for that
+			return append(diags, reboot.ErrorLxc(d))
+		}
 		return append(diags, diag.Diagnostic{
 			Summary:  err.Error(),
 			Severity: diag.Error})
@@ -178,13 +186,16 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 			Severity: diag.Error}}
 	}
 
-	raw, err := pveSDK.NewRawConfigLXCFromAPI(ctx, vmr, client)
+	var raw pveSDK.RawConfigLXC
+	var pending bool
+	raw, pending, err = pveSDK.NewActiveRawConfigLXCFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.Diagnostic{
 				Summary:  err.Error(),
 				Severity: diag.Error}}
 	}
+	reboot.SetRequired(pending, d)
 	config := raw.Get(*vmr, pveSDK.PowerStateUnknown)
 
 	architecture.Terraform(config.Architecture, d)

@@ -34,6 +34,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/serial"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/tpm"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
@@ -86,6 +87,7 @@ func resourceVmQemu() *schema.Resource {
 					return d.HasChange("vm_state")
 				},
 			),
+			reboot.CustomizeDiff(),
 		),
 
 		Schema: map[string]*schema.Schema{
@@ -498,11 +500,6 @@ func resourceVmQemu() *schema.Resource {
 				Default:       false,
 				ConflictsWith: []string{schemaSkipIPv4},
 			},
-			"reboot_required": {
-				Type:        schema.TypeBool,
-				Computed:    true,
-				Description: "Internal variable, true if any of the modified parameters requires a reboot to take effect.",
-			},
 			"default_ipv4_address": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -519,12 +516,9 @@ func resourceVmQemu() *schema.Resource {
 				Default:     true,
 				Description: "By default define SSH for provisioner info",
 			},
-			"automatic_reboot": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     true,
-				Description: "Automatically reboot the VM if any of the modified parameters requires a reboot to take effect.",
-			},
+			reboot.RootAutomatic:         reboot.SchemaAutomatic(),
+			reboot.RootAutomaticSeverity: reboot.SchemaAutomaticSeverity(),
+			reboot.RootRequired:          reboot.SchemaRequired(),
 			"linked_vmid": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -860,63 +854,19 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
-	automaticReboot := d.Get("automatic_reboot").(bool)
+	automaticReboot := reboot.GetAutomatic(d)
 	// don't let the update function handel the reboot as it can't deal with cloud init changes yet
 	rebootRequired, err = config.Update(ctx, automaticReboot, vmr, client)
 	if err != nil {
+		if err.Error() == pveSDK.ConfigQemu_Error_UnableToUpdateWithoutReboot {
+			return append(diags, reboot.ErrorQemu(d))
+		}
 		return diag.FromErr(err)
 	}
 
-	// If any of the "critical" keys are changed then a reboot is required.
-	if d.HasChanges(
-		"bios",
-		"boot",
-		"bootdisk",
-		"agent",
-		"qemu_os",
-		"balloon",
-		"machine",
-		"hotplug",
-		"scsihw",
-		"os_type",
-		"sshkeys",
-		"kvm",
-		"vga",
-		"serial",
-		"usb",
-		"hostpci",
-		"smbios",
-	) || cloudinit.NeedsReboot(config.CloudInit, d) {
+	// If cloud-init changes, a reboot is required
+	if cloudinit.NeedsReboot(config.CloudInit, d) {
 		rebootRequired = true
-	}
-
-	// reboot is only required when memory hotplug is disabled
-	if d.HasChange("memory") && !strings.Contains(d.Get("hotplug").(string), "memory") {
-		rebootRequired = true
-	}
-
-	// if network hot(un)plug is not enabled, then check if some of the "critical" parameters have changes
-	if d.HasChange("network") && !strings.Contains(d.Get("hotplug").(string), "network") {
-		oldValuesRaw, newValuesRaw := d.GetChange("network")
-		oldValues := oldValuesRaw.([]interface{})
-		newValues := newValuesRaw.([]interface{})
-		if len(oldValues) != len(newValues) {
-			// network interface added or removed
-			rebootRequired = true
-		} else {
-			// some of the existing interface parameters have changed
-			for i := range oldValues { // loop through the interfaces
-				if oldValues[i].(map[string]interface{})["model"] != newValues[i].(map[string]interface{})["model"] {
-					rebootRequired = true
-				}
-				if oldValues[i].(map[string]interface{})["macaddr"] != newValues[i].(map[string]interface{})["macaddr"] {
-					rebootRequired = true
-				}
-				if oldValues[i].(map[string]interface{})["queues"] != newValues[i].(map[string]interface{})["queues"] {
-					rebootRequired = true
-				}
-			}
-		}
 	}
 
 	// Try rebooting the VM is a reboot is required and automatic_reboot is
@@ -965,21 +915,16 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 					}
 				}
 			} else { // automatic reboots is disabled
-				// Automatic reboots is not enabled, show the user a warning message that
+				// Automatic reboots is not enabled, show the user a error message that
 				// the VM needs a reboot for the changed parameters to take in effect.
-				diags = append(diags, diag.Diagnostic{
-					Severity:      diag.Warning,
-					Summary:       "VM needs to be rebooted and automatic_reboot is disabled",
-					Detail:        "One or more parameters are modified that only take effect after a reboot (shutdown & start).",
-					AttributePath: cty.Path{},
-				})
+				return append(diags, reboot.ErrorQemu(d))
 			}
 		}
 	}
 
 	lock.unlock()
 
-	d.Set("reboot_required", rebootRequired)
+	reboot.SetRequired(rebootRequired, d)
 	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
 }
 
@@ -1020,7 +965,15 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		return append(diags, diag.FromErr(err)...)
 	}
 
-	config, err := pveSDK.NewConfigQemuFromApi(ctx, vmr, client)
+	var raw pveSDK.RawConfigQemu
+	var pending bool
+	raw, pending, err = pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	reboot.SetRequired(pending, d)
+	var config *pveSDK.ConfigQemu
+	config, err = raw.Get(vmr)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -1131,9 +1084,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	pool.Terraform(config.Pool, d)
-
-	// Reset reboot_required variable. It should change only during updates.
-	d.Set("reboot_required", false)
 
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
