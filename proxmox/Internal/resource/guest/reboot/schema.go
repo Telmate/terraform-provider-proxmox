@@ -47,8 +47,7 @@ func SchemaAutomaticSeverity() *schema.Schema {
 				Summary:  "Invalid value",
 				Detail:   "Expected one of '" + severityError + "' or '" + severityWarning + "'.",
 				Severity: diag.Error}}
-		},
-	}
+		}}
 }
 
 func SchemaRequired() *schema.Schema {

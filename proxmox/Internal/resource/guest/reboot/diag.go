@@ -5,13 +5,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func ErrorLxc(d *schema.ResourceData) diag.Diagnostic {
-	return errorMSG(d, "LXC")
-}
+func ErrorLxc(d *schema.ResourceData) diag.Diagnostic { return errorMSG(d, "LXC") }
 
-func ErrorQemu(d *schema.ResourceData) diag.Diagnostic {
-	return errorMSG(d, "QEMU")
-}
+func ErrorQemu(d *schema.ResourceData) diag.Diagnostic { return errorMSG(d, "QEMU") }
 
 func errorMSG(d *schema.ResourceData, guest string) diag.Diagnostic {
 	return diag.Diagnostic{
