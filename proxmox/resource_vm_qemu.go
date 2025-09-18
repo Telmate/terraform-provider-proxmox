@@ -520,8 +520,8 @@ func resourceVmQemu() *schema.Resource {
 				Default:     true,
 				Description: "By default define SSH for provisioner info",
 			},
-			reboot.Root:         reboot.Schema(),
-			reboot.RootSeverity: reboot.SchemaSeverity(),
+			reboot.RootAutomatic:         reboot.SchemaAutomatic(),
+			reboot.RootAutomaticSeverity: reboot.SchemaAutomaticSeverity(),
 			"linked_vmid": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -857,7 +857,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
-	automaticReboot := reboot.SDK(d)
+	automaticReboot := reboot.GetAutomatic(d)
 	// don't let the update function handel the reboot as it can't deal with cloud init changes yet
 	rebootRequired, err = config.Update(ctx, automaticReboot, vmr, client)
 	if err != nil {

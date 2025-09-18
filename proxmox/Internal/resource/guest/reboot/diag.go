@@ -15,7 +15,7 @@ func ErrorQemu(d *schema.ResourceData) diag.Diagnostic {
 
 func errorMSG(d *schema.ResourceData, guest string) diag.Diagnostic {
 	return diag.Diagnostic{
-		Summary:  "the " + guest + " guest needs to be rebooted and `" + Root + " = false`.",
-		Detail:   "the " + guest + " guest needs to be rebooted for the changes to take effect. Set `" + Root + " = true` to allow the provider to reboot the guest.",
+		Summary:  "the " + guest + " guest needs to be rebooted and `" + RootAutomatic + " = false`.",
+		Detail:   "the " + guest + " guest needs to be rebooted for the changes to take effect. Set `" + RootAutomatic + " = true` to allow the provider to reboot the guest.",
 		Severity: severity(d)}
 }

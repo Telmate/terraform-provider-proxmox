@@ -7,14 +7,14 @@ import (
 )
 
 const (
-	Root         = "automatic_reboot"
-	RootSeverity = Root + "_severity"
+	RootAutomatic         = "automatic_reboot"
+	RootAutomaticSeverity = RootAutomatic + "_severity"
 
 	severityError   = "error"
 	severityWarning = "warning"
 )
 
-func Schema() *schema.Schema {
+func SchemaAutomatic() *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeBool,
 		Description: "Automatically reboot the guest system if any of the modified parameters requires a reboot to take effect.",
@@ -22,7 +22,7 @@ func Schema() *schema.Schema {
 		Default:     true}
 }
 
-func SchemaSeverity() *schema.Schema {
+func SchemaAutomaticSeverity() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeString,
 		Optional: true,
