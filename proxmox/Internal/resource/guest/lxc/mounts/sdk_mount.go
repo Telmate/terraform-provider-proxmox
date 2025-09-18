@@ -40,7 +40,9 @@ func sdkMount(privileged bool, schema []any) (pveSDK.LxcMounts, diag.Diagnostics
 					Severity: diag.Error})
 			}
 			// warnings for unused settings
-			if schemaMap[schemaACL].(string) != acl.Default {
+			switch schemaMap[schemaACL].(string) {
+			case acl.Default, "":
+			default:
 				diags = append(diags, warning(schemaACL, typeBindMount))
 			}
 			if !schemaMap[schemaBackup].(bool) {

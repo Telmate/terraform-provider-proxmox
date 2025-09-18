@@ -27,7 +27,10 @@ func Schema() *schema.Schema {
 			}
 			switch new {
 			case flagDefault, "":
-				return true
+				switch old {
+				case flagDefault, "":
+					return true
+				}
 			}
 			return false
 		},
