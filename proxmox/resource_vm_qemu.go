@@ -87,6 +87,7 @@ func resourceVmQemu() *schema.Resource {
 					return d.HasChange("vm_state")
 				},
 			),
+			reboot.CustomizeDiff(),
 		),
 
 		Schema: map[string]*schema.Schema{
@@ -499,11 +500,6 @@ func resourceVmQemu() *schema.Resource {
 				Default:       false,
 				ConflictsWith: []string{schemaSkipIPv4},
 			},
-			"reboot_required": {
-				Type:        schema.TypeBool,
-				Computed:    true,
-				Description: "Internal variable, true if any of the modified parameters requires a reboot to take effect.",
-			},
 			"default_ipv4_address": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -522,6 +518,7 @@ func resourceVmQemu() *schema.Resource {
 			},
 			reboot.RootAutomatic:         reboot.SchemaAutomatic(),
 			reboot.RootAutomaticSeverity: reboot.SchemaAutomaticSeverity(),
+			reboot.RootRequired:          reboot.SchemaRequired(),
 			"linked_vmid": {
 				Type:     schema.TypeInt,
 				Computed: true,
@@ -927,7 +924,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	lock.unlock()
 
-	d.Set("reboot_required", rebootRequired)
+	reboot.SetRequired(rebootRequired, d)
 	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
 }
 
@@ -969,10 +966,12 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	var raw pveSDK.RawConfigQemu
-	raw, _, err = pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
+	var pending bool
+	raw, pending, err = pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	reboot.SetRequired(pending, d)
 	var config *pveSDK.ConfigQemu
 	config, err = raw.Get(vmr)
 	if err != nil {
@@ -1085,9 +1084,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	pool.Terraform(config.Pool, d)
-
-	// Reset reboot_required variable. It should change only during updates.
-	d.Set("reboot_required", false)
 
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)

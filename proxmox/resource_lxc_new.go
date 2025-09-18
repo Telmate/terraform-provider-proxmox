@@ -38,6 +38,7 @@ func ResourceLxcNew() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
+		CustomizeDiff: reboot.CustomizeDiff(),
 
 		Schema: map[string]*schema.Schema{
 			architecture.Root:            architecture.Schema(),
@@ -60,6 +61,7 @@ func ResourceLxcNew() *schema.Resource {
 			privilege.RootUnprivileged:   privilege.SchemaUnprivileged(),
 			reboot.RootAutomatic:         reboot.SchemaAutomatic(),
 			reboot.RootAutomaticSeverity: reboot.SchemaAutomaticSeverity(),
+			reboot.RootRequired:          reboot.SchemaRequired(),
 			rootmount.Root:               rootmount.Schema(),
 			swap.Root:                    swap.Schema(),
 			template.Root:                template.Schema(),
@@ -183,13 +185,15 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	}
 
 	var raw pveSDK.RawConfigLXC
-	raw, _, err = pveSDK.NewActiveRawConfigLXCFromApi(ctx, vmr, client)
+	var pending bool
+	raw, pending, err = pveSDK.NewActiveRawConfigLXCFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.Diagnostic{
 				Summary:  err.Error(),
 				Severity: diag.Error}}
 	}
+	reboot.SetRequired(pending, d)
 	config := raw.Get(*vmr, pveSDK.PowerStateUnknown)
 
 	architecture.Terraform(config.Architecture, d)

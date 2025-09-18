@@ -1,14 +1,18 @@
 package reboot
 
 import (
+	"context"
+
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 const (
 	RootAutomatic         = "automatic_reboot"
 	RootAutomaticSeverity = RootAutomatic + "_severity"
+	RootRequired          = "reboot_required"
 
 	severityError   = "error"
 	severityWarning = "warning"
@@ -45,4 +49,18 @@ func SchemaAutomaticSeverity() *schema.Schema {
 				Severity: diag.Error}}
 		},
 	}
+}
+
+func SchemaRequired() *schema.Schema {
+	return &schema.Schema{
+		Computed:    true,
+		Description: "True if any of the modified parameters requires a reboot to take effect.",
+		Type:        schema.TypeBool}
+}
+
+func CustomizeDiff() schema.CustomizeDiffFunc {
+	return customdiff.ComputedIf(RootRequired,
+		func(ctx context.Context, d *schema.ResourceDiff, meta any) bool {
+			return d.Get(RootRequired).(bool)
+		})
 }
