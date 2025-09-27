@@ -634,7 +634,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.Node = &targetNode
 
 		var guestID *pveSDK.GuestID
-		if newID := pveSDK.GuestID(d.Get(vmID.Root).(int)); newID != 0 {
+		if newID := vmID.Get(d); newID != 0 {
 			guestID = &newID
 		}
 
