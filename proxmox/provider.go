@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -425,29 +424,6 @@ func pmParallelBegin(pconf *providerConfiguration) *pmApiLockHolder {
 	}
 	lock.lock()
 	return lock
-}
-
-func resourceId(targetNode pveSDK.NodeName, resType string, guestID pveSDK.GuestID) string {
-	return fmt.Sprintf("%s/%s/%d", targetNode.String(), resType, guestID)
-}
-
-func parseResourceId(resId string) (targetNode string, resType string, guestID pveSDK.GuestID, err error) {
-	// create a logger for this function
-	logger, _ := CreateSubLogger("parseResourceId")
-
-	if !rxRsId.MatchString(resId) {
-		return "", "", 0, fmt.Errorf("invalid resource format: %s. Must be <node>/<type>/<vmid>", resId)
-	}
-	idMatch := rxRsId.FindStringSubmatch(resId)
-	targetNode = idMatch[1]
-	resType = idMatch[2]
-	var tmpID int
-	tmpID, err = strconv.Atoi(idMatch[3])
-	if err != nil {
-		logger.Info().Str("error", err.Error()).Msgf("failed to get vmId")
-	}
-	guestID = pveSDK.GuestID(tmpID)
-	return
 }
 
 func clusterResourceId(resType string, resId string) string {

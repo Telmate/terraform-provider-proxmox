@@ -17,8 +17,6 @@ import (
 
 const defaultDescription = "Managed by Terraform."
 
-var rxRsId = regexp.MustCompile(`([^/]+)/([^/]+)/(\d+)`)
-
 var rxClusterRsId = regexp.MustCompile(`([^/]+)/([^/]+)`)
 
 var machineModelsRegex = regexp.MustCompile(`(^pc|^q35|^virt)`)

@@ -13,6 +13,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -627,7 +628,10 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	// The existence of a non-blank ID is what tells Terraform that a resource was created
-	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
+	d.SetId(id.Guest{
+		ID:   vmr.VmId(),
+		Node: targetNode,
+		Type: id.GuestLxc}.String())
 
 	lock.unlock()
 	return append(diags, resourceLxcRead(ctx, d, meta)...)
@@ -640,11 +644,12 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	client := pconf.Client
 
-	_, _, vmID, err := parseResourceId(d.Id())
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -754,7 +759,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			return a.(string), b.(string)
 		}()
 
-		vmr := pveSDK.NewVmRef(vmID)
+		vmr := pveSDK.NewVmRef(resourceID.ID)
 		vmr.SetPool(oldPool)
 
 		_, err := client.UpdateVMPool(ctx, vmr, newPool)
@@ -802,12 +807,13 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 	client := pconf.Client
-	_, _, guestID, err := parseResourceId(d.Id())
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
 		return err
 	}
-	vmr := pveSDK.NewVmRef(guestID)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return err
@@ -816,7 +822,10 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	if err != nil {
 		return err
 	}
-	d.SetId(resourceId(vmr.Node(), "lxc", vmr.VmId()))
+	d.SetId(id.Guest{
+		ID:   vmr.VmId(),
+		Node: vmr.Node(),
+		Type: id.GuestLxc}.String())
 	node.Terraform(vmr.Node(), d)
 
 	// Read Features
@@ -882,7 +891,7 @@ pools:
 		members := raw.GetGuests()
 		if members != nil {
 			for _, memberID := range *members {
-				if guestID == memberID {
+				if resourceID.ID == memberID {
 					d.Set(pool.Root, pools[i])
 					break pools
 				}

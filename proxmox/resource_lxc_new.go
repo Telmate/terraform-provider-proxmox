@@ -23,6 +23,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/powerstate"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -46,7 +47,7 @@ func ResourceLxcNew() *schema.Resource {
 			cpu.Root:                     cpu.Schema(),
 			description.Root:             description.Schema(),
 			dns.Root:                     dns.Schema(),
-      features.Root:                features.Schema(),
+			features.Root:                features.Schema(),
 			memory.Root:                  memory.Schema(),
 			mounts.RootMount:             mounts.SchemaMount(),
 			mounts.RootMounts:            mounts.SchemaMounts(),
@@ -107,7 +108,10 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 			Severity: diag.Error})
 	}
 
-	d.SetId(resourceId(targetNode, "lxc", vmr.VmId()))
+	d.SetId(id.Guest{
+		ID:   vmr.VmId(),
+		Node: targetNode,
+		Type: id.GuestLxc}.String())
 
 	return append(diags, resourceLxcNewRead(ctx, d, meta, vmr, client)...)
 }
@@ -120,7 +124,8 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 	client := pConf.Client
 
 	// Get vm reference
-	_, _, guestID, err := parseResourceId(d.Id())
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
 		return diag.Diagnostics{{
@@ -128,7 +133,7 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 			Severity: diag.Error}}
 	}
 	var vmr *pveSDK.VmRef
-	vmr, err = client.GetVmRefById(ctx, guestID)
+	vmr, err = client.GetVmRefById(ctx, resourceID.ID)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.Diagnostic{
@@ -167,7 +172,8 @@ func resourceLxcNewReadWithLock(ctx context.Context, d *schema.ResourceData, met
 	lock := pmParallelBegin(pConf)
 	defer lock.unlock()
 
-	_, _, guestID, err := parseResourceId(d.Id())
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
 		return diag.Diagnostics{{
@@ -175,7 +181,7 @@ func resourceLxcNewReadWithLock(ctx context.Context, d *schema.ResourceData, met
 			Severity: diag.Error}}
 	}
 
-	return resourceLxcNewRead(ctx, d, meta, pveSDK.NewVmRef(guestID), pConf.Client)
+	return resourceLxcNewRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)
 }
 
 func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {

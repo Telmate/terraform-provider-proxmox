@@ -38,6 +38,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
@@ -679,7 +680,10 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			rebootRequired, err = config.Update(ctx, false, vmr, client)
 			if err != nil {
 				// Set the id because when update config fail the vm is still created
-				d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
+				d.SetId(id.Guest{
+					ID:   vmr.VmId(),
+					Node: targetNode,
+					Type: id.GuestQemu}.String())
 				return append(diags, diag.FromErr(err)...)
 			}
 
@@ -731,12 +735,18 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		rebootRequired, err = config.Update(ctx, false, vmr, client)
 		if err != nil {
 			// Set the id because when update config fail the vm is still created
-			d.SetId(resourceId(targetNode, "qemu", vmr.VmId()))
+			d.SetId(id.Guest{
+				ID:   vmr.VmId(),
+				Node: targetNode,
+				Type: id.GuestQemu}.String())
 			return append(diags, diag.FromErr(err)...)
 		}
 
 	}
-	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
+	d.SetId(id.Guest{
+		ID:   vmr.VmId(),
+		Node: vmr.Node(),
+		Type: id.GuestQemu}.String())
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
@@ -775,14 +785,15 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger, _ := CreateSubLogger("resource_vm_update")
 
 	// get vmID
-	_, _, guestID, err := parseResourceId(d.Id())
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	logger.Info().Int(vmID.Root, int(guestID)).Msg("Starting update of the VM resource")
+	logger.Info().Int(vmID.Root, int(resourceID.ID)).Msg("Starting update of the VM resource")
 
-	vmr := pveSDK.NewVmRef(guestID)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -851,7 +862,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diags
 	}
 
-	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Updating VM with the following configuration: %+v", config)
+	logger.Debug().Int(vmID.Root, int(resourceID.ID)).Msgf("Updating VM with the following configuration: %+v", config)
 
 	var rebootRequired bool
 	automaticReboot := reboot.GetAutomatic(d)
@@ -938,11 +949,12 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	var diags diag.Diagnostics
 	logger, _ := CreateSubLogger("resource_vm_read")
 
-	_, _, guestID, err := parseResourceId(d.Id())
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Id())
 	if err != nil {
-		d.SetId("")
 		return diag.FromErr(fmt.Errorf("unexpected error when trying to read and parse the resource: %v", err))
 	}
+	guestID := resourceID.ID
 
 	logger.Info().Int(vmID.Root, int(guestID)).Msg("Reading configuration for vmid")
 	vmr := pveSDK.NewVmRef(guestID)
@@ -1009,7 +1021,11 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
-	d.SetId(resourceId(vmr.Node(), "qemu", vmr.VmId()))
+	d.SetId(id.Guest{
+		ID:   vmr.VmId(),
+		Node: vmr.Node(),
+		Type: id.GuestQemu}.String())
+
 	vmID.Terraform(vmr.VmId(), d)
 	name.Terraform_Unsafe(config.Name, d)
 	description.Terraform(config.Description, true, d)
