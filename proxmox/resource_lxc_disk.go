@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -116,13 +117,14 @@ func resourceLxcDiskCreate(ctx context.Context, d *schema.ResourceData, meta int
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
-	_, _, vmID, err := parseResourceId(d.Get("container").(string))
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Get("container").(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	client := pconf.Client
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
 	vmr.SetVmType(pveSDK.GuestLxc)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
@@ -161,12 +163,13 @@ func resourceLxcDiskUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 	client := pconf.Client
 
-	_, _, vmID, err := parseResourceId(d.Get("container").(string))
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Get("container").(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
@@ -196,12 +199,13 @@ func _resourceLxcDiskRead(ctx context.Context, d *schema.ResourceData, meta inte
 	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
 
-	_, _, vmID, err := parseResourceId(d.Get("container").(string))
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Get("container").(string))
 	if err != nil {
 		return err
 	}
 
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return err
@@ -238,13 +242,14 @@ func resourceLxcDiskDelete(ctx context.Context, d *schema.ResourceData, meta int
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
-	_, _, vmID, err := parseResourceId(d.Get("container").(string))
+	var resourceID id.Guest
+	err := resourceID.Parse(d.Get("container").(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	client := pconf.Client
-	vmr := pveSDK.NewVmRef(vmID)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
 	_, err = client.GetVmInfo(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
