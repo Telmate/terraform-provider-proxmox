@@ -94,7 +94,7 @@ The following arguments are supported in the top level resource block.
 | `name`                        | `str`    |                      | **Required** The name of the VM within Proxmox. |
 | `target_node`                 | `str`    |                      | The name of the PVE Node on which to place the VM.|
 | `target_nodes`                | `str`    |                      | A list of PVE node names on which to place the VM.|
-| `vmid`                        | `int`    | `0`                  | The ID of the VM in Proxmox. The default value of `0` indicates it should use the next available ID in the sequence. |
+| `vmid`                        | `int`    |                      | The ID of the VM in Proxmox. When unset it should use the next available ID in the sequence. |
 | `desc`                        | `str`    |                      | The description of the VM. Shows as the 'Notes' field in the Proxmox GUI. |
 | `define_connection_info`      | `bool`   | `true`               | Whether to let terraform define the (SSH) connection parameters for preprovisioners, see config block below. |
 | `bios`                        | `str`    | `"seabios"`          | The BIOS to use, options are `seabios` or `ovmf` for UEFI. |
@@ -139,7 +139,8 @@ The following arguments are supported in the top level resource block.
 | `sshkeys`                     | `str`    |                      | Newline delimited list of SSH public keys to add to authorized keys file for the cloud-init user. |
 | `ipconfig0`                   | `str`    | `''`                 | The first IP address to assign to the guest. Format: `[gw=<GatewayIPv4>] [,gw6=<GatewayIPv6>] [,ip=<IPv4Format/CIDR>] [,ip6=<IPv6Format/CIDR>]`. When `os_type` is `cloud-init` not setting `ip=` is equivalent to `skip_ipv4` == `true` and `ip6=` to `skip_ipv6` == `true` .|
 | `ipconfig1` to `ipconfig15`   | `str`    |                      | The second IP address to assign to the guest. Same format as `ipconfig0`. |
-| `automatic_reboot`            | `bool`   | `true`               | Automatically reboot the VM when parameter changes require this. If disabled the provider will emit a warning when the VM needs to be rebooted. |
+| `automatic_reboot`            | `bool`   | `true`               | Automatically reboot the VM when parameter changes require this. If disabled the provider will emit a warning or error when the VM needs to be rebooted, this can be configured with `automatic_reboot_severity`.|
+| `automatic_reboot_severity`   | `string`  | `error`              | Sets the severity of the error/warning when `automatic_reboot` is `false`. Values can be `error` or `warning`.|
 | `skip_ipv4`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv4 address from the qemu guest agent isn't required, it will still return an ipv4 address if it could obtain one. Useful for reducing retries in environments without ipv4.|
 | `skip_ipv6`                   | `bool`   | `false`              | Tells proxmox that acquiring an IPv6 address from the qemu guest agent isn't required, it will still return an ipv6 address if it could obtain one. Useful for reducing retries in environments without ipv6.|
 | `agent_timeout`               | `int`    | `90`                 | Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection. |

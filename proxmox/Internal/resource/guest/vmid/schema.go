@@ -25,10 +25,8 @@ func Schema() *schema.Schema {
 			if !ok {
 				return diag.Errorf("expected type of %v to be int", k)
 			}
-			if val != 0 {
-				if val < minID || val > maxID {
-					return diag.Errorf("proxmox %s must be in the range (%d - %d) or 0 for next available ID, got %d", k, minID, maxID, val)
-				}
+			if val < minID || val > maxID {
+				return diag.Errorf("proxmox %s must be in the range (%d - %d) or 0 for next available ID, got %d", k, minID, maxID, val)
 			}
 			return nil
 		},
