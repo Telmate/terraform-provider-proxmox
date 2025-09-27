@@ -21,6 +21,8 @@ pveum user add terraform-prov@pve --password <password>
 pveum aclmod / -user terraform-prov@pve -role TerraformProv
 ```
 
+Promox 9 : Remove `VM.Monitor` from the "privs" line.
+
 After the role is in use, if there is a need to modify the privileges, simply issue the command showed, adding or
 removing privileges as needed.
 
