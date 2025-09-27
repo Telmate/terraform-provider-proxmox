@@ -612,16 +612,25 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.EFIDisk = qemuEfiDisks[0]
 	}
 
-	log.Printf("[DEBUG][QemuVmCreate] checking for duplicate name: %s", guestName)
-	duplicateVmr, _ := client.GetVmRefByName(ctx, guestName)
-
-	forceCreate := d.Get("force_create").(bool)
-
-	if duplicateVmr != nil && forceCreate {
-		return diag.FromErr(fmt.Errorf("duplicate VM name (%s) with vmId: %d. Set force_create=false to recycle", guestName, duplicateVmr.VmId()))
+	var vmr *pveSDK.VmRef
+	if guestID := vmID.Get(d); guestID != 0 { // Manualy set vmID
+		log.Print("[DEBUG][QemuVmCreate] checking if vmId: " + guestID.String() + " already exists")
+		guests, err := pveSDK.ListGuests(ctx, client)
+		if err != nil {
+			return append(diags, diag.FromErr(err)...)
+		}
+		if rawGuest, err := guests.SelectID(guestID); err == nil { // guest already exists
+			forceCreate := d.Get("force_create").(bool)
+			if !forceCreate {
+				return append(diags, diag.Diagnostic{
+					Summary:  "vmId: " + guestID.String() + " already in use. Set force_create=true to recycle",
+					Severity: diag.Error})
+			}
+			vmr = pveSDK.NewVmRef(guestID)
+			vmr.SetNode(string(rawGuest.GetNode()))
+			vmr.SetVmType(rawGuest.GetType())
+		}
 	}
-
-	vmr := duplicateVmr
 
 	var rebootRequired bool
 
