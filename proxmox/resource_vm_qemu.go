@@ -613,7 +613,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	var vmr *pveSDK.VmRef
-	if guestID := vmID.Get(d); guestID != 0 { // Manualy set vmID
+	if guestID := vmID.Get(d); guestID != 0 { // Manually set vmID
 		log.Print("[DEBUG][QemuVmCreate] checking if vmId: " + guestID.String() + " already exists")
 		guests, err := pveSDK.ListGuests(ctx, client)
 		if err != nil {
