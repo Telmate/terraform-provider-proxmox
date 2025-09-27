@@ -872,24 +872,25 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	}
 
 	// Pool
-	pools, err := client.GetPoolList(ctx)
-	if err == nil {
-		for _, poolInfo := range pools["data"].([]interface{}) {
-			poolContent, _ := client.GetPoolInfo(ctx, poolInfo.(map[string]interface{})["poolid"].(string))
-			for _, member := range poolContent["members"].([]interface{}) {
-				if member.(map[string]interface{})["type"] != "storage" {
-					if guestID == pveSDK.GuestID(member.(map[string]interface{})[vmID.Root].(float64)) {
-						d.Set(pool.Root, poolInfo.(map[string]interface{})["poolid"].(string))
-					}
+	pools, err := pveSDK.ListPools(ctx, client)
+	if err != nil {
+		return err
+	}
+pools:
+	for i := range pools {
+		raw, _ := pveSDK.PoolName(pools[i]).Get(ctx, client)
+		members := raw.GetGuests()
+		if members != nil {
+			for _, memberID := range *members {
+				if guestID == memberID {
+					d.Set(pool.Root, pools[i])
+					break pools
 				}
 			}
 		}
 	}
 
 	//_, err = client.ReadVMHA(vmr)
-	if err != nil {
-		return err
-	}
 	d.Set("hastate", vmr.HaState())
 	d.Set("hagroup", vmr.HaGroup())
 
