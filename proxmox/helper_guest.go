@@ -19,11 +19,26 @@ func guestDelete(ctx context.Context, d *schema.ResourceData, meta any, kind str
 	client := pconf.Client
 	rawID, _ := strconv.Atoi(path.Base(d.Id()))
 	guestID := pveSDK.GuestID(rawID)
-	if err := guestID.DeleteHaResource(ctx, client); err != nil {
-		if !errors.Is(err, pveSDK.Error.HaResourceDoesNotExist()) {
-			return diag.FromErr(err)
+
+	vmr := pveSDK.NewVmRef(guestID)
+
+	// Get VM status
+	rawStatus, err := vmr.GetRawGuestStatus(ctx, client)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	// Check if HA is enabled for the VM
+	if rawStatus.GetHaManaged() != 0 {
+		// VM is HA-managed, attempt to delete HA resource
+		if err := guestID.DeleteHaResource(ctx, client); err != nil {
+			if !errors.Is(err, pveSDK.Error.HaResourceDoesNotExist()) {
+				return diag.FromErr(err)
+			}
 		}
 	}
+
+	// Proceed with normal VM deletion
 	if err := pveSDK.NewVmRef(guestID).Delete(ctx, client); err != nil {
 		if errors.Is(err, pveSDK.Error.GuestDoesNotExist()) {
 			return diag.Diagnostics{{
