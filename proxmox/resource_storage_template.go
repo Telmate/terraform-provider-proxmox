@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Telmate/proxmox-api-go/proxmox"
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -56,7 +55,7 @@ func resourceStorageTemplateCreate(ctx context.Context, d *schema.ResourceData, 
 	storage := d.Get("storage").(string)
 	node := d.Get("pve_node").(string)
 
-	config := proxmox.ConfigContent_Template{
+	config := pveSDK.ConfigContent_Template{
 		Node:     node,
 		Storage:  storage,
 		Template: template,
@@ -65,7 +64,7 @@ func resourceStorageTemplateCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	if err := proxmox.DownloadLxcTemplate(ctx, client, config); err != nil {
+	if err := pveSDK.DownloadLxcTemplate(ctx, client, config); err != nil {
 		return diag.FromErr(err)
 	}
 
