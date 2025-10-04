@@ -7,7 +7,7 @@ This resource creates and manages CT Templates to create LXC containers.
 > [!Note]
 > A list of available templates can be found by executing the following command on one of the nodes :
 > ```sh
-> pveam available --section system
+> pveam available
 > ```
 
 ```hcl
