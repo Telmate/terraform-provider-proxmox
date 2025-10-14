@@ -520,7 +520,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	var vmr *pveSDK.VmRef
 	if d.Get("clone").(string) != "" { // Clone
 		var sourceVmr *pveSDK.VmRef
-		sourceVmr, err = guestGetSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), 0, targetNode, pveSDK.GuestLxc)
+		sourceVmr, err = guestGetSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), 0, targetNode, pveSDK.GuestLxc, "clone", "clone_id")
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}

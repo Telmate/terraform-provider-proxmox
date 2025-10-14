@@ -35,7 +35,14 @@ func guestDelete(ctx context.Context, d *schema.ResourceData, meta any, kind str
 	return nil
 }
 
-func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.GuestName, id pveSDK.GuestID, preferredNode pveSDK.NodeName, guest pveSDK.GuestType) (*pveSDK.VmRef, error) {
+func guestGetSourceVmr(
+	ctx context.Context,
+	client *pveSDK.Client,
+	name pveSDK.GuestName,
+	id pveSDK.GuestID,
+	preferredNode pveSDK.NodeName,
+	guest pveSDK.GuestType,
+	fieldName, fieldID string) (*pveSDK.VmRef, error) {
 	if name != "" {
 		rawGuests, err := pveSDK.ListGuests(ctx, client)
 		if err != nil {
@@ -59,7 +66,7 @@ func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.G
 		guestRef.SetVmType(guest)
 		return guestRef, nil
 	}
-	return nil, errors.New("either 'clone' name or 'clone_id' must be specified")
+	return nil, errors.New("either '" + fieldName + "' or '" + fieldID + "' must be specified")
 }
 
 func guestGetSourceVmrByNode(raw pveSDK.RawGuestResources, name pveSDK.GuestName, preferredNode pveSDK.NodeName, guest pveSDK.GuestType) (*pveSDK.VmRef, error) {
