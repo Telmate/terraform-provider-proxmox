@@ -18,7 +18,7 @@ provider "proxmox" {
 
 resource "proxmox_vm_qemu" "pxe-example" {
     name                      = "pxe-example"
-    desc                      = "A test VM for PXE boot mode."
+    description               = "A test VM for PXE boot mode."
 # PXE option enables the network boot feature
     pxe                       = true
 # unless your PXE installed system includes the Agent in the installed
