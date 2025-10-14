@@ -57,7 +57,7 @@ main.tf:
 /* Uses Cloud-Init options from Proxmox 5.2 */
 resource "proxmox_vm_qemu" "cloudinit-test" {
   name        = "tftest1.xyz.com"
-  desc        = "tf description"
+  description = "tf description"
   target_node = "proxmox1-xx"
 
   clone = "ci-ubuntu-template"
@@ -124,7 +124,7 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
   ]
 
   name        = "tftest1.xyz.com"
-  desc        = "tf description"
+  description = "tf description"
   target_node = "proxmox1-xx"
 
   clone = "ci-ubuntu-template"
@@ -177,7 +177,7 @@ EOF
 /* Uses custom eth1 user-net SSH portforward */
 resource "proxmox_vm_qemu" "preprovision-test" {
   name        = "tftest1.xyz.com"
-  desc        = "tf description"
+  description = "tf description"
   target_node = "proxmox1-xx"
 
   clone = "terraform-ubuntu1404-template"
