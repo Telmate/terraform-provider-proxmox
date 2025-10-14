@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/clone"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/dns"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
@@ -44,6 +45,7 @@ func ResourceLxcNew() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			architecture.Root:            architecture.Schema(),
+			clone.Root:                   clone.Schema(),
 			cpu.Root:                     cpu.Schema(),
 			description.Root:             description.Schema(),
 			dns.Root:                     dns.Schema(),
@@ -93,25 +95,55 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 			Summary:  err.Error(),
 			Severity: diag.Error})
 	}
-	config.Node = &targetNode
 
-	config.CreateOptions = &pveSDK.LxcCreateOptions{
-		OsTemplate:   template.SDK(d),
-		UserPassword: password.SDK(d)}
+	var vmr *pveSDK.VmRef
 
-	config.Pool = util.Pointer(pool.SDK(d))
-
-	vmr, err := config.Create(ctx, client)
-	if err != nil {
-		return append(diags, diag.Diagnostic{
-			Summary:  err.Error(),
-			Severity: diag.Error})
-	}
-
-	d.SetId(id.Guest{
-		ID:   vmr.VmId(),
+	cloneGuest := clone.SDK(d, clone.Settings{
+		ID:   config.ID,
+		Name: config.Name,
 		Node: targetNode,
-		Type: id.GuestLxc}.String())
+		Pool: config.Pool})
+	if cloneGuest != nil {
+		var cloneRef *pveSDK.VmRef
+		cloneRef, err = guestGetSourceVmr(ctx, client, cloneGuest.Name, cloneGuest.ID, targetNode, pveSDK.GuestLxc, clone.Root+" { "+clone.SchemaName+" }", clone.Root+" { "+clone.SchemaID+" }")
+		if err != nil {
+			return append(diags, diag.Diagnostic{
+				Summary:  err.Error(),
+				Severity: diag.Error})
+		}
+		vmr, err = cloneRef.CloneLxc(ctx, cloneGuest.Target, client)
+		if err != nil {
+			return append(diags, diag.Diagnostic{
+				Summary:  err.Error(),
+				Severity: diag.Error})
+		}
+		d.SetId(id.Guest{
+			ID:   vmr.VmId(),
+			Node: targetNode,
+			Type: id.GuestLxc}.String())
+		err = config.Update(ctx, true, vmr, client)
+		if err != nil {
+			return append(diags, diag.Diagnostic{
+				Summary:  err.Error(),
+				Severity: diag.Error})
+		}
+	} else {
+		config.Node = &targetNode
+		config.CreateOptions = &pveSDK.LxcCreateOptions{
+			OsTemplate:   template.SDK(d),
+			UserPassword: password.SDK(d)}
+		config.Pool = util.Pointer(pool.SDK(d))
+		vmr, err = config.Create(ctx, client)
+		if err != nil {
+			return append(diags, diag.Diagnostic{
+				Summary:  err.Error(),
+				Severity: diag.Error})
+		}
+		d.SetId(id.Guest{
+			ID:   vmr.VmId(),
+			Node: targetNode,
+			Type: id.GuestLxc}.String())
+	}
 
 	return append(diags, resourceLxcNewRead(ctx, d, meta, vmr, client)...)
 }
