@@ -18,10 +18,6 @@ func Schema() *schema.Schema {
 		Elem: &schema.Schema{
 			Type: schema.TypeString,
 			ValidateDiagFunc: func(i interface{}, path cty.Path) diag.Diagnostics {
-				v, ok := i.(string)
-				if !ok {
-					return diag.Errorf("expected a string, got: %s", i)
-				}
-				return diag.FromErr(pveSDK.Tag(v).Validate())
+				return diag.FromErr(pveSDK.Tag(i.(string)).Validate())
 			}}}
 }
