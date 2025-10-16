@@ -18,6 +18,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/password"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/privilege"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/rootmount"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/ssh_public_keys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/swap"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/template"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
@@ -45,7 +46,6 @@ func ResourceLxcNew() *schema.Resource {
 		CustomizeDiff: reboot.CustomizeDiff(),
 
 		Schema: map[string]*schema.Schema{
-			tags.Root:                    tags.Schema(),
 			architecture.Root:            architecture.Schema(),
 			clone.Root:                   clone.Schema(),
 			cpu.Root:                     cpu.Schema(),
@@ -70,7 +70,9 @@ func ResourceLxcNew() *schema.Resource {
 			reboot.RootAutomaticSeverity: reboot.SchemaAutomaticSeverity(),
 			reboot.RootRequired:          reboot.SchemaRequired(),
 			rootmount.Root:               rootmount.Schema(),
+			ssh_public_keys.Root:         ssh_public_keys.Schema(),
 			swap.Root:                    swap.Schema(),
+			tags.Root:                    tags.Schema(),
 			template.Root:                template.Schema(),
 		},
 		Timeouts: resourceTimeouts(),
@@ -132,8 +134,9 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 	} else {
 		config.Node = &targetNode
 		config.CreateOptions = &pveSDK.LxcCreateOptions{
-			OsTemplate:   template.SDK(d),
-			UserPassword: password.SDK(d)}
+			OsTemplate:    template.SDK(d),
+			PublicSSHkeys: ssh_public_keys.SDK(d),
+			UserPassword:  password.SDK(d)}
 		config.Pool = util.Pointer(pool.SDK(d))
 		vmr, err = config.Create(ctx, client)
 		if err != nil {

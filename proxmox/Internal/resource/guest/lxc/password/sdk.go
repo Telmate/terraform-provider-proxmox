@@ -5,13 +5,9 @@ import (
 )
 
 func SDK(d *schema.ResourceData) *string {
-	v, ok := d.GetOk(Root)
-	if !ok {
+	v, ok := d.Get(Root).(string)
+	if !ok || v == "" {
 		return nil
 	}
-	password, ok := v.(string)
-	if !ok || password == "" {
-		return nil
-	}
-	return &password
+	return &v
 }

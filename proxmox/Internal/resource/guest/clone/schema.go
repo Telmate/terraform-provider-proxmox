@@ -4,6 +4,7 @@ import (
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	errorMSG "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/errormsg"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/password"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/ssh_public_keys"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/template"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -29,7 +30,7 @@ func Schema() *schema.Schema {
 		ForceNew:      true,
 		MaxItems:      1,
 		MinItems:      1,
-		ConflictsWith: []string{template.Root, password.Root},
+		ConflictsWith: []string{template.Root, password.Root, ssh_public_keys.Root},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				SchemaID: {

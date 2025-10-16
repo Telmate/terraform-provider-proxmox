@@ -11,5 +11,5 @@ func Schema() *schema.Schema {
 		Type:      schema.TypeString,
 		Sensitive: true,
 		Optional:  true,
-		WriteOnly: true}
+		ForceNew:  true}
 }

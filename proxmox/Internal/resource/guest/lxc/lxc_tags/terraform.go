@@ -6,6 +6,10 @@ import (
 )
 
 func Terraform(tags *pveSDK.Tags, d *schema.ResourceData) {
+	if tags == nil {
+		d.Set(Root, nil)
+		return
+	}
 	tagSet := make([]any, len(*tags))
 	for i := range *tags {
 		tagSet[i] = string((*tags)[i])
