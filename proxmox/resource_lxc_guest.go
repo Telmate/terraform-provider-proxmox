@@ -33,12 +33,12 @@ import (
 
 var lxcNewResourceDef *schema.Resource
 
-func ResourceLxcNew() *schema.Resource {
+func resourceLxcGuest() *schema.Resource {
 	lxcNewResourceDef = &schema.Resource{
-		CreateContext: resourceLxcNewCreate,
-		ReadContext:   resourceLxcNewReadWithLock,
-		UpdateContext: resourceLxcNewUpdate,
-		DeleteContext: resourceLxcNewDelete,
+		CreateContext: resourceLxcGuestCreate,
+		ReadContext:   resourceLxcGuestReadWithLock,
+		UpdateContext: resourceLxcGuestUpdate,
+		DeleteContext: resourceLxcGuestDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -80,7 +80,7 @@ func ResourceLxcNew() *schema.Resource {
 	return lxcNewResourceDef
 }
 
-func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
@@ -155,10 +155,10 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 			Type: id.GuestLxc}.String())
 	}
 
-	return append(diags, resourceLxcNewRead(ctx, d, meta, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, meta, vmr, client)...)
 }
 
-func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pConf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pConf)
 	defer lock.unlock()
@@ -211,10 +211,10 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 			Severity: diag.Error})
 	}
 
-	return append(diags, resourceLxcNewRead(ctx, d, meta, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, meta, vmr, client)...)
 }
 
-func resourceLxcNewReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pConf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pConf)
 	defer lock.unlock()
@@ -230,10 +230,10 @@ func resourceLxcNewReadWithLock(ctx context.Context, d *schema.ResourceData, met
 			Severity: diag.Error})
 	}
 
-	return append(diags, resourceLxcNewRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)...)
 }
 
-func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
 	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
 		return diag.Diagnostics{{
@@ -273,7 +273,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	return nil
 }
 
-func resourceLxcNewDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	return guestDelete(ctx, d, meta, "LXC")
 }
 
