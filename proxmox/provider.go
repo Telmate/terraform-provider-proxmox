@@ -201,6 +201,7 @@ func Provider() *schema.Provider {
 			"proxmox_vm_qemu":         resourceVmQemu(),
 			"proxmox_lxc":             resourceLxc(),
 			"proxmox_lxc_disk":        resourceLxcDisk(),
+			"proxmox_lxc_guest":       resourceLxcGuest(),
 			"proxmox_pool":            resourcePool(),
 			"proxmox_cloud_init_disk": resourceCloudInitDisk(),
 			"proxmox_storage_iso":     resourceStorageIso(),
