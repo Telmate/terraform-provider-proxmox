@@ -9,7 +9,6 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/dns"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/features"
 	tags "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/lxc_tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/mounts"
@@ -46,12 +45,12 @@ func ResourceLxcNew() *schema.Resource {
 		CustomizeDiff: reboot.CustomizeDiff(),
 
 		Schema: map[string]*schema.Schema{
-			architecture.Root:            architecture.Schema(),
-			clone.Root:                   clone.Schema(),
-			cpu.Root:                     cpu.Schema(),
-			description.Root:             description.Schema(),
-			dns.Root:                     dns.Schema(),
-			features.Root:                features.Schema(),
+			architecture.Root: architecture.Schema(),
+			clone.Root:        clone.Schema(),
+			cpu.Root:          cpu.Schema(),
+			description.Root:  description.Schema(),
+			dns.Root:          dns.Schema(),
+			// features.Root:                features.Schema(),
 			memory.Root:                  memory.Schema(),
 			mounts.RootMount:             mounts.SchemaMount(),
 			mounts.RootMounts:            mounts.SchemaMounts(),
@@ -245,7 +244,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	cpu.Terraform(config.CPU, d)
 	description.Terraform(config.Description, false, d)
 	dns.Terraform(config.DNS, d)
-	features.Terraform(config.Features, d)
+	// features.Terraform(config.Features, d)
 	memory.Terraform(config.Memory, d)
 	mounts.Terraform(config.Mounts, d)
 	name.Terraform_Unsafe(config.Name, d)
@@ -275,12 +274,12 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 		CPU:         cpu.SDK(d),
 		DNS:         dns.SDK(d),
 		Description: description.SDK(false, d),
-		Features:    features.SDK(privilidged, d),
-		Memory:      memory.SDK(d),
-		Name:        guestName,
-		State:       powerstate.SDK(d),
-		Swap:        swap.SDK(d),
-		Tags:        tags.SDK(d),
+		// Features:    features.SDK(privilidged, d),
+		Memory: memory.SDK(d),
+		Name:   guestName,
+		State:  powerstate.SDK(d),
+		Swap:   swap.SDK(d),
+		Tags:   tags.SDK(d),
 	}
 	var diags, tmpDiags diag.Diagnostics
 	config.Networks, diags = networks.SDK(d)
