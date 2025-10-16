@@ -6,8 +6,8 @@ and [proxmox_lxc](resources/lxc.md).
 
 ## Creating the Proxmox user and role for terraform
 
-The particular privileges required may change but here is a suitable starting point rather than using cluster-wide
-Administrator rights
+To ensure security, it's best practice to create a dedicated user and role for Terraform instead of using cluster-wide Administrator rights. 
+The particular privileges required may change but here is a suitable starting point.
 
 Log into the Proxmox cluster or host using ssh (or mimic these in the GUI) then:
 
@@ -15,28 +15,36 @@ Log into the Proxmox cluster or host using ssh (or mimic these in the GUI) then:
 - Create the user "terraform-prov@pve"
 - Add the TERRAFORM-PROV role to the terraform-prov user
 
+### Proxmox 9 and Newer
+
+In Proxmox 9, the `VM.Monitor` privilege was deprecated and is no longer required.
+
 ```bash
-pveum role add TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.Monitor VM.PowerMgmt SDN.Use"
+pveum role add TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.PowerMgmt SDN.Use"
 pveum user add terraform-prov@pve --password <password>
 pveum aclmod / -user terraform-prov@pve -role TerraformProv
 ```
 
-Promox 9 : Remove `VM.Monitor` from the "privs" line.
+### Proxmox 8 and Older
 
-After the role is in use, if there is a need to modify the privileges, simply issue the command showed, adding or
-removing privileges as needed.
-
-Proxmox > 8:
+For older versions of Proxmox, the `VM.Monitor` privilege is required.
 
 ```bash
-pveum role modify TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.Monitor VM.PowerMgmt SDN.Use"
+pveum role add TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Monitor VM.Migrate VM.PowerMgmt SDN.Use"
+pveum user add terraform-prov@pve --password <password>
+pveum aclmod / -user terraform-prov@pve -role TerraformProv
 ```
 
-Proxmox < 8:
+### Modifying Privileges
+
+If you need to adjust the role's permissions later, you can use the `pveum role modify` command. Simply add or remove privileges from the `-privs` list as needed.
+For example if you are migrating from Proxmox 8 to 9, you may run the following command to remove `VM.Monitor`
 
 ```bash
-pveum role modify TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.Monitor VM.PowerMgmt"
+pveum role modify TerraformProv -privs "Datastore.AllocateSpace Datastore.AllocateTemplate Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Migrate VM.PowerMgmt SDN.Use"
 ```
+
+### Using an API Token (Recommended)
 
 The provider also supports using an API token rather than a password. To create an API token, use the following command:
 
