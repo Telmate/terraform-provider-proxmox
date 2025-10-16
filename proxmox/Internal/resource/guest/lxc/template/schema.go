@@ -1,6 +1,7 @@
 package template
 
 import (
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/password"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -15,10 +16,11 @@ const (
 
 func Schema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		MaxItems: 1,
-		MinItems: 1,
+		Type:         schema.TypeList,
+		Optional:     true,
+		MaxItems:     1,
+		MinItems:     1,
+		RequiredWith: []string{password.Root},
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				schemaFile:    subSchemaFile(),
