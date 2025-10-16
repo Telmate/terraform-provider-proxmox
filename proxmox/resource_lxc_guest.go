@@ -85,10 +85,16 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
+	diags := lxcGuestWarning()
+
 	client := pconf.Client
 
 	privileged := privilege.SDK(d)
-	config, diags := lxcSDK(privileged, d)
+	config, tmpDiags := lxcSDK(privileged, d)
+	diags = append(diags, tmpDiags...)
+	if diags.HasError() {
+		return diags
+	}
 	config.Privileged = &privileged
 
 	// Set the node for the LXC container
@@ -159,26 +165,31 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 
 	client := pConf.Client
 
+	diags := lxcGuestWarning()
+
 	// Get vm reference
 	var resourceID id.Guest
 	err := resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
-		return diag.Diagnostics{{
+		return append(diags, diag.Diagnostic{
 			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
-			Severity: diag.Error}}
+			Severity: diag.Error})
 	}
 	var vmr *pveSDK.VmRef
 	vmr, err = client.GetVmRefById(ctx, resourceID.ID)
 	if err != nil {
-		return diag.Diagnostics{
-			diag.Diagnostic{
-				Summary:  err.Error(),
-				Severity: diag.Error}}
+		return append(diags, diag.Diagnostic{
+			Summary:  err.Error(),
+			Severity: diag.Error})
 	}
 
 	// create a new config from the resource data
-	config, diags := lxcSDK(privilege.SDK(d), d)
+	config, tmpDiags := lxcSDK(privilege.SDK(d), d)
+	diags = append(diags, tmpDiags...)
+	if diags.HasError() {
+		return diags
+	}
 
 	// update the targetNode for the LXC container
 	var targetNode pveSDK.NodeName
@@ -208,16 +219,18 @@ func resourceLxcNewReadWithLock(ctx context.Context, d *schema.ResourceData, met
 	lock := pmParallelBegin(pConf)
 	defer lock.unlock()
 
+	diags := lxcGuestWarning()
+
 	var resourceID id.Guest
 	err := resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
-		return diag.Diagnostics{{
+		return append(diags, diag.Diagnostic{
 			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
-			Severity: diag.Error}}
+			Severity: diag.Error})
 	}
 
-	return resourceLxcNewRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)
+	return append(diags, resourceLxcNewRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)...)
 }
 
 func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
@@ -289,4 +302,11 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 	config.Mounts, tmpDiags = mounts.SDK(privilidged, d)
 	diags = append(diags, tmpDiags...)
 	return config, diags
+}
+
+func lxcGuestWarning() diag.Diagnostics {
+	return diag.Diagnostics{{
+		Detail:   "The LXC Guest resource is experimental. The schema and functionality may change in future releases without a major version bump.",
+		Summary:  "LXC Guest resource is experimental",
+		Severity: diag.Warning}}
 }
