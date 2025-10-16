@@ -51,7 +51,7 @@ func terraformNetworks(config pveSDK.LxcNetworks) []any {
 				schemaSLAAC:   ipv6.SLAAC}}
 		}
 		if v.RateLimitKBps != nil {
-			settings[schemaRate] = int(*v.RateLimitKBps)
+			settings[schemaRateLimit] = int(*v.RateLimitKBps)
 		}
 		mapParams[prefixSchemaID+strconv.Itoa(int(k))] = []any{settings}
 	}
