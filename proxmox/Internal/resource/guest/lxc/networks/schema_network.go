@@ -38,6 +38,6 @@ func SchemaNetwork() *schema.Schema {
 				schemaMTU:         subSchemaMTU(true, schemaMTU),
 				schemaName:        subSchemaName(true, schemaName),
 				schemaNativeVlan:  subSchemaNativeVlan(true, schemaNativeVlan),
-				schemaRate:        subSchemaRate(true, schemaRate),
+				schemaRateLimit:   subSchemaRate(true, schemaRateLimit),
 				schemaSLAAC:       subSchemaSLAAC(schema.Schema{})}}}
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/dns"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/features"
 	tags "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/lxc_tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/mounts"
@@ -34,24 +33,24 @@ import (
 
 var lxcNewResourceDef *schema.Resource
 
-func ResourceLxcNew() *schema.Resource {
+func resourceLxcGuest() *schema.Resource {
 	lxcNewResourceDef = &schema.Resource{
-		CreateContext: resourceLxcNewCreate,
-		ReadContext:   resourceLxcNewReadWithLock,
-		UpdateContext: resourceLxcNewUpdate,
-		DeleteContext: resourceLxcNewDelete,
+		CreateContext: resourceLxcGuestCreate,
+		ReadContext:   resourceLxcGuestReadWithLock,
+		UpdateContext: resourceLxcGuestUpdate,
+		DeleteContext: resourceLxcGuestDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 		CustomizeDiff: reboot.CustomizeDiff(),
 
 		Schema: map[string]*schema.Schema{
-			architecture.Root:            architecture.Schema(),
-			clone.Root:                   clone.Schema(),
-			cpu.Root:                     cpu.Schema(),
-			description.Root:             description.Schema(),
-			dns.Root:                     dns.Schema(),
-			features.Root:                features.Schema(),
+			architecture.Root: architecture.Schema(),
+			clone.Root:        clone.Schema(),
+			cpu.Root:          cpu.Schema(),
+			description.Root:  description.Schema(),
+			dns.Root:          dns.Schema(),
+			// features.Root:                features.Schema(),
 			memory.Root:                  memory.Schema(),
 			mounts.RootMount:             mounts.SchemaMount(),
 			mounts.RootMounts:            mounts.SchemaMounts(),
@@ -81,15 +80,21 @@ func ResourceLxcNew() *schema.Resource {
 	return lxcNewResourceDef
 }
 
-func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
+	diags := lxcGuestWarning()
+
 	client := pconf.Client
 
 	privileged := privilege.SDK(d)
-	config, diags := lxcSDK(privileged, d)
+	config, tmpDiags := lxcSDK(privileged, d)
+	diags = append(diags, tmpDiags...)
+	if diags.HasError() {
+		return diags
+	}
 	config.Privileged = &privileged
 
 	// Set the node for the LXC container
@@ -150,36 +155,41 @@ func resourceLxcNewCreate(ctx context.Context, d *schema.ResourceData, meta any)
 			Type: id.GuestLxc}.String())
 	}
 
-	return append(diags, resourceLxcNewRead(ctx, d, meta, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, meta, vmr, client)...)
 }
 
-func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pConf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pConf)
 	defer lock.unlock()
 
 	client := pConf.Client
 
+	diags := lxcGuestWarning()
+
 	// Get vm reference
 	var resourceID id.Guest
 	err := resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
-		return diag.Diagnostics{{
+		return append(diags, diag.Diagnostic{
 			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
-			Severity: diag.Error}}
+			Severity: diag.Error})
 	}
 	var vmr *pveSDK.VmRef
 	vmr, err = client.GetVmRefById(ctx, resourceID.ID)
 	if err != nil {
-		return diag.Diagnostics{
-			diag.Diagnostic{
-				Summary:  err.Error(),
-				Severity: diag.Error}}
+		return append(diags, diag.Diagnostic{
+			Summary:  err.Error(),
+			Severity: diag.Error})
 	}
 
 	// create a new config from the resource data
-	config, diags := lxcSDK(privilege.SDK(d), d)
+	config, tmpDiags := lxcSDK(privilege.SDK(d), d)
+	diags = append(diags, tmpDiags...)
+	if diags.HasError() {
+		return diags
+	}
 
 	// update the targetNode for the LXC container
 	var targetNode pveSDK.NodeName
@@ -201,27 +211,29 @@ func resourceLxcNewUpdate(ctx context.Context, d *schema.ResourceData, meta any)
 			Severity: diag.Error})
 	}
 
-	return append(diags, resourceLxcNewRead(ctx, d, meta, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, meta, vmr, client)...)
 }
 
-func resourceLxcNewReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pConf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pConf)
 	defer lock.unlock()
+
+	diags := lxcGuestWarning()
 
 	var resourceID id.Guest
 	err := resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
-		return diag.Diagnostics{{
+		return append(diags, diag.Diagnostic{
 			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
-			Severity: diag.Error}}
+			Severity: diag.Error})
 	}
 
-	return resourceLxcNewRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)
+	return append(diags, resourceLxcGuestRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)...)
 }
 
-func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
 	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
 		return diag.Diagnostics{{
@@ -245,7 +257,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	cpu.Terraform(config.CPU, d)
 	description.Terraform(config.Description, false, d)
 	dns.Terraform(config.DNS, d)
-	features.Terraform(config.Features, d)
+	// features.Terraform(config.Features, d)
 	memory.Terraform(config.Memory, d)
 	mounts.Terraform(config.Mounts, d)
 	name.Terraform_Unsafe(config.Name, d)
@@ -261,7 +273,7 @@ func resourceLxcNewRead(ctx context.Context, d *schema.ResourceData, meta any, v
 	return nil
 }
 
-func resourceLxcNewDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+func resourceLxcGuestDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	return guestDelete(ctx, d, meta, "LXC")
 }
 
@@ -275,12 +287,12 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 		CPU:         cpu.SDK(d),
 		DNS:         dns.SDK(d),
 		Description: description.SDK(false, d),
-		Features:    features.SDK(privilidged, d),
-		Memory:      memory.SDK(d),
-		Name:        guestName,
-		State:       powerstate.SDK(d),
-		Swap:        swap.SDK(d),
-		Tags:        tags.SDK(d),
+		// Features:    features.SDK(privilidged, d),
+		Memory: memory.SDK(d),
+		Name:   guestName,
+		State:  powerstate.SDK(d),
+		Swap:   swap.SDK(d),
+		Tags:   tags.SDK(d),
 	}
 	var diags, tmpDiags diag.Diagnostics
 	config.Networks, diags = networks.SDK(d)
@@ -290,4 +302,11 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 	config.Mounts, tmpDiags = mounts.SDK(privilidged, d)
 	diags = append(diags, tmpDiags...)
 	return config, diags
+}
+
+func lxcGuestWarning() diag.Diagnostics {
+	return diag.Diagnostics{{
+		Detail:   "The LXC Guest resource is experimental. The schema and functionality may change in future releases without a major version bump.",
+		Summary:  "LXC Guest resource is experimental",
+		Severity: diag.Warning}}
 }

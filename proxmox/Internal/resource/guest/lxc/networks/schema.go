@@ -27,7 +27,7 @@ const (
 	schemaMTU        = "mtu"
 	schemaName       = "name"
 	schemaNativeVlan = native.Root
-	schemaRate       = "rate"
+	schemaRateLimit  = "rate_limit"
 
 	schmemaIPv4 = "ipv4"
 	schmemaIPv6 = "ipv6"
