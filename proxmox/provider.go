@@ -239,6 +239,7 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 		"Datastore.AllocateSpace",
 		"Datastore.Audit",
 		"Pool.Allocate",
+		"Pool.Audit",
 		"Sys.Audit",
 		"Sys.Console",
 		"Sys.Modify",
