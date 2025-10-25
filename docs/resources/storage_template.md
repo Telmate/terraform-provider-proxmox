@@ -11,9 +11,14 @@ This resource creates and manages CT Templates to create LXC containers.
 > ```
 
 ```hcl
-resource "proxmox_storage_template" "example" {
+resource "proxmox_storage_template" "template_example" {
   pve_node = "pve"
   storage = "local"
-  template = "almalinux-9-default_20240911_amd64.tar.xz"
+  template = "alpine-3.22-default_20250617_amd64.tar.xz"
+}
+
+resource "proxmox_lxc" "lxc_example" {
+  ...
+  ostemplate              = proxmox_storage_template.template_example.os_template
 }
 ```
