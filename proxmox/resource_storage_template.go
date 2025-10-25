@@ -40,6 +40,10 @@ func resourceStorageTemplate() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"os_template": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 		Timeouts: resourceTimeouts(),
 	}
@@ -70,6 +74,7 @@ func resourceStorageTemplateCreate(ctx context.Context, d *schema.ResourceData, 
 
 	volId := fmt.Sprintf("%s:%s/%s", storage, templateContentType, template)
 	d.SetId(volId)
+	d.Set("os_template", volId)
 
 	return resourceStorageTemplateRead(ctx, d, meta)
 }
