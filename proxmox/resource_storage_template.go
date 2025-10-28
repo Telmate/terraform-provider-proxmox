@@ -68,7 +68,7 @@ func resourceStorageTemplateCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	if err := pveSDK.DownloadLxcTemplate(ctx, client, config); err != nil {
+	if err := config.Download(ctx, client); err != nil {
 		return diag.FromErr(err)
 	}
 
