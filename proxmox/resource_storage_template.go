@@ -2,16 +2,10 @@ package proxmox
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-)
-
-const (
-	templateContentType = "vztmpl"
 )
 
 func resourceStorageTemplate() *schema.Resource {
@@ -69,16 +63,8 @@ func resourceStorageTemplateCreate(ctx context.Context, d *schema.ResourceData, 
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
-	template := d.Get("template").(string)
-	storage := d.Get("storage").(string)
-	node := d.Get("pve_node").(string)
-
-	config := pveSDK.ConfigContent_Template{
-		Node:     node,
-		Storage:  storage,
-		Template: template,
-	}
-	if err := config.Validate(); err != nil {
+	config, err := _toConfigContent_Template(d)
+	if err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -86,9 +72,8 @@ func resourceStorageTemplateCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	volId := fmt.Sprintf("%s:%s/%s", storage, templateContentType, template)
-	d.SetId(volId)
-	d.Set("os_template", volId)
+	d.SetId(config.VolId())
+	d.Set("os_template", config.VolId())
 
 	return resourceStorageTemplateRead(ctx, d, meta)
 }
@@ -97,30 +82,19 @@ func resourceStorageTemplateRead(ctx context.Context, d *schema.ResourceData, me
 	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
 
-	var templateFound bool
-	storage := d.Get("storage").(string)
-	nodeName := pveSDK.NodeName(d.Get("pve_node").(string))
-
-	storageContent, err := client.GetStorageContent(ctx, storage, nodeName)
+	config, err := _toConfigContent_Template(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	contents := storageContent["data"].([]interface{})
-	for c := range contents {
-		contentMap := contents[c].(map[string]interface{})
-		if contentMap["volid"].(string) == d.Id() {
-			size := contentMap["size"].(float64)
-			d.Set("size", ByteCountIEC(int64(size)))
-			templateFound = true
-			break
-		}
+	exists, err := config.Exists(ctx, client)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
-	if !templateFound {
+	if !exists {
 		d.SetId("")
 	}
-
 	return nil
 }
 
@@ -130,11 +104,14 @@ func resourceStorageTemplateDelete(ctx context.Context, d *schema.ResourceData, 
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
-	storage := strings.SplitN(d.Id(), ":", 2)[0]
-	templateURL := fmt.Sprintf("/nodes/%s/storage/%s/content/%s", d.Get("pve_node").(string), storage, d.Id())
-
-	if err := client.Delete(ctx, templateURL); err != nil {
+	config, err := _toConfigContent_Template(d)
+	if err != nil {
 		return diag.FromErr(err)
 	}
+
+	if err := config.Delete(ctx, client); err != nil {
+		return diag.FromErr(err)
+	}
+
 	return nil
 }
