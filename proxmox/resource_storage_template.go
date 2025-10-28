@@ -49,6 +49,20 @@ func resourceStorageTemplate() *schema.Resource {
 	}
 }
 
+func _toConfigContent_Template(d *schema.ResourceData) (config pveSDK.ConfigContent_Template, err error) {
+	template := d.Get("template").(string)
+	storage := d.Get("storage").(string)
+	node := d.Get("pve_node").(string)
+
+	config = pveSDK.ConfigContent_Template{
+		Node:     node,
+		Storage:  storage,
+		Template: template,
+	}
+	err = config.Validate()
+	return
+}
+
 func resourceStorageTemplateCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	client := pconf.Client
