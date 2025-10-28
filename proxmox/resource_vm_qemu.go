@@ -612,6 +612,10 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.EFIDisk = qemuEfiDisks[0]
 	}
 
+	if err := validateVGAAndSerial(d); err != nil {
+			return diag.FromErr(err)
+    }
+
 	var vmr *pveSDK.VmRef
 	if guestID := vmID.Get(d); guestID != 0 { // Manually set vmID
 		log.Print("[DEBUG][QemuVmCreate] checking if vmId: " + guestID.String() + " already exists")
@@ -870,6 +874,10 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	if tmpDiags.HasError() {
 		return diags
 	}
+
+	if err := validateVGAAndSerial(d); err != nil {
+        return diag.FromErr(err)
+    }
 
 	logger.Debug().Int(vmID.Root, int(resourceID.ID)).Msgf("Updating VM with the following configuration: %+v", config)
 
@@ -1520,4 +1528,38 @@ func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pveSDK.QemuGuestAgent {
 	return &pveSDK.QemuGuestAgent{
 		Enable: &tmpEnable,
 	}
+}
+
+func validateVGAAndSerial(d *schema.ResourceData) error {
+    // Get VGA configuration
+    vgaList := d.Get("vga").([]interface{})
+
+    if len(vgaList) > 0 {
+        vga := vgaList[0].(map[string]interface{})
+        vgaType := vga["type"].(string)
+
+        // Check if vga type is serial0, serial1, serial2, or serial3
+        if strings.HasPrefix(vgaType, "serial") {
+            // Extract serial number (0-3)
+            serialNum := strings.TrimPrefix(vgaType, "serial")
+
+            // Check if corresponding serial device is defined
+            serialList := d.Get("serial").([]interface{})
+            serialFound := false
+
+            for _, s := range serialList {
+                serial := s.(map[string]interface{})
+                if fmt.Sprintf("%d", serial["id"].(int)) == serialNum {
+                    serialFound = true
+                    break
+                }
+            }
+
+            if !serialFound {
+                return fmt.Errorf("vga type '%s' requires serial device with id=%s to be defined", vgaType, serialNum)
+            }
+        }
+    }
+
+    return nil
 }
