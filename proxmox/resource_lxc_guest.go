@@ -7,6 +7,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/clone"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/dns"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/guestid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
 	tags "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/lxc_tags"
@@ -51,6 +52,7 @@ func resourceLxcGuest() *schema.Resource {
 			description.Root:  description.Schema(),
 			dns.Root:          dns.Schema(),
 			// features.Root:                features.Schema(),
+			guestid.Root:                 guestid.Schema(),
 			memory.Root:                  memory.Schema(),
 			mounts.RootMount:             mounts.SchemaMount(),
 			mounts.RootMounts:            mounts.SchemaMounts(),
@@ -95,6 +97,7 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 	if diags.HasError() {
 		return diags
 	}
+	config.ID = guestid.SDK(d)
 	config.Privileged = &privileged
 
 	// Set the node for the LXC container
@@ -258,6 +261,7 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, meta any,
 	description.Terraform(config.Description, false, d)
 	dns.Terraform(config.DNS, d)
 	// features.Terraform(config.Features, d)
+	guestid.Terraform(config.ID, d)
 	memory.Terraform(config.Memory, d)
 	mounts.Terraform(config.Mounts, d)
 	name.Terraform_Unsafe(config.Name, d)

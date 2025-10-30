@@ -44,6 +44,7 @@ resource "proxmox_lxc_guest" "minimal-example" {
 | `cpu`             | `nested`|                          | CPU configuration, see [CPU Reference](#cpu-reference).|
 | `description`     | `string`| `"Managed by Terraform."`| Description of the guest container.|
 | `dns`             | `nested`|                          | DNS configuration, see [DNS Reference](#dns-reference).|
+| `guest_id`        | `int`   |                          | **Forces Recreation**, **Computed**: The numeric ID of the guest container also known as `vmid`. If not specified, an ID will be automatically assigned.|
 | `memory`          | `int`   | `512`                    | The amount of memory to allocate to the guest in Megabytes.|
 | `mount`           | `array` |                          | Storage mounts configured as individual array items, see [Mount Reference](#mount-reference).|
 | `mounts`          | `nested`|                          | Storage mounts configured as nested sub items, see [Mounts Reference](#mounts-reference).|
