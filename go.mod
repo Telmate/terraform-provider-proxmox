@@ -1,6 +1,6 @@
 module github.com/Telmate/terraform-provider-proxmox/v2
 
-go 1.24
+go 1.24.9
 
 require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20251016192144-4a331a14ad5c
