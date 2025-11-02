@@ -172,7 +172,7 @@ func terraformSubroutinePCIs(config pveAPI.QemuPci) []interface{} {
 			params[schemaPrimaryGPU] = *config.Mapping.PrimaryGPU
 		}
 		if config.Mapping.MDev != nil {
-			params[schemaMDev] = config.Mapping.VendorID.String()
+			params[schemaMDev] = config.Mapping.MDev.String()
 		}
 		if config.Mapping.ROMbar != nil {
 			params[schemaROMbar] = *config.Mapping.ROMbar
