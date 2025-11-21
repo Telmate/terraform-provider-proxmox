@@ -634,7 +634,35 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		Type: id.GuestLxc}.String())
 
 	lock.unlock()
+	reconcilePowerState(ctx, vmr, client, d)
 	return append(diags, resourceLxcRead(ctx, d, meta)...)
+}
+
+func reconcilePowerState(ctx context.Context, vmr *pveSDK.VmRef, client *pveSDK.Client, d *schema.ResourceData) diag.Diagnostics {
+	guestState, err := vmr.GetRawGuestStatus(ctx, client)
+	if err != nil {
+		return diag.Diagnostics{{
+			Summary:  err.Error(),
+			Severity: diag.Error}}
+	}
+	switch guestState.GetState() {
+	case pveSDK.PowerStateStopped:
+		if d.Get("start").(bool) {
+			log.Print("[DEBUG][LXCUpdate] starting LXC")
+			_, err = client.StartVm(ctx, vmr)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	case pveSDK.PowerStateRunning:
+		if !d.Get("start").(bool) {
+			log.Print("[DEBUG][LXCUpdate] stopping LXC")
+			if err = vmr.Stop(ctx, client); err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
+	return nil
 }
 
 func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -768,32 +796,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
-	if d.HasChange("start") {
-		guestState, err := vmr.GetRawGuestStatus(ctx, client)
-		if err != nil {
-			return diag.Diagnostics{{
-				Summary:  err.Error(),
-				Severity: diag.Error}}
-		}
-		switch guestState.GetState() {
-		case pveSDK.PowerStateStopped:
-			if d.Get("start").(bool) {
-				log.Print("[DEBUG][LXCUpdate] starting LXC")
-				_, err = client.StartVm(ctx, vmr)
-				if err != nil {
-					return diag.FromErr(err)
-				}
-			}
-		case pveSDK.PowerStateRunning:
-			if !d.Get("start").(bool) {
-				log.Print("[DEBUG][LXCUpdate] stopping LXC")
-				if err = vmr.Stop(ctx, client); err != nil {
-					return diag.FromErr(err)
-				}
-			}
-		}
-	}
-
+	reconcilePowerState(ctx, vmr, client, d)
 	lock.unlock()
 	return resourceLxcRead(ctx, d, meta)
 }
