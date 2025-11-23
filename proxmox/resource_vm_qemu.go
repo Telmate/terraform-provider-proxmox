@@ -1444,20 +1444,23 @@ func getPrimaryIP(
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", endTime)
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retrying for at most  %v before giving up", retryDuration)
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retries will end at %s", endTime)
+	var state pveSDK.GuestAgentState
 	for time.Now().Before(endTime) {
-		var interfaces []pveSDK.AgentNetworkInterface
-		interfaces, err = vmr.GetAgentInformation(ctx, client, false)
+		var interfaces pveSDK.RawAgentNetworkInterfaces
+		interfaces, state, err = vmr.GetAgentInformation(ctx, client)
 		if err != nil {
-			if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-				return primaryIPs{}, diag.FromErr(err)
-			}
-			log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
-			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("check ip result error %s", err.Error())
-		} else { // vm is running and reachable
-			if len(interfaces) > 0 { // agent returned some information
-				log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
-				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
-				conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
+			return primaryIPs{}, diag.FromErr(err)
+		}
+		if state == pveSDK.GuestAgentStateVmNotRunning {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Summary:  "Qemu guest not running",
+				Severity: diag.Error}}
+		}
+		if state == pveSDK.GuestAgentStateRunning { // vm is running and reachable
+			if raw, ok := interfaces.SelectMacAddress(primaryMacAddress); ok {
+				log.Printf("[INFO][getPrimaryIP] Qemu Agent found MAC")
+				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Qemu Agent found MAC")
+				conn = conn.parsePrimaryIPs(raw.GetIpAddresses())
 				if conn.hasRequiredIP() {
 					return conn.IPs, diag.Diagnostics{}
 				}
@@ -1465,14 +1468,10 @@ func getPrimaryIP(
 		}
 		time.Sleep(retryInterval)
 	}
-	if err != nil {
-		if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-				Severity: diag.Warning,
-				Summary:  "Qemu Guest Agent is enabled but not working",
-				Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
-		}
-		return primaryIPs{}, diag.FromErr(err)
+	if state == pveSDK.GuestAgentStateNotRunning {
+		return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+			Summary:  "Qemu Guest Agent is enabled but not installed/working inside the Qemu guest",
+			Severity: diag.Warning}}
 	}
 	return conn.IPs, conn.agentDiagnostics()
 }
