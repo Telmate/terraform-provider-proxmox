@@ -36,6 +36,8 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startatnodeboot"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startupshutdown"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
@@ -137,18 +139,10 @@ func resourceVmQemu() *schema.Resource {
 					return new == stateStarted
 				},
 			},
-			"onboot": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Description: "VM autostart on boot",
-			},
-			"startup": {
-				Type:     schema.TypeString,
-				Optional: true,
-				// Default:     "",
-				Description: "Startup order of the VM",
-			},
+			startatnodeboot.LegacyRoot: startatnodeboot.LegacySchema(),
+			startatnodeboot.Root:       startatnodeboot.Schema(),
+			startupshutdown.LegacyRoot: startupshutdown.LegacySchema(),
+			startupshutdown.Root:       startupshutdown.Schema(),
 			"protection": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -568,7 +562,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Machine:          d.Get("machine").(string),
 		Memory:           mapToSDK_Memory(d),
 		Name:             &guestName,
-		Onboot:           util.Pointer(d.Get("onboot").(bool)),
 		Pool:             util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Protection:       util.Pointer(d.Get("protection").(bool)),
 		QemuKVM:          util.Pointer(d.Get("kvm").(bool)),
@@ -577,7 +570,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Scsihw:           d.Get("scsihw").(string),
 		Serials:          serial.SDK(d),
 		Smbios1:          BuildSmbiosArgs(d.Get("smbios").([]any)),
-		Startup:          d.Get("startup").(string),
+		StartAtNodeBoot:  util.Pointer(startatnodeboot.SDK(d)),
+		StartupShutdown:  startupshutdown.SDK(d),
 		TPM:              tpm.SDK(d),
 		Tablet:           util.Pointer(d.Get("tablet").(bool)),
 		Tags:             tags.SDK(d),
@@ -825,7 +819,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Machine:          d.Get("machine").(string),
 		Memory:           mapToSDK_Memory(d),
 		Name:             util.Pointer(name.SDK(d)),
-		Onboot:           util.Pointer(d.Get("onboot").(bool)),
 		Pool:             util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Protection:       util.Pointer(d.Get("protection").(bool)),
 		QemuKVM:          util.Pointer(d.Get("kvm").(bool)),
@@ -834,7 +827,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Scsihw:           d.Get("scsihw").(string),
 		Serials:          serial.SDK(d),
 		Smbios1:          BuildSmbiosArgs(d.Get("smbios").([]any)),
-		Startup:          d.Get("startup").(string),
+		StartAtNodeBoot:  util.Pointer(startatnodeboot.SDK(d)),
+		StartupShutdown:  startupshutdown.SDK(d),
 		TPM:              tpm.SDK(d),
 		Tablet:           util.Pointer(d.Get("tablet").(bool)),
 		Tags:             tags.SDK(d),
@@ -1039,8 +1033,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	name.Terraform_Unsafe(config.Name, d)
 	description.Terraform(config.Description, true, d)
 	d.Set("bios", config.Bios)
-	d.Set("onboot", config.Onboot)
-	d.Set("startup", config.Startup)
 	d.Set("protection", config.Protection)
 	d.Set("tablet", config.Tablet)
 	d.Set("boot", config.Boot)
@@ -1076,6 +1068,8 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if len(config.Serials) != 0 {
 		serial.Terraform(config.Serials, d)
 	}
+	startatnodeboot.Terraform(*config.StartAtNodeBoot, d)
+	startupshutdown.Terraform(config.StartupShutdown, d)
 	if len(config.USBs) != 0 {
 		usb.Terraform(config.USBs, d)
 	}
@@ -1444,20 +1438,23 @@ func getPrimaryIP(
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", endTime)
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retrying for at most  %v before giving up", retryDuration)
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retries will end at %s", endTime)
+	var state pveSDK.GuestAgentState
 	for time.Now().Before(endTime) {
-		var interfaces []pveSDK.AgentNetworkInterface
-		interfaces, err = vmr.GetAgentInformation(ctx, client, false)
+		var interfaces pveSDK.RawAgentNetworkInterfaces
+		interfaces, state, err = vmr.GetAgentInformation(ctx, client)
 		if err != nil {
-			if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-				return primaryIPs{}, diag.FromErr(err)
-			}
-			log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
-			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("check ip result error %s", err.Error())
-		} else { // vm is running and reachable
-			if len(interfaces) > 0 { // agent returned some information
-				log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
-				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
-				conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
+			return primaryIPs{}, diag.FromErr(err)
+		}
+		if state == pveSDK.GuestAgentStateVmNotRunning {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Summary:  "Qemu guest not running",
+				Severity: diag.Error}}
+		}
+		if state == pveSDK.GuestAgentStateRunning { // vm is running and reachable
+			if raw, ok := interfaces.SelectMacAddress(primaryMacAddress); ok {
+				log.Printf("[INFO][getPrimaryIP] Qemu Agent found MAC")
+				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Qemu Agent found MAC")
+				conn = conn.parsePrimaryIPs(raw.GetIpAddresses())
 				if conn.hasRequiredIP() {
 					return conn.IPs, diag.Diagnostics{}
 				}
@@ -1465,14 +1462,10 @@ func getPrimaryIP(
 		}
 		time.Sleep(retryInterval)
 	}
-	if err != nil {
-		if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-				Severity: diag.Warning,
-				Summary:  "Qemu Guest Agent is enabled but not working",
-				Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
-		}
-		return primaryIPs{}, diag.FromErr(err)
+	if state == pveSDK.GuestAgentStateNotRunning {
+		return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+			Summary:  "Qemu Guest Agent is enabled but not installed/working inside the Qemu guest",
+			Severity: diag.Warning}}
 	}
 	return conn.IPs, conn.agentDiagnostics()
 }

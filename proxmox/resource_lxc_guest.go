@@ -26,6 +26,8 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/powerstate"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startatnodeboot"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startupshutdown"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -72,6 +74,8 @@ func resourceLxcGuest() *schema.Resource {
 			reboot.RootRequired:          reboot.SchemaRequired(),
 			rootmount.Root:               rootmount.Schema(),
 			ssh_public_keys.Root:         ssh_public_keys.Schema(),
+			startatnodeboot.Root:         startatnodeboot.Schema(),
+			startupshutdown.Root:         startupshutdown.Schema(),
 			swap.Root:                    swap.Schema(),
 			tags.Root:                    tags.Schema(),
 			template.Root:                template.Schema(),
@@ -272,6 +276,8 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, meta any,
 	powerstate.Terraform(guestStatus.GetState(), d)
 	privilege.Terraform(*config.Privileged, d)
 	rootmount.Terraform(config.BootMount, d)
+	startatnodeboot.Terraform(*config.StartAtNodeBoot, d)
+	startupshutdown.Terraform(config.StartupShutdown, d)
 	swap.Terraform(config.Swap, d)
 	tags.Terraform(config.Tags, d)
 	return nil
@@ -292,11 +298,13 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 		DNS:         dns.SDK(d),
 		Description: description.SDK(false, d),
 		// Features:    features.SDK(privilidged, d),
-		Memory: memory.SDK(d),
-		Name:   guestName,
-		State:  powerstate.SDK(d),
-		Swap:   swap.SDK(d),
-		Tags:   tags.SDK(d),
+		Memory:          memory.SDK(d),
+		Name:            guestName,
+		StartupShutdown: startupshutdown.SDK(d),
+		StartAtNodeBoot: util.Pointer(startatnodeboot.SDK(d)),
+		State:           powerstate.SDK(d),
+		Swap:            swap.SDK(d),
+		Tags:            tags.SDK(d),
 	}
 	var diags, tmpDiags diag.Diagnostics
 	config.Networks, diags = networks.SDK(d)

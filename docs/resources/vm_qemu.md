@@ -98,8 +98,8 @@ The following arguments are supported in the top level resource block.
 | `description`                 | `str`    |                      | The description of the VM. Shows as the 'Notes' field in the Proxmox GUI. |
 | `define_connection_info`      | `bool`   | `true`               | Whether to let terraform define the (SSH) connection parameters for preprovisioners, see config block below. |
 | `bios`                        | `str`    | `"seabios"`          | The BIOS to use, options are `seabios` or `ovmf` for UEFI. |
-| `onboot`                      | `bool`   | `false`              | Whether to have the VM startup after the PVE node starts. |
-| `startup`                     | `string` | `""`                 | The [startup and shutdown behaviour](https://pve.proxmox.com/pve-docs/pve-admin-guide.html#pct_startup_and_shutdown) |
+| `start_at_node_boot`          | `bool`   | `false`              | Whether the guest should start automatically when the Proxmox node boots.|
+| `startup_shutdown`            | `nested` |                      | Startup and shutdown configuration of the guest, see [Startup and Shutdown Reference](#startup-and-shutdown-reference).|
 | `vm_state`                    | `string` | `"running"`          | The desired state of the VM, options are `running`, `stopped` and `started`. Do note that `started` will only start the vm on creation and won't fully manage the power state unlike `running` and `stopped` do. |
 | `oncreate`                    | `bool`   | `true`               | Whether to have the VM startup after the VM is created (deprecated, use `vm_state` instead) |
 | `protection`                  | `bool`   | `false`              | Enable/disable the VM protection from being removed. The default value of `false` indicates the VM is removable. |
@@ -802,6 +802,17 @@ The `rng` block is used to configure a random number generator device. It can on
 | `limit`  | `int`    | `1024`        | The maximum number of bytes per `period` to read from the RNG device.|
 | `period` | `int`    |               | The period in milliseconds to read from the RNG device. `0` for unlimited.|
 | `source` | `string` | `/dev/urandom`| The source of the random number generator. Options: `/dev/random`, `/dev/urandom`, `/dev/hwrng`. |
+
+### Startup and Shutdown Reference
+
+The `startup_shutdown` field is used to configure the startup and shutdown settings. It may ony be specified once.
+
+| Argument            | Type | Default Value | Description |
+|:--------------------|------|---------------|:------------|
+| `order`             | `int`| `-1`          | Startup order `-1` means any.|
+| `shutdown_timeout`  | `int`| `-1`          | Shutdown timeout in seconds, `-1` means default.|
+| `startup_delay`     | `int`| `-1`          | Startup delay in seconds, `-1` means default.|
+
 
 ## SMBIOS Block
 

@@ -37,32 +37,34 @@ resource "proxmox_lxc_guest" "minimal-example" {
 
 ## Argument reference
 
-| Argument          | Type    | Default Value            | Description |
-|:------------------|---------|--------------------------|:------------|
-| `clone`           | `nested`|                          | **Forces Recreation**: Clone configuration, see [Clone Reference](#clone-reference).|
-| `cpu_architecture`| `string`|                          | **Computed**: The CPU architecture.|
-| `cpu`             | `nested`|                          | CPU configuration, see [CPU Reference](#cpu-reference).|
-| `description`     | `string`| `"Managed by Terraform."`| Description of the guest container.|
-| `dns`             | `nested`|                          | DNS configuration, see [DNS Reference](#dns-reference).|
-| `guest_id`        | `int`   |                          | **Forces Recreation**, **Computed**: The numeric ID of the guest container also known as `vmid`. If not specified, an ID will be automatically assigned.|
-| `memory`          | `int`   | `512`                    | The amount of memory to allocate to the guest in Megabytes.|
-| `mount`           | `array` |                          | Storage mounts configured as individual array items, see [Mount Reference](#mount-reference).|
-| `mounts`          | `nested`|                          | Storage mounts configured as nested sub items, see [Mounts Reference](#mounts-reference).|
-| `name`            | `string`|                          | **Required**: The name of the container.|
-| `network`         | `array` |                          | Network interfaces configured as individual array items, see [Network Reference](#network-reference).|
-| `networks`        | `nested`|                          | Network interfaces configured as nested sub items, see [Networks Reference](#networks-reference).|
-| `os`              | `string`|                          | **Computed**: The name of the OS inside the guest.|
-| `password`        | `string`|                          | **Forces Recreation**, **Sensitive**: The password of the root user inside the guest container.|
-| `pool`            | `string`|                          | The name of the pool the guest container should be a member of.|
-| `power_state`     | `string`| `"running"`              | Power state of the guest, can be `"running"` or `"stopped"`.|
-| `privileged`      | `bool`  |                          | **Forces Recreation**: If the guest is privileged or unprivileged. Can only be `true` or unset. Mutually exclusive with `unprivileged`.|
-| `root_mount`      | `nested`|                          | **Required**: Configuration of the root/boot mount/disk of the guest container. **Note:** Size can only be increased, not decreased.|
-| `ssh_public_key`  | `string`|                          | **Forces Recreation** SSH public key of the root user inside the guest container.|
-| `swap`            | `int`   | `512`                    | Amount of virtual memory of the guest that will b mapped to swap space on the PVE node.|
-| `tags`            | `list`  | `[]`                     | List of tags to assign to the guest container.|
-| `target_node`     | `string`|                          | Single node the guest should be on. If the guest is on a different node it will be migrated to this one.|
-| `target_nodes`    | `array` |                          | List of nodes the guest should be on. If the guest is not on one of these nodes it will be migrated to one of them.|
-| `unprivileged`    | `bool`  |                          | **Forces Recreation**: If the guest is unprivileged or privileged. Can only be `true` or unset. Mutually exclusive with `privileged`.|
+| Argument            | Type    | Default Value            | Description |
+|:--------------------|---------|--------------------------|:------------|
+| `clone`             | `nested`|                          | **Forces Recreation**: Clone configuration, see [Clone Reference](#clone-reference).|
+| `cpu_architecture`  | `string`|                          | **Computed**: The CPU architecture.|
+| `cpu`               | `nested`|                          | CPU configuration, see [CPU Reference](#cpu-reference).|
+| `description`       | `string`| `"Managed by Terraform."`| Description of the guest container.|
+| `dns`               | `nested`|                          | DNS configuration, see [DNS Reference](#dns-reference).|
+| `guest_id`          | `int`   |                          | **Forces Recreation**, **Computed**: The numeric ID of the guest container also known as `vmid`. If not specified, an ID will be automatically assigned.|
+| `memory`            | `int`   | `512`                    | The amount of memory to allocate to the guest in Megabytes.|
+| `mount`             | `array` |                          | Storage mounts configured as individual array items, see [Mount Reference](#mount-reference).|
+| `mounts`            | `nested`|                          | Storage mounts configured as nested sub items, see [Mounts Reference](#mounts-reference).|
+| `name`              | `string`|                          | **Required**: The name of the container.|
+| `network`           | `array` |                          | Network interfaces configured as individual array items, see [Network Reference](#network-reference).|
+| `networks`          | `nested`|                          | Network interfaces configured as nested sub items, see [Networks Reference](#networks-reference).|
+| `os`                | `string`|                          | **Computed**: The name of the OS inside the guest.|
+| `password`          | `string`|                          | **Forces Recreation**, **Sensitive**: The password of the root user inside the guest container.|
+| `pool`              | `string`|                          | The name of the pool the guest container should be a member of.|
+| `power_state`       | `string`| `"running"`              | Power state of the guest, can be `"running"` or `"stopped"`.|
+| `privileged`        | `bool`  |                          | **Forces Recreation**: If the guest is privileged or unprivileged. Can only be `true` or unset. Mutually exclusive with `unprivileged`.|
+| `root_mount`        | `nested`|                          | **Required**: Configuration of the root/boot mount/disk of the guest container. **Note:** Size can only be increased, not decreased.|
+| `ssh_public_key`    | `string`|                          | **Forces Recreation** SSH public key of the root user inside the guest container.|
+| `start_at_node_boot`| `bool`  | `false`                  | Whether the guest should start automatically when the Proxmox node boots.|
+| `startup_shutdown`  | `nested`|                          | Startup and shutdown configuration of the guest, see [Startup and Shutdown Reference](#startup-and-shutdown-reference).|
+| `swap`              | `int`   | `512`                    | Amount of virtual memory of the guest that will b mapped to swap space on the PVE node.|
+| `tags`              | `list`  | `[]`                     | List of tags to assign to the guest container.|
+| `target_node`       | `string`|                          | Single node the guest should be on. If the guest is on a different node it will be migrated to this one.|
+| `target_nodes`      | `array` |                          | List of nodes the guest should be on. If the guest is not on one of these nodes it will be migrated to one of them.|
+| `unprivileged`      | `bool`  |                          | **Forces Recreation**: If the guest is unprivileged or privileged. Can only be `true` or unset. Mutually exclusive with `privileged`.|
 
 ### Clone Reference
 
@@ -220,3 +222,13 @@ The `networks` field is used to configure the network interfaces. It may only be
 | `gateway`    | `string`|               | IPv6 gateway of the network interface.|
 | `dhcp`       | `bool`  | `false`       | Wheter IPv6 DHCP is enabled on the network interface. Mutually exclusive with `address`, `gateway` and `slaac`.|
 | `slaac`      | `bool`  | `false`       | Wheter SLAAC is enabled on the network interface. Conflicts with IPv6 settings. Mutually exclusive with `address`, `gateway` and `dhcp`.|
+
+### Startup and Shutdown Reference
+
+The `startup_shutdown` field is used to configure the startup and shutdown settings. It may ony be specified once.
+
+| Argument            | Type | Default Value | Description |
+|:--------------------|------|---------------|:------------|
+| `order`             | `int`| `-1`          | Startup order `-1` means any.|
+| `shutdown_timeout`  | `int`| `-1`          | Shutdown timeout in seconds, `-1` means default.|
+| `startup_delay`     | `int`| `-1`          | Startup delay in seconds, `-1` means default.|
