@@ -50,9 +50,9 @@ func guestGetSourceVmr(
 		if err != nil {
 			return nil, err
 		}
-		rawGuest, err := rawGuests.SelectID(id)
-		if err != nil {
-			return nil, err
+		rawGuest, ok := rawGuests.SelectID(id)
+		if !ok {
+			return nil, errors.New("guest with ID '" + id.String() + "' does not exist")
 		}
 		if rawGuest.GetType() != guest {
 			return nil, errors.New("guest with ID '" + id.String() + "' is not of type '" + string(guest) + "'")
