@@ -19,9 +19,7 @@ func guestDelete(ctx context.Context, d *schema.ResourceData, meta any, kind str
 	client := pconf.Client
 	rawID, _ := strconv.Atoi(path.Base(d.Id()))
 	guestID := pveSDK.GuestID(rawID)
-	if _, err := guestID.DeleteHaResource(ctx, client); err != nil {
-		return diag.FromErr(err)
-	}
+
 	if err := pveSDK.NewVmRef(guestID).Delete(ctx, client); err != nil {
 		if errors.Is(err, pveSDK.Error.GuestDoesNotExist()) {
 			return diag.Diagnostics{{
