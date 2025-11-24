@@ -3,7 +3,7 @@ module github.com/Telmate/terraform-provider-proxmox/v2
 go 1.24.9
 
 require (
-	github.com/Telmate/proxmox-api-go v0.0.0-20251123220250-002667559cd2
+	github.com/Telmate/proxmox-api-go v0.0.0-20251124001151-81c14ce502d8
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-cty v1.5.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.37.0

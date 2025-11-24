@@ -4,8 +4,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ProtonMail/go-crypto v1.2.0 h1:+PhXXn4SPGd+qk76TlEePBfOfivE0zkWFenhGhFLzWs=
 github.com/ProtonMail/go-crypto v1.2.0/go.mod h1:9whxjD8Rbs29b4XWbB8irEcE8KHMqaR2e7GWU1R+/PE=
-github.com/Telmate/proxmox-api-go v0.0.0-20251123220250-002667559cd2 h1:3JiknHc1yp+5eOj0aYAoVhIX55KaVOUg4/6BBFsbGTA=
-github.com/Telmate/proxmox-api-go v0.0.0-20251123220250-002667559cd2/go.mod h1:HGPbpwiVsrpYYuQAygnnU04ZdGLYc8fdP9qhJIBw2Bg=
+github.com/Telmate/proxmox-api-go v0.0.0-20251124001151-81c14ce502d8 h1:jMLVmxoHzfFxg/fCWaF1es5mYwsW/fjAlaVfqEyOz8U=
+github.com/Telmate/proxmox-api-go v0.0.0-20251124001151-81c14ce502d8/go.mod h1:HGPbpwiVsrpYYuQAygnnU04ZdGLYc8fdP9qhJIBw2Bg=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/apparentlymart/go-textseg/v12 v12.0.0/go.mod h1:S/4uRK2UtaQttw1GenVJEynmyUenKwP++x/+DdGV/Ec=
