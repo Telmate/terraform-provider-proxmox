@@ -162,7 +162,7 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 			Type: id.GuestLxc}.String())
 	}
 
-	return append(diags, resourceLxcGuestRead(ctx, d, meta, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client)...)
 }
 
 func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -218,7 +218,7 @@ func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta an
 			Severity: diag.Error})
 	}
 
-	return append(diags, resourceLxcGuestRead(ctx, d, meta, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client)...)
 }
 
 func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -229,18 +229,32 @@ func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, m
 	diags := lxcGuestWarning()
 
 	var resourceID id.Guest
-	err := resourceID.Parse(d.Id())
-	if err != nil {
+	if err := resourceID.Parse(d.Id()); err != nil {
 		d.SetId("")
 		return append(diags, diag.Diagnostic{
 			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
 			Severity: diag.Error})
 	}
 
-	return append(diags, resourceLxcGuestRead(ctx, d, meta, pveSDK.NewVmRef(resourceID.ID), pConf.Client)...)
+	client := pConf.Client
+
+	ok, err := resourceID.ID.Exists(ctx, client)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+	if !ok {
+		d.SetId("")
+		return diags
+	}
+
+	vmr := pveSDK.NewVmRef(resourceID.ID)
+	if err := client.CheckVmRef(ctx, vmr); err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client)...)
 }
 
-func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, meta any, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
 	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
 		return diag.Diagnostics{{
@@ -258,6 +272,12 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, meta any,
 				Severity: diag.Error}}
 	}
 	reboot.SetRequired(pending, d)
+
+	d.SetId(id.Guest{
+		ID:   vmr.VmId(),
+		Node: vmr.Node(),
+		Type: id.GuestLxc}.String())
+
 	config := raw.Get(*vmr, pveSDK.PowerStateUnknown)
 
 	architecture.Terraform(config.Architecture, d)

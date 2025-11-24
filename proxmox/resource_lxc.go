@@ -25,9 +25,9 @@ var lxcResourceDef *schema.Resource
 func resourceLxc() *schema.Resource {
 	lxcResourceDef = &schema.Resource{
 		CreateContext: resourceLxcCreate,
-		ReadContext:   resourceLxcRead,
+		ReadContext:   resourceLxcReadWithLock,
 		UpdateContext: resourceLxcUpdate,
-		DeleteContext: resourceVmQemuDelete,
+		DeleteContext: resourceLxcDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -632,9 +632,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		ID:   vmr.VmId(),
 		Node: targetNode,
 		Type: id.GuestLxc}.String())
-
-	lock.unlock()
-	return append(diags, resourceLxcRead(ctx, d, meta)...)
+	return append(diags, resourceLxcRead(ctx, d, vmr, client)...)
 }
 
 func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -645,13 +643,14 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	client := pconf.Client
 
 	var resourceID id.Guest
-	err := resourceID.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(err)
+	if err := resourceID.Parse(d.Id()); err != nil {
+		d.SetId("")
+		return diag.Diagnostics{{
+			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
+			Severity: diag.Error}}
 	}
 	vmr := pveSDK.NewVmRef(resourceID.ID)
-	_, err = client.GetVmInfo(ctx, vmr)
-	if err != nil {
+	if _, err := client.GetVmInfo(ctx, vmr); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -748,8 +747,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// TODO: Detect changes requiring Reboot
 
-	err = config.UpdateConfig(ctx, vmr, client)
-	if err != nil {
+	if err := config.UpdateConfig(ctx, vmr, client); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -793,39 +791,53 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			}
 		}
 	}
-
-	lock.unlock()
-	return resourceLxcRead(ctx, d, meta)
+	return resourceLxcRead(ctx, d, vmr, client)
 }
 
-func resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.FromErr(_resourceLxcRead(ctx, d, meta))
-}
-
-func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interface{}) error {
+func resourceLxcReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
-	client := pconf.Client
+
+	diags := diag.Diagnostics{}
+
 	var resourceID id.Guest
-	err := resourceID.Parse(d.Id())
-	if err != nil {
+	if err := resourceID.Parse(d.Id()); err != nil {
 		d.SetId("")
-		return err
+		return append(diags, diag.Diagnostic{
+			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
+			Severity: diag.Error})
+	}
+
+	client := pconf.Client
+
+	ok, err := resourceID.ID.Exists(ctx, client)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+	if !ok {
+		d.SetId("")
+		return diags
 	}
 	vmr := pveSDK.NewVmRef(resourceID.ID)
-	_, err = client.GetVmInfo(ctx, vmr)
-	if err != nil {
-		return err
+	if err := client.CheckVmRef(ctx, vmr); err != nil {
+		return append(diags, diag.FromErr(err)...)
 	}
+	return append(diags, resourceLxcRead(ctx, d, vmr, client)...)
+}
+
+func resourceLxcRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+	diags := diag.Diagnostics{}
+
 	config, err := pveSDK.NewConfigLxcFromApi(ctx, vmr, client)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 	d.SetId(id.Guest{
 		ID:   vmr.VmId(),
 		Node: vmr.Node(),
 		Type: id.GuestLxc}.String())
+
 	node.Terraform(vmr.Node(), d)
 
 	// Read Features
@@ -846,12 +858,12 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		}
 
 		if err = AssertNoNonSchemaValues(config.Mountpoints, lxcResourceDef.Schema["mountpoint"]); err != nil {
-			return err
+			return append(diags, diag.FromErr(err)...)
 		}
 
 		flatMountpoints, _ := FlattenDevicesList(config.Mountpoints)
 		if err = d.Set("mountpoint", flatMountpoints); err != nil {
-			return err
+			return append(diags, diag.FromErr(err)...)
 		}
 	}
 
@@ -872,18 +884,18 @@ func _resourceLxcRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	configNetworksSet := d.Get("network").([]interface{})
 	if len(configNetworksSet) > 0 {
 		if err = AssertNoNonSchemaValues(config.Networks, lxcResourceDef.Schema["network"]); err != nil {
-			return err
+			return append(diags, diag.FromErr(err)...)
 		}
 		flatNetworks, _ := FlattenDevicesList(config.Networks)
 		if err = d.Set("network", flatNetworks); err != nil {
-			return err
+			return append(diags, diag.FromErr(err)...)
 		}
 	}
 
 	// Pool
 	pools, err := pveSDK.ListPools(ctx, client)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 pools:
 	for i := range pools {
@@ -891,7 +903,7 @@ pools:
 		members := raw.GetGuests()
 		if members != nil {
 			for _, memberID := range *members {
-				if resourceID.ID == memberID {
+				if vmr.VmId() == memberID {
 					d.Set(pool.Root, pools[i])
 					break pools
 				}
@@ -948,6 +960,10 @@ pools:
 	// d.Set("ssh_public_keys", config.SSHPublicKeys)
 
 	return nil
+}
+
+func resourceLxcDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
+	return guestDelete(ctx, d, meta, "LXC")
 }
 
 func processLxcDiskChanges(
