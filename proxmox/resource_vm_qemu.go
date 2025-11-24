@@ -613,7 +613,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
-		if rawGuest, err := guests.SelectID(guestID); err == nil { // guest already exists
+		if rawGuest, ok := guests.SelectID(guestID); ok { // guest already exists
 			forceCreate := d.Get("force_create").(bool)
 			if !forceCreate {
 				return append(diags, diag.Diagnostic{
