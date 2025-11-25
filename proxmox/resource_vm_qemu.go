@@ -65,7 +65,7 @@ const (
 func resourceVmQemu() *schema.Resource {
 	thisResource = &schema.Resource{
 		CreateContext: resourceVmQemuCreate,
-		ReadContext:   resourceVmQemuRead,
+		ReadContext:   resourceVmQemuReadWithLock,
 		UpdateContext: resourceVmQemuUpdate,
 		DeleteContext: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
@@ -534,8 +534,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Info().Str(vmID.Root, d.Id()).Msgf("VM creation")
 	logger.Debug().Str(vmID.Root, d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
 
-	d.SetId("")
-
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
@@ -774,8 +772,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Set("reboot_required", rebootRequired)
 	log.Print("[DEBUG][QemuVmCreate] vm creation done!")
-	lock.unlock()
-	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client)...)
 }
 
 func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -936,31 +933,26 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	lock.unlock()
-
 	reboot.SetRequired(rebootRequired, d)
-	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client)...)
 }
 
-func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceVmQemuReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
-	client := pconf.Client
-	// create a logger for this function
-	var diags diag.Diagnostics
-	logger, _ := CreateSubLogger("resource_vm_read")
+	diags := diag.Diagnostics{}
 
 	var resourceID id.Guest
-	err := resourceID.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("unexpected error when trying to read and parse the resource: %v", err))
+	if err := resourceID.Parse(d.Id()); err != nil {
+		d.SetId("")
+		return append(diags, diag.Diagnostic{
+			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
+			Severity: diag.Error})
 	}
-	guestID := resourceID.ID
 
-	logger.Info().Int(vmID.Root, int(guestID)).Msg("Reading configuration for vmid")
-	vmr := pveSDK.NewVmRef(guestID)
+	client := pconf.Client
 
 	// Try to get information on the vm. If this call err's out
 	// that indicates the VM does not exist. We indicate that to terraform
@@ -970,19 +962,30 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// as it will cause terraform to delete the resource
 	// and it could be unavailable due to permission issues
 	// when we are `root@pam` then we can do it as we can see all vms
-	_, err = client.GetVmInfo(ctx, vmr)
+	ok, err := resourceID.ID.Exists(ctx, client)
 	if err != nil {
-		if err.Error() == "vm '"+vmr.VmId().String()+"' not found" {
-			logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("vm does not exist")
-			d.SetId("")
-			return nil
-		}
 		return append(diags, diag.FromErr(err)...)
 	}
+	if !ok {
+		return append(diags, resourceDriftDeletionDiagnostic(d))
+	}
 
-	var raw pveSDK.RawConfigQemu
-	var pending bool
-	raw, pending, err = pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
+	if err := client.CheckVmRef(ctx, vmr); err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client)...)
+}
+
+func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+
+	// create a logger for this function
+	var diags diag.Diagnostics
+	logger, _ := CreateSubLogger("resource_vm_read")
+
+	logger.Info().Int(vmID.Root, int(vmr.VmId())).Msg("Reading configuration for vmid")
+
+	raw, pending, err := pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -1022,7 +1025,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		diags = append(diags, diag.FromErr(err)...)
 	}
 
-	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("[READ] Received Config from Proxmox API: %+v", config)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	d.SetId(id.Guest{
 		ID:   vmr.VmId(),
@@ -1078,10 +1081,10 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	checkedKeys := []string{"force_create", "define_connection_info"}
 	for _, key := range checkedKeys {
 		if val := d.Get(key); val == nil {
-			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' not found, setting to default", key)
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("key '%s' not found, setting to default", key)
 			d.Set(key, thisResource.Schema[key].Default)
 		} else {
-			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' is set to %t", key, val.(bool))
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("key '%s' is set to %t", key, val.(bool))
 			d.Set(key, val.(bool))
 		}
 	}
@@ -1091,7 +1094,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
-	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
 	if err = d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return diag.FromErr(err)
 	}
@@ -1107,7 +1110,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return diags
 }
