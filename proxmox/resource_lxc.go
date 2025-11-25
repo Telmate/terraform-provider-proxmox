@@ -816,8 +816,7 @@ func resourceLxcReadWithLock(ctx context.Context, d *schema.ResourceData, meta a
 		return append(diags, diag.FromErr(err)...)
 	}
 	if !ok {
-		d.SetId("")
-		return diags
+		return append(diags, resourceDriftDeletionDiagnostic(d))
 	}
 	vmr := pveSDK.NewVmRef(resourceID.ID)
 	if err := client.CheckVmRef(ctx, vmr); err != nil {

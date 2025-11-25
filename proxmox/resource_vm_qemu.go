@@ -967,8 +967,7 @@ func resourceVmQemuReadWithLock(ctx context.Context, d *schema.ResourceData, met
 		return append(diags, diag.FromErr(err)...)
 	}
 	if !ok {
-		d.SetId("")
-		return diags
+		return append(diags, resourceDriftDeletionDiagnostic(d))
 	}
 
 	vmr := pveSDK.NewVmRef(resourceID.ID)
