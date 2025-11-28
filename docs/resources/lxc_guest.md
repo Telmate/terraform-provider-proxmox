@@ -18,6 +18,11 @@ resource "proxmox_lxc_guest" "minimal-example" {
     cpu {
         cores = 1
     }
+    features {
+        unprivileged {
+            nesting = true
+        }
+    }
     memory = 1024
     swap   = 512
     pool   = "my-pool"
@@ -44,6 +49,7 @@ resource "proxmox_lxc_guest" "minimal-example" {
 | `cpu`               | `nested`|                          | CPU configuration, see [CPU Reference](#cpu-reference).|
 | `description`       | `string`| `"Managed by Terraform."`| Description of the guest container.|
 | `dns`               | `nested`|                          | DNS configuration, see [DNS Reference](#dns-reference).|
+| `features`          | `nested`|                          | Features configuration, see [Features Reference](#features-reference).|
 | `guest_id`          | `int`   |                          | **Forces Recreation**, **Computed**: The numeric ID of the guest container also known as `vmid`. If not specified, an ID will be automatically assigned.|
 | `memory`            | `int`   | `512`                    | The amount of memory to allocate to the guest in Megabytes.|
 | `mount`             | `array` |                          | Storage mounts configured as individual array items, see [Mount Reference](#mount-reference).|
@@ -94,6 +100,38 @@ The `dns` field is used to configure the DNS settings. It may ony be specified o
 |:--------------|---------|---------------|:------------|
 | `searchdomain`| `string`| `""`          | DNS searchdomain of the guest, inherits the PVE node config when empty.|
 | `nameserver`  | `array` | `[]`          | DNS nameserver of the guest, inherits the PVE node config when empty.|
+
+### Features Reference
+
+The `features` field is used to configure the feature settings. It may ony be specified once.
+
+| Argument        | Type    | Default Value | Description |
+|:----------------|---------|---------------|:------------|
+| `privileged`    | `nested`|               | Privileged features configuration, see [Features Privileged Reference](#features-privileged-reference).|
+| `unprivileged`  | `nested`|               | Unprivileged features configuration, see [Features Unprivileged Reference](#features-unprivileged-reference).|
+
+#### Features Privileged Reference
+
+The `features.privileged` field is used to configure the privileged feature settings. It may ony be specified once. `features.privileged` is mutually exclusive with `features.unprivileged`. Top-level `privileged = true` is required to use this.
+
+| Argument             | Type   | Default Value | Description |
+|:---------------------|--------|---------------|:------------|
+| `create_device_nodes`| `bool` | `false`       | Whether create device nodes should be enabled.|
+| `fuse`               | `bool` | `false`       | Whether FUSE should be enabled.|
+| `nesting`            | `bool` | `false`       | Whether nesting should be enabled.|
+| `nfs`                | `bool` | `false`       | Whether NFS should be enabled.|
+| `smb`                | `bool` | `false`       | Whether SMB should be enabled.|
+
+#### Features Unprivileged Reference
+
+The `features.unprivileged` field is used to configure the unprivileged feature settings. It may ony be specified once. `features.unprivileged` is mutually exclusive with `features.privileged`. Top-level `unprivileged = true` is required to use this.
+
+| Argument             | Type   | Default Value | Description |
+|:---------------------|--------|---------------|:------------|
+| `create_device_nodes`| `bool` | `false`       | Whether create device nodes should be enabled.|
+| `fuse`               | `bool` | `false`       | Whether FUSE should be enabled.|
+| `keyctl`             | `bool` | `false`       | Whether keyctl should be enabled.|
+| `nesting`            | `bool` | `false`       | Whether nesting should be enabled.|
 
 ### Mount Reference
 

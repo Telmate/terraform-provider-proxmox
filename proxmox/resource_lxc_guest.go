@@ -10,6 +10,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/guestid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/features"
 	tags "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/lxc_tags"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/memory"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/mounts"
@@ -48,12 +49,12 @@ func resourceLxcGuest() *schema.Resource {
 		CustomizeDiff: reboot.CustomizeDiff(),
 
 		Schema: map[string]*schema.Schema{
-			architecture.Root: architecture.Schema(),
-			clone.Root:        clone.Schema(),
-			cpu.Root:          cpu.Schema(),
-			description.Root:  description.Schema(),
-			dns.Root:          dns.Schema(),
-			// features.Root:                features.Schema(),
+			architecture.Root:            architecture.Schema(),
+			clone.Root:                   clone.Schema(),
+			cpu.Root:                     cpu.Schema(),
+			description.Root:             description.Schema(),
+			dns.Root:                     dns.Schema(),
+			features.Root:                features.Schema(),
 			guestid.Root:                 guestid.Schema(),
 			memory.Root:                  memory.Schema(),
 			mounts.RootMount:             mounts.SchemaMount(),
@@ -283,7 +284,7 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveS
 	cpu.Terraform(config.CPU, d)
 	description.Terraform(config.Description, false, d)
 	dns.Terraform(config.DNS, d)
-	// features.Terraform(config.Features, d)
+	features.Terraform(config.Features, d)
 	guestid.Terraform(config.ID, d)
 	memory.Terraform(config.Memory, d)
 	mounts.Terraform(config.Mounts, d)
@@ -312,11 +313,11 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 		guestName = &v
 	}
 	config := pveSDK.ConfigLXC{
-		BootMount:   rootmount.SDK(privilidged, d),
-		CPU:         cpu.SDK(d),
-		DNS:         dns.SDK(d),
-		Description: description.SDK(false, d),
-		// Features:    features.SDK(privilidged, d),
+		BootMount:       rootmount.SDK(privilidged, d),
+		CPU:             cpu.SDK(d),
+		DNS:             dns.SDK(d),
+		Description:     description.SDK(false, d),
+		Features:        features.SDK(privilidged, d),
 		Memory:          memory.SDK(d),
 		Name:            guestName,
 		StartupShutdown: startupshutdown.SDK(d),
