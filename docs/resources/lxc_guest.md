@@ -37,6 +37,7 @@ resource "proxmox_lxc_guest" "minimal-example" {
         ipv4_address = "192.168.1.100/24"
         ipv4_gateway = "192.168.1.1"
     }
+    startup_shutdown {}
 }
 ```
 
