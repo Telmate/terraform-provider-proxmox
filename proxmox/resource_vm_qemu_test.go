@@ -398,3 +398,235 @@ func TestAccProxmoxVmQemu_UpdateRebootRequired(t *testing.T) {
 		},
 	})
 }
+
+func TestValidateVGAAndSerial(t *testing.T) {
+	tests := []struct {
+		name        string
+		vgaConfig   []interface{}
+		serialConfig []interface{}
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "valid serial0 with matching serial device",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial0",
+				},
+			},
+			serialConfig: []interface{}{
+				map[string]interface{}{
+					"id":   0,
+					"type": "socket",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "serial0 without matching serial device - should fail",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial0",
+				},
+			},
+			serialConfig: []interface{}{},
+			expectError:  true,
+			errorMsg:     "vga type 'serial0' requires serial device with id=0 to be defined",
+		},
+		{
+			name: "serial1 with matching serial device",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial1",
+				},
+			},
+			serialConfig: []interface{}{
+				map[string]interface{}{
+					"id":   1,
+					"type": "socket",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "serial1 without matching serial device - should fail",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial1",
+				},
+			},
+			serialConfig: []interface{}{
+				map[string]interface{}{
+					"id":   0,
+					"type": "socket",
+				},
+			},
+			expectError: true,
+			errorMsg:    "vga type 'serial1' requires serial device with id=1 to be defined",
+		},
+		{
+			name: "serial2 with matching serial device",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial2",
+				},
+			},
+			serialConfig: []interface{}{
+				map[string]interface{}{
+					"id":   2,
+					"type": "socket",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "serial3 with matching serial device",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial3",
+				},
+			},
+			serialConfig: []interface{}{
+				map[string]interface{}{
+					"id":   3,
+					"type": "socket",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "non-serial vga type - should pass",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "std",
+				},
+			},
+			serialConfig: []interface{}{},
+			expectError:  false,
+		},
+		{
+			name: "cirrus vga type - should pass",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "cirrus",
+				},
+			},
+			serialConfig: []interface{}{},
+			expectError:  false,
+		},
+		{
+			name: "vmware vga type - should pass",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "vmware",
+				},
+			},
+			serialConfig: []interface{}{},
+			expectError:  false,
+		},
+		{
+			name:         "no vga config - should pass",
+			vgaConfig:    []interface{}{},
+			serialConfig: []interface{}{},
+			expectError:  false,
+		},
+		{
+			name: "serial0 with multiple serial devices including correct one",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial0",
+				},
+			},
+			serialConfig: []interface{}{
+				map[string]interface{}{
+					"id":   1,
+					"type": "socket",
+				},
+				map[string]interface{}{
+					"id":   0,
+					"type": "socket",
+				},
+				map[string]interface{}{
+					"id":   2,
+					"type": "socket",
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "serial0 with multiple serial devices but no matching id",
+			vgaConfig: []interface{}{
+				map[string]interface{}{
+					"type": "serial0",
+				},
+			},
+			serialConfig: []interface{}{
+				map[string]interface{}{
+					"id":   1,
+					"type": "socket",
+				},
+				map[string]interface{}{
+					"id":   2,
+					"type": "socket",
+				},
+			},
+			expectError: true,
+			errorMsg:    "vga type 'serial0' requires serial device with id=0 to be defined",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a mock ResourceData
+			d := schema.TestResourceDataRaw(t, map[string]*schema.Schema{
+				"vga": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"type": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"serial": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"id": {
+								Type:     schema.TypeInt,
+								Required: true,
+							},
+							"type": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			}, map[string]interface{}{
+				"vga":    tt.vgaConfig,
+				"serial": tt.serialConfig,
+			})
+
+			// Call the validation function
+			err := validateVGAAndSerial(d)
+
+			// Check the result
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				} else if tt.errorMsg != "" && err.Error() != tt.errorMsg {
+					t.Errorf("expected error message '%s' but got '%s'", tt.errorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error but got: %v", err)
+				}
+			}
+		})
+	}
+}
