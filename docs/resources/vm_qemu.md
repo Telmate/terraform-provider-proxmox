@@ -805,14 +805,13 @@ The `rng` block is used to configure a random number generator device. It can on
 
 ### Startup and Shutdown Reference
 
-The `startup_shutdown` field is used to configure the startup and shutdown settings. It may ony be specified once.
+The `startup_shutdown` field is used to configure the startup and shutdown settings. It may only be specified once.
 
 | Argument            | Type | Default Value | Description |
 |:--------------------|------|---------------|:------------|
 | `order`             | `int`| `-1`          | Startup order `-1` means any.|
 | `shutdown_timeout`  | `int`| `-1`          | Shutdown timeout in seconds, `-1` means default.|
 | `startup_delay`     | `int`| `-1`          | Startup delay in seconds, `-1` means default.|
-
 
 ## SMBIOS Block
 
