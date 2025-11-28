@@ -19,26 +19,20 @@ func Terraform(config *pveSDK.StartupAndShutdown, d *schema.ResourceData) {
 }
 
 func terraform(config *pveSDK.StartupAndShutdown, d *schema.ResourceData) {
-	var settings map[string]any
+	settings := map[string]any{
+		SchemaShutdownTimeout: defaultShutdownTimeout,
+		schemaOrder:           defaultOrder,
+		schemaStartupDelay:    defaultStartupDelay}
 	if config != nil {
-		settings = map[string]any{}
 		if config.Order != nil && *config.Order >= 0 {
 			settings[schemaOrder] = int(*config.Order)
-		} else {
-			settings[schemaOrder] = defaultOrder
 		}
 		if config.ShutdownTimeout != nil && *config.ShutdownTimeout >= 0 {
 			settings[SchemaShutdownTimeout] = int(*config.ShutdownTimeout)
-		} else {
-			settings[SchemaShutdownTimeout] = defaultShutdownTimeout
 		}
 		if config.StartupDelay != nil && *config.StartupDelay >= 0 {
 			settings[schemaStartupDelay] = int(*config.StartupDelay)
-		} else {
-			settings[schemaStartupDelay] = defaultStartupDelay
 		}
-		d.Set(Root, []any{settings})
-		return
 	}
-	d.Set(Root, nil)
+	d.Set(Root, []any{settings})
 }

@@ -18,6 +18,11 @@ resource "proxmox_lxc_guest" "minimal-example" {
     cpu {
         cores = 1
     }
+    features {
+        unprivileged {
+            nesting = true
+        }
+    }
     memory = 1024
     swap   = 512
     pool   = "my-pool"
@@ -32,6 +37,7 @@ resource "proxmox_lxc_guest" "minimal-example" {
         ipv4_address = "192.168.1.100/24"
         ipv4_gateway = "192.168.1.1"
     }
+    startup_shutdown {}
 }
 ```
 
@@ -44,6 +50,7 @@ resource "proxmox_lxc_guest" "minimal-example" {
 | `cpu`               | `nested`|                          | CPU configuration, see [CPU Reference](#cpu-reference).|
 | `description`       | `string`| `"Managed by Terraform."`| Description of the guest container.|
 | `dns`               | `nested`|                          | DNS configuration, see [DNS Reference](#dns-reference).|
+| `features`          | `nested`|                          | Features configuration, see [Features Reference](#features-reference).|
 | `guest_id`          | `int`   |                          | **Forces Recreation**, **Computed**: The numeric ID of the guest container also known as `vmid`. If not specified, an ID will be automatically assigned.|
 | `memory`            | `int`   | `512`                    | The amount of memory to allocate to the guest in Megabytes.|
 | `mount`             | `array` |                          | Storage mounts configured as individual array items, see [Mount Reference](#mount-reference).|
@@ -68,7 +75,7 @@ resource "proxmox_lxc_guest" "minimal-example" {
 
 ### Clone Reference
 
-The `clone` field is used to configure the clone settings. It may ony be specified once.
+The `clone` field is used to configure the clone settings. It may only be specified once.
 
 | Argument       | Type    | Default Value | Description |
 |:---------------|---------|---------------|:------------|
@@ -78,7 +85,7 @@ The `clone` field is used to configure the clone settings. It may ony be specifi
 
 ### CPU Reference
 
-The `cpu` field is used to configure the CPU settings. It may ony be specified once.
+The `cpu` field is used to configure the CPU settings. It may only be specified once.
 
 | Argument | Type | Default Value | Description |
 |:---------|------|---------------|:------------|
@@ -88,12 +95,44 @@ The `cpu` field is used to configure the CPU settings. It may ony be specified o
 
 ### DNS Reference
 
-The `dns` field is used to configure the DNS settings. It may ony be specified once.
+The `dns` field is used to configure the DNS settings. It may only be specified once.
 
 | Argument      | Type    | Default Value | Description |
 |:--------------|---------|---------------|:------------|
 | `searchdomain`| `string`| `""`          | DNS searchdomain of the guest, inherits the PVE node config when empty.|
 | `nameserver`  | `array` | `[]`          | DNS nameserver of the guest, inherits the PVE node config when empty.|
+
+### Features Reference
+
+The `features` field is used to configure the feature settings. It may only be specified once.
+
+| Argument        | Type    | Default Value | Description |
+|:----------------|---------|---------------|:------------|
+| `privileged`    | `nested`|               | Privileged features configuration, see [Features Privileged Reference](#features-privileged-reference).|
+| `unprivileged`  | `nested`|               | Unprivileged features configuration, see [Features Unprivileged Reference](#features-unprivileged-reference).|
+
+#### Features Privileged Reference
+
+The `features.privileged` field is used to configure the privileged feature settings. It may only be specified once. `features.privileged` is mutually exclusive with `features.unprivileged`. Top-level `privileged = true` is required to use this.
+
+| Argument             | Type   | Default Value | Description |
+|:---------------------|--------|---------------|:------------|
+| `create_device_nodes`| `bool` | `false`       | Whether create device nodes should be enabled.|
+| `fuse`               | `bool` | `false`       | Whether FUSE should be enabled.|
+| `nesting`            | `bool` | `false`       | Whether nesting should be enabled.|
+| `nfs`                | `bool` | `false`       | Whether NFS should be enabled.|
+| `smb`                | `bool` | `false`       | Whether SMB should be enabled.|
+
+#### Features Unprivileged Reference
+
+The `features.unprivileged` field is used to configure the unprivileged feature settings. It may only be specified once. `features.unprivileged` is mutually exclusive with `features.privileged`. Top-level `unprivileged = true` is required to use this.
+
+| Argument             | Type   | Default Value | Description |
+|:---------------------|--------|---------------|:------------|
+| `create_device_nodes`| `bool` | `false`       | Whether create device nodes should be enabled.|
+| `fuse`               | `bool` | `false`       | Whether FUSE should be enabled.|
+| `keyctl`             | `bool` | `false`       | Whether keyctl should be enabled.|
+| `nesting`            | `bool` | `false`       | Whether nesting should be enabled.|
 
 ### Mount Reference
 
@@ -225,7 +264,7 @@ The `networks` field is used to configure the network interfaces. It may only be
 
 ### Startup and Shutdown Reference
 
-The `startup_shutdown` field is used to configure the startup and shutdown settings. It may ony be specified once.
+The `startup_shutdown` field is used to configure the startup and shutdown settings. It may only be specified once.
 
 | Argument            | Type | Default Value | Description |
 |:--------------------|------|---------------|:------------|
