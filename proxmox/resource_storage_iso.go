@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
@@ -71,15 +72,25 @@ func resourceStorageIsoCreate(ctx context.Context, d *schema.ResourceData, meta 
 	node := d.Get("pve_node").(string)
 
 	client := pconf.Client
-	file, err := os.CreateTemp(os.TempDir(), fileName)
-	if err != nil {
-		return diag.FromErr(err)
+
+	var file *os.File
+	var err error
+	if filepath.IsAbs(url) {
+		file, err = os.Open(url)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	} else {
+		file, err = os.CreateTemp(os.TempDir(), fileName)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		err = _downloadFile(url, file)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		file.Seek(0, 0)
 	}
-	err = _downloadFile(url, file)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	file.Seek(0, 0)
 	defer file.Close()
 	err = client.Upload(ctx, node, storage, isoContentType, fileName, file)
 	if err != nil {
