@@ -2,10 +2,13 @@ package proxmox
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -48,6 +51,37 @@ type providerConfiguration struct {
 	LogFile                            string
 	LogLevels                          map[string]string
 	DangerouslyIgnoreUnknownAttributes bool
+}
+
+type sessionCache struct {
+	Ticket string `json:"ticket"`
+	Csrf   string `json:"csrf"`
+}
+
+func ticketCachePath(cacheKey string) string {
+	sum := sha256.Sum256([]byte(cacheKey))
+	return filepath.Join(os.TempDir(), fmt.Sprintf("proxmox-ticket-%x", sum[:8]))
+}
+
+func loadCachedTicket(path string) (ticket string, csrf string, err error) {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", err
+	}
+	var sc sessionCache
+	if err := json.Unmarshal(bytes, &sc); err != nil {
+		return "", "", err
+	}
+	return sc.Ticket, sc.Csrf, nil
+}
+
+func saveCachedTicket(path string, ticket string, csrf string) error {
+	data, err := json.Marshal(sessionCache{Ticket: ticket, Csrf: csrf})
+	if err != nil {
+		return err
+	}
+	// ensure directory exists (os.TempDir should exist already)
+	return os.WriteFile(path, data, 0o600)
 }
 
 // Provider - Terrafrom properties for proxmox
@@ -359,6 +393,22 @@ func getClient(pm_api_url string,
 	client, _ := pveSDK.NewClient(pm_api_url, nil, pm_http_headers, tlsconf, pm_proxy_server, pm_timeout)
 	*pveSDK.Debug = pm_debug
 
+	// Try to reuse a cached ticket (plan/apply are separate processes) only when using OTP
+	cachePath, loadedFromCache := "", false
+	if pm_user != "" && pm_password != "" && pm_otp != "" {
+		cacheKey := fmt.Sprintf("%s|%s|%s|%s", pm_api_url, pm_user, pm_password, pm_otp)
+		cachePath = ticketCachePath(cacheKey)
+		if ticket, csrf, loadErr := loadCachedTicket(cachePath); loadErr == nil && ticket != "" {
+			client.SetTicket(ticket, csrf)
+			client.Username = pm_user
+			// Validate the ticket is still usable; otherwise fall back to login
+			if _, pingErr := client.GetVersion(context.Background()); pingErr == nil {
+				loadedFromCache = true
+				return client, nil
+			}
+		}
+	}
+
 	// User+Pass authentication
 	if pm_user != "" && pm_password != "" {
 		err = client.Login(context.Background(), pm_user, pm_password, pm_otp)
@@ -373,6 +423,15 @@ func getClient(pm_api_url string,
 	if err != nil {
 		return nil, err
 	}
+
+	// Persist the ticket so the next provider process (apply after plan) can reuse it
+	// without consuming another OTP
+	if cachePath != "" && !loadedFromCache {
+		if ticket, csrf, ok := client.SessionTokens(); ok {
+			_ = saveCachedTicket(cachePath, ticket, csrf)
+		}
+	}
+
 	return client, nil
 }
 
