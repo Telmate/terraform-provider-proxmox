@@ -40,13 +40,7 @@ func Schema() *schema.Schema {
 						if v < 0 {
 							return diag.Diagnostics{errorMSG.UintDiagnostic(schemaCores)}
 						}
-						if err := pveSDK.LxcCpuCores(v).Validate(); err != nil {
-							return diag.Diagnostics{
-								diag.Diagnostic{
-									Severity: diag.Error,
-									Summary:  err.Error()}}
-						}
-						return nil
+						return diag.FromErr(pveSDK.LxcCpuCores(v).Validate())
 					}},
 				schemaLimit: {
 					Type:     schema.TypeInt,
@@ -60,13 +54,7 @@ func Schema() *schema.Schema {
 						if v < 0 {
 							return diag.Diagnostics{errorMSG.UintDiagnostic(schemaLimit)}
 						}
-						if err := pveSDK.LxcCpuLimit(v).Validate(); err != nil {
-							return diag.Diagnostics{
-								diag.Diagnostic{
-									Severity: diag.Error,
-									Summary:  err.Error()}}
-						}
-						return nil
+						return diag.FromErr(pveSDK.LxcCpuLimit(v).Validate())
 					}},
 				schemaUnits: {
 					Type:     schema.TypeInt,
@@ -80,12 +68,6 @@ func Schema() *schema.Schema {
 						if v < 0 {
 							return diag.Diagnostics{errorMSG.UintDiagnostic(schemaUnits)}
 						}
-						if err := pveSDK.LxcCpuUnits(v).Validate(); err != nil {
-							return diag.Diagnostics{
-								diag.Diagnostic{
-									Severity: diag.Error,
-									Summary:  err.Error()}}
-						}
-						return nil
+						return diag.FromErr(pveSDK.LxcCpuUnits(v).Validate())
 					}}}}}
 }

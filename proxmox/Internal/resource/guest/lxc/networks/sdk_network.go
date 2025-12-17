@@ -32,7 +32,7 @@ func sdkNetwork(schema []any) (pveSDK.LxcNetworks, diag.Diagnostics) {
 			Mtu:           util.Pointer(pveSDK.MTU(schemaMap[schemaMTU].(int))),
 			Name:          util.Pointer(pveSDK.LxcNetworkName(schemaMap[schemaName].(string))),
 			NativeVlan:    util.Pointer(pveSDK.Vlan(schemaMap[schemaNativeVlan].(int))),
-			RateLimitKBps: util.Pointer(pveSDK.GuestNetworkRate(schemaMap[schemaRate].(int)))}
+			RateLimitKBps: util.Pointer(pveSDK.GuestNetworkRate(schemaMap[schemaRateLimit].(int)))}
 	}
 	for i := range pveSDK.LxcNetworkID(networksAmount) { // ensure all networks are present
 		if _, ok := config[i]; !ok {

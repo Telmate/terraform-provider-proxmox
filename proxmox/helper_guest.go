@@ -19,11 +19,7 @@ func guestDelete(ctx context.Context, d *schema.ResourceData, meta any, kind str
 	client := pconf.Client
 	rawID, _ := strconv.Atoi(path.Base(d.Id()))
 	guestID := pveSDK.GuestID(rawID)
-	if err := guestID.DeleteHaResource(ctx, client); err != nil {
-		if !errors.Is(err, pveSDK.Error.HaResourceDoesNotExist()) {
-			return diag.FromErr(err)
-		}
-	}
+
 	if err := pveSDK.NewVmRef(guestID).Delete(ctx, client); err != nil {
 		if errors.Is(err, pveSDK.Error.GuestDoesNotExist()) {
 			return diag.Diagnostics{{
@@ -35,7 +31,14 @@ func guestDelete(ctx context.Context, d *schema.ResourceData, meta any, kind str
 	return nil
 }
 
-func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.GuestName, id pveSDK.GuestID, preferredNode pveSDK.NodeName, guest pveSDK.GuestType) (*pveSDK.VmRef, error) {
+func guestGetSourceVmr(
+	ctx context.Context,
+	client *pveSDK.Client,
+	name pveSDK.GuestName,
+	id pveSDK.GuestID,
+	preferredNode pveSDK.NodeName,
+	guest pveSDK.GuestType,
+	fieldName, fieldID string) (*pveSDK.VmRef, error) {
 	if name != "" {
 		rawGuests, err := pveSDK.ListGuests(ctx, client)
 		if err != nil {
@@ -47,9 +50,9 @@ func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.G
 		if err != nil {
 			return nil, err
 		}
-		rawGuest, err := rawGuests.SelectID(id)
-		if err != nil {
-			return nil, err
+		rawGuest, ok := rawGuests.SelectID(id)
+		if !ok {
+			return nil, errors.New("guest with ID '" + id.String() + "' does not exist")
 		}
 		if rawGuest.GetType() != guest {
 			return nil, errors.New("guest with ID '" + id.String() + "' is not of type '" + string(guest) + "'")
@@ -59,7 +62,7 @@ func guestGetSourceVmr(ctx context.Context, client *pveSDK.Client, name pveSDK.G
 		guestRef.SetVmType(guest)
 		return guestRef, nil
 	}
-	return nil, errors.New("either 'clone' name or 'clone_id' must be specified")
+	return nil, errors.New("either '" + fieldName + "' or '" + fieldID + "' must be specified")
 }
 
 func guestGetSourceVmrByNode(raw pveSDK.RawGuestResources, name pveSDK.GuestName, preferredNode pveSDK.NodeName, guest pveSDK.GuestType) (*pveSDK.VmRef, error) {

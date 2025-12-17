@@ -8,7 +8,7 @@ provider "proxmox" {
 
 resource "proxmox_vm_qemu" "cloudinit-test" {
     name = "terraform-test-vm"
-    desc = "A test for using terraform and cloudinit"
+    description = "A test for using terraform and cloudinit"
 
     # Node name has to be the same name as within the cluster
     # this might not include the FQDN

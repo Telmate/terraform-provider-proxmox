@@ -43,7 +43,7 @@ func networksSubSchema(slot string) *schema.Schema {
 				schemaMTU:        subSchemaMTU(false, pathSimple+schemaMTU),
 				schemaName:       subSchemaName(false, pathSimple+schemaName),
 				schemaNativeVlan: subSchemaNativeVlan(false, pathSimple+schemaNativeVlan),
-				schemaRate:       subSchemaRate(false, pathSimple+schemaRate),
+				schemaRateLimit:  subSchemaRate(false, pathSimple+schemaRateLimit),
 				schmemaIPv4: {
 					Type:     schema.TypeList,
 					Optional: true,

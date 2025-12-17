@@ -36,6 +36,8 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/usb"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/sshkeys"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startatnodeboot"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startupshutdown"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
@@ -63,7 +65,7 @@ const (
 func resourceVmQemu() *schema.Resource {
 	thisResource = &schema.Resource{
 		CreateContext: resourceVmQemuCreate,
-		ReadContext:   resourceVmQemuRead,
+		ReadContext:   resourceVmQemuReadWithLock,
 		UpdateContext: resourceVmQemuUpdate,
 		DeleteContext: resourceVmQemuDelete,
 		Importer: &schema.ResourceImporter{
@@ -137,18 +139,10 @@ func resourceVmQemu() *schema.Resource {
 					return new == stateStarted
 				},
 			},
-			"onboot": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Description: "VM autostart on boot",
-			},
-			"startup": {
-				Type:     schema.TypeString,
-				Optional: true,
-				// Default:     "",
-				Description: "Startup order of the VM",
-			},
+			startatnodeboot.LegacyRoot: startatnodeboot.LegacySchema(),
+			startatnodeboot.Root:       startatnodeboot.Schema(),
+			startupshutdown.LegacyRoot: startupshutdown.LegacySchema(),
+			startupshutdown.Root:       startupshutdown.Schema(),
 			"protection": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -540,8 +534,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Info().Str(vmID.Root, d.Id()).Msgf("VM creation")
 	logger.Debug().Str(vmID.Root, d.Id()).Msgf("VM creation resource data: '%+v'", string(jsonString))
 
-	d.SetId("")
-
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
@@ -568,7 +560,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Machine:          d.Get("machine").(string),
 		Memory:           mapToSDK_Memory(d),
 		Name:             &guestName,
-		Onboot:           util.Pointer(d.Get("onboot").(bool)),
 		Pool:             util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Protection:       util.Pointer(d.Get("protection").(bool)),
 		QemuKVM:          util.Pointer(d.Get("kvm").(bool)),
@@ -577,7 +568,8 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Scsihw:           d.Get("scsihw").(string),
 		Serials:          serial.SDK(d),
 		Smbios1:          BuildSmbiosArgs(d.Get("smbios").([]any)),
-		Startup:          d.Get("startup").(string),
+		StartAtNodeBoot:  util.Pointer(startatnodeboot.SDK(d)),
+		StartupShutdown:  startupshutdown.SDK(d),
 		TPM:              tpm.SDK(d),
 		Tablet:           util.Pointer(d.Get("tablet").(bool)),
 		Tags:             tags.SDK(d),
@@ -619,7 +611,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
-		if rawGuest, err := guests.SelectID(guestID); err == nil { // guest already exists
+		if rawGuest, ok := guests.SelectID(guestID); ok { // guest already exists
 			forceCreate := d.Get("force_create").(bool)
 			if !forceCreate {
 				return append(diags, diag.Diagnostic{
@@ -650,7 +642,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		// check if clone, or PXE boot
 		if d.Get("clone").(string) != "" || d.Get("clone_id").(int) != 0 { // Clone
 
-			sourceVmr, err := guestGetSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode, pveSDK.GuestQemu)
+			sourceVmr, err := guestGetSourceVmr(ctx, client, pveSDK.GuestName(d.Get("clone").(string)), pveSDK.GuestID(d.Get("clone_id").(int)), targetNode, pveSDK.GuestQemu, "clone", "clone_id")
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
@@ -780,8 +772,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Set("reboot_required", rebootRequired)
 	log.Print("[DEBUG][QemuVmCreate] vm creation done!")
-	lock.unlock()
-	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client)...)
 }
 
 func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -825,7 +816,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Machine:          d.Get("machine").(string),
 		Memory:           mapToSDK_Memory(d),
 		Name:             util.Pointer(name.SDK(d)),
-		Onboot:           util.Pointer(d.Get("onboot").(bool)),
 		Pool:             util.Pointer(pveSDK.PoolName(d.Get(pool.Root).(string))),
 		Protection:       util.Pointer(d.Get("protection").(bool)),
 		QemuKVM:          util.Pointer(d.Get("kvm").(bool)),
@@ -834,7 +824,8 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Scsihw:           d.Get("scsihw").(string),
 		Serials:          serial.SDK(d),
 		Smbios1:          BuildSmbiosArgs(d.Get("smbios").([]any)),
-		Startup:          d.Get("startup").(string),
+		StartAtNodeBoot:  util.Pointer(startatnodeboot.SDK(d)),
+		StartupShutdown:  startupshutdown.SDK(d),
 		TPM:              tpm.SDK(d),
 		Tablet:           util.Pointer(d.Get("tablet").(bool)),
 		Tags:             tags.SDK(d),
@@ -942,31 +933,26 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	lock.unlock()
-
 	reboot.SetRequired(rebootRequired, d)
-	return append(diags, resourceVmQemuRead(ctx, d, meta)...)
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client)...)
 }
 
-func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceVmQemuReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	pconf := meta.(*providerConfiguration)
 	lock := pmParallelBegin(pconf)
 	defer lock.unlock()
 
-	client := pconf.Client
-	// create a logger for this function
-	var diags diag.Diagnostics
-	logger, _ := CreateSubLogger("resource_vm_read")
+	diags := diag.Diagnostics{}
 
 	var resourceID id.Guest
-	err := resourceID.Parse(d.Id())
-	if err != nil {
-		return diag.FromErr(fmt.Errorf("unexpected error when trying to read and parse the resource: %v", err))
+	if err := resourceID.Parse(d.Id()); err != nil {
+		d.SetId("")
+		return append(diags, diag.Diagnostic{
+			Summary:  "unexpected error when trying to read and parse the resource: " + err.Error(),
+			Severity: diag.Error})
 	}
-	guestID := resourceID.ID
 
-	logger.Info().Int(vmID.Root, int(guestID)).Msg("Reading configuration for vmid")
-	vmr := pveSDK.NewVmRef(guestID)
+	client := pconf.Client
 
 	// Try to get information on the vm. If this call err's out
 	// that indicates the VM does not exist. We indicate that to terraform
@@ -976,19 +962,30 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// as it will cause terraform to delete the resource
 	// and it could be unavailable due to permission issues
 	// when we are `root@pam` then we can do it as we can see all vms
-	_, err = client.GetVmInfo(ctx, vmr)
+	ok, err := resourceID.ID.Exists(ctx, client)
 	if err != nil {
-		if err.Error() == "vm '"+vmr.VmId().String()+"' not found" {
-			logger.Debug().Int(vmID.Root, int(guestID)).Err(err).Msg("vm does not exist")
-			d.SetId("")
-			return nil
-		}
 		return append(diags, diag.FromErr(err)...)
 	}
+	if !ok {
+		return append(diags, resourceDriftDeletionDiagnostic(d))
+	}
 
-	var raw pveSDK.RawConfigQemu
-	var pending bool
-	raw, pending, err = pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
+	vmr := pveSDK.NewVmRef(resourceID.ID)
+	if err := client.CheckVmRef(ctx, vmr); err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client)...)
+}
+
+func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+
+	// create a logger for this function
+	var diags diag.Diagnostics
+	logger, _ := CreateSubLogger("resource_vm_read")
+
+	logger.Info().Int(vmID.Root, int(vmr.VmId())).Msg("Reading configuration for vmid")
+
+	raw, pending, err := pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -1028,7 +1025,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 		diags = append(diags, diag.FromErr(err)...)
 	}
 
-	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("[READ] Received Config from Proxmox API: %+v", config)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	d.SetId(id.Guest{
 		ID:   vmr.VmId(),
@@ -1039,8 +1036,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	name.Terraform_Unsafe(config.Name, d)
 	description.Terraform(config.Description, true, d)
 	d.Set("bios", config.Bios)
-	d.Set("onboot", config.Onboot)
-	d.Set("startup", config.Startup)
 	d.Set("protection", config.Protection)
 	d.Set("tablet", config.Tablet)
 	d.Set("boot", config.Boot)
@@ -1076,6 +1071,8 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if len(config.Serials) != 0 {
 		serial.Terraform(config.Serials, d)
 	}
+	startatnodeboot.Terraform(*config.StartAtNodeBoot, d)
+	startupshutdown.Terraform(config.StartupShutdown, d)
 	if len(config.USBs) != 0 {
 		usb.Terraform(config.USBs, d)
 	}
@@ -1084,10 +1081,10 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	checkedKeys := []string{"force_create", "define_connection_info"}
 	for _, key := range checkedKeys {
 		if val := d.Get(key); val == nil {
-			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' not found, setting to default", key)
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("key '%s' not found, setting to default", key)
 			d.Set(key, thisResource.Schema[key].Default)
 		} else {
-			logger.Debug().Int(vmID.Root, int(guestID)).Msgf("key '%s' is set to %t", key, val.(bool))
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("key '%s' is set to %t", key, val.(bool))
 			d.Set(key, val.(bool))
 		}
 	}
@@ -1097,7 +1094,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	// read in the unused disks
 	flatUnusedDisks, _ := FlattenDevicesList(config.QemuUnusedDisks)
-	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Unused Disk Block Processed '%v'", config.QemuUnusedDisks)
 	if err = d.Set("unused_disk", flatUnusedDisks); err != nil {
 		return diag.FromErr(err)
 	}
@@ -1113,7 +1110,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, meta interf
 	// DEBUG print out the read result
 	flatValue, _ := resourceDataToFlatValues(d, thisResource)
 	jsonString, _ := json.Marshal(flatValue)
-	logger.Debug().Int(vmID.Root, int(guestID)).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
+	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Finished VM read resulting in data: '%+v'", string(jsonString))
 
 	return diags
 }
@@ -1444,20 +1441,23 @@ func getPrimaryIP(
 	log.Printf("[DEBUG][initConnInfo] retries will end at %s", endTime)
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retrying for at most  %v before giving up", retryDuration)
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("retries will end at %s", endTime)
+	var state pveSDK.GuestAgentState
 	for time.Now().Before(endTime) {
-		var interfaces []pveSDK.AgentNetworkInterface
-		interfaces, err = vmr.GetAgentInformation(ctx, client, false)
+		var interfaces pveSDK.RawAgentNetworkInterfaces
+		interfaces, state, err = vmr.GetAgentInformation(ctx, client)
 		if err != nil {
-			if !strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-				return primaryIPs{}, diag.FromErr(err)
-			}
-			log.Printf("[INFO][getPrimaryIP] check ip result error %s", err.Error())
-			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("check ip result error %s", err.Error())
-		} else { // vm is running and reachable
-			if len(interfaces) > 0 { // agent returned some information
-				log.Printf("[INFO][getPrimaryIP] QEMU Agent interfaces found: %v", interfaces)
-				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("QEMU Agent interfaces found: %v", interfaces)
-				conn = conn.parsePrimaryIPs(interfaces, primaryMacAddress)
+			return primaryIPs{}, diag.FromErr(err)
+		}
+		if state == pveSDK.GuestAgentStateVmNotRunning {
+			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Summary:  "Qemu guest not running",
+				Severity: diag.Error}}
+		}
+		if state == pveSDK.GuestAgentStateRunning { // vm is running and reachable
+			if raw, ok := interfaces.SelectMacAddress(primaryMacAddress); ok {
+				log.Printf("[INFO][getPrimaryIP] Qemu Agent found MAC")
+				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Qemu Agent found MAC")
+				conn = conn.parsePrimaryIPs(raw.GetIpAddresses())
 				if conn.hasRequiredIP() {
 					return conn.IPs, diag.Diagnostics{}
 				}
@@ -1465,14 +1465,10 @@ func getPrimaryIP(
 		}
 		time.Sleep(retryInterval)
 	}
-	if err != nil {
-		if strings.Contains(err.Error(), ErrorGuestAgentNotRunning) {
-			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-				Severity: diag.Warning,
-				Summary:  "Qemu Guest Agent is enabled but not working",
-				Detail:   fmt.Sprintf("error from PVE: \"%s\"\n, Qemu Guest Agent is enabled in you configuration but non installed/not working on your vm", err)}}
-		}
-		return primaryIPs{}, diag.FromErr(err)
+	if state == pveSDK.GuestAgentStateNotRunning {
+		return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+			Summary:  "Qemu Guest Agent is enabled but not installed/working inside the Qemu guest",
+			Severity: diag.Warning}}
 	}
 	return conn.IPs, conn.agentDiagnostics()
 }

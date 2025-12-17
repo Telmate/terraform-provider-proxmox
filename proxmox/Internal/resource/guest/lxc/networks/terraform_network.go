@@ -33,9 +33,9 @@ func terraformNetwork(config pveSDK.LxcNetworks, tfConfig []any) []map[string]an
 			params[schemaNativeVlan] = int(*v.NativeVlan)
 		}
 		if v.RateLimitKBps != nil {
-			params[schemaRate] = int(*v.RateLimitKBps)
+			params[schemaRateLimit] = int(*v.RateLimitKBps)
 		} else {
-			params[schemaRate] = 0
+			params[schemaRateLimit] = 0
 		}
 		if v.IPv4 != nil {
 			params[schemaIPv4DHCP] = v.IPv4.DHCP

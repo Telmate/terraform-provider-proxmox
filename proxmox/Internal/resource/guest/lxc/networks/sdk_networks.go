@@ -32,7 +32,7 @@ func sdkNetworks(schema map[string]any) pveSDK.LxcNetworks {
 			Mtu:           util.Pointer(pveSDK.MTU(schemaMap[schemaMTU].(int))),
 			Name:          util.Pointer(pveSDK.LxcNetworkName(schemaMap[schemaName].(string))),
 			NativeVlan:    util.Pointer(pveSDK.Vlan(schemaMap[schemaNativeVlan].(int))),
-			RateLimitKBps: util.Pointer(pveSDK.GuestNetworkRate(schemaMap[schemaRate].(int)))}
+			RateLimitKBps: util.Pointer(pveSDK.GuestNetworkRate(schemaMap[schemaRateLimit].(int)))}
 	}
 	return config
 }

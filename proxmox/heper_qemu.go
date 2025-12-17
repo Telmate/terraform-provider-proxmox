@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	ErrorGuestAgentNotRunning    string = "500 QEMU guest agent is not running"
 	errorGuestAgentNoIPSummary   string = "Qemu Guest Agent is enabled but no IP config is found"
 	errorGuestAgentNoIPv4Summary string = "Qemu Guest Agent is enabled but no IPv4 address is found"
 	errorGuestAgentNoIPv6Summary string = "Qemu Guest Agent is enabled but no IPv6 address is found"
@@ -80,21 +79,16 @@ func (conn connectionInfo) hasRequiredIP() bool {
 	return true
 }
 
-func (conn connectionInfo) parsePrimaryIPs(interfaces []pveSDK.AgentNetworkInterface, mac net.HardwareAddr) connectionInfo {
-	macString := mac.String()
-	for _, iFace := range interfaces {
-		if iFace.MacAddress.String() == macString {
-			for _, addr := range iFace.IpAddresses {
-				if addr.IsGlobalUnicast() {
-					if addr.To4() != nil {
-						if conn.IPs.IPv4 == "" {
-							conn.IPs.IPv4 = addr.String()
-						}
-					} else {
-						if conn.IPs.IPv6 == "" {
-							conn.IPs.IPv6 = addr.String()
-						}
-					}
+func (conn connectionInfo) parsePrimaryIPs(ipAddresses []net.IP) connectionInfo {
+	for i := range ipAddresses {
+		if ipAddresses[i].IsGlobalUnicast() {
+			if ipAddresses[i].To4() != nil {
+				if conn.IPs.IPv4 == "" {
+					conn.IPs.IPv4 = ipAddresses[i].String()
+				}
+			} else {
+				if conn.IPs.IPv6 == "" {
+					conn.IPs.IPv6 = ipAddresses[i].String()
 				}
 			}
 		}
