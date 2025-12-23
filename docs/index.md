@@ -104,7 +104,7 @@ provider "proxmox" {
 ## Enable proxy server support
 
 You can send all api calls from the provider api client to a proxy server rather than directly to proxmox itself. This
-can make debugging easier. A nice proxy server is mitmproxy.
+can make debugging easier. A nice proxy server is mitmproxy. SOCKS proxies are supported via `socks5://`.
 
 ```hcl
 provider "proxmox" {
@@ -131,7 +131,7 @@ The following arguments are supported in the provider block:
 | `pm_log_file`                |                      | `string` | `terraform-plugin-proxmox.log` | The log file the provider will write logs to.|
 | `pm_timeout`                 |                      | `uint`   | `300`                          | Timeout value (seconds) for proxmox API calls.|
 | `pm_debug`                   |                      | `bool`   | `false`                        | Enable verbose output in proxmox-api-go.|
-| `pm_proxy_server`            |                      | `string` |                                | Send provider api call to a proxy server for easy debugging.|
+| `pm_proxy_server`            |                      | `string` |                                | Send provider api call to a proxy server for easy debugging. Supports `http://` and `socks5://`.|
 | `pm_minimum_permission_check`|                      | `bool`   | `true`                         | Enable minimum permission check. This will check if the user has the minimum permissions required to use the provider.|
 | `pm_minimum_permission_list` |                      | `list`   |                                | A list of permissions to check. Allows overwriting of the default permissions.|
 
