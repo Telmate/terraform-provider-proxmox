@@ -1174,7 +1174,15 @@ func FlattenDevicesList(proxmoxDevices pveSDK.QemuDevices) ([]map[string]interfa
 		}
 
 		for configuration, value := range thisDevice {
-			thisFlattenedDevice[configuration] = value
+			// Normalize key: replace hyphens with underscores for Terraform schema compatibility
+			normalizedKey := strings.ReplaceAll(configuration, "-", "_")
+			
+			// Convert integer values to bool for boolean fields (e.g., host_managed: "1" -> true)
+			if intVal, ok := value.(int); ok && (normalizedKey == "host_managed" || normalizedKey == "firewall") {
+				thisFlattenedDevice[normalizedKey] = intVal == 1
+			} else {
+				thisFlattenedDevice[normalizedKey] = value
+			}
 		}
 
 		flattenedDevices = append(flattenedDevices, thisFlattenedDevice)
