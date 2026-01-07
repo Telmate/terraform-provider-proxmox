@@ -19,7 +19,7 @@ func resourceStorageTemplate() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"pve_node": {
+			"node": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
@@ -46,7 +46,7 @@ func resourceStorageTemplate() *schema.Resource {
 func _toConfigContent_Template(d *schema.ResourceData) (config pveSDK.ConfigContent_Template, err error) {
 	template := d.Get("template").(string)
 	storage := d.Get("storage").(string)
-	node := d.Get("pve_node").(string)
+	node := d.Get("node").(string)
 
 	config = pveSDK.ConfigContent_Template{
 		Node:     node,
