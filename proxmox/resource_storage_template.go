@@ -105,7 +105,7 @@ func _parse_template(ctx context.Context, client *pveSDK.Client, d *schema.Resou
 		}
 
 		if template == "" {
-			err = fmt.Errorf("Couldn't find a template for package %s", templatePrefix)
+			err = fmt.Errorf("couldn't find a template for package %s", templatePrefix)
 		}
 	} else {
 		err = errors.New("template.file or template.package must be set")
