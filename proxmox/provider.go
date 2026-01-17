@@ -4,17 +4,20 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/validator"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"golang.org/x/net/proxy"
 )
 
 const (
@@ -184,7 +187,7 @@ func Provider() *schema.Provider {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("PM_PROXY", nil),
-				Description: "Proxy Server passed to Api client(useful for debugging). Syntax: http://proxy:port",
+				Description: "Proxy Server passed to Api client(useful for debugging). Syntax: http://proxy:port or socks5://proxy:port",
 			},
 			schemaMinimumPermissionCheck: {
 				Type:     schema.TypeBool,
@@ -356,7 +359,12 @@ func getClient(pm_api_url string,
 		err = fmt.Errorf("your API TokenID username should contain a !, check your API credentials")
 	}
 
-	client, _ := pveSDK.NewClient(pm_api_url, nil, pm_http_headers, tlsconf, pm_proxy_server, pm_timeout)
+	httpClient, proxyServer, proxyErr := buildProxyClient(pm_proxy_server, tlsconf, pm_timeout)
+	if proxyErr != nil {
+		return nil, proxyErr
+	}
+
+	client, _ := pveSDK.NewClient(pm_api_url, httpClient, pm_http_headers, tlsconf, proxyServer, pm_timeout)
 	*pveSDK.Debug = pm_debug
 
 	// User+Pass authentication
@@ -374,6 +382,43 @@ func getClient(pm_api_url string,
 		return nil, err
 	}
 	return client, nil
+}
+
+func buildProxyClient(proxyServer string, tlsconf *tls.Config, timeoutSeconds int) (*http.Client, string, error) {
+	if proxyServer == "" {
+		return nil, proxyServer, nil
+	}
+
+	proxyURL, err := url.Parse(proxyServer)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid proxy URL %q: %w", proxyServer, err)
+	}
+
+	switch proxyURL.Scheme {
+	case "", "http", "https":
+		return nil, proxyServer, nil
+	case "socks5", "socks5h":
+		dialer, err := proxy.FromURL(proxyURL, proxy.Direct)
+		if err != nil {
+			return nil, "", fmt.Errorf("invalid SOCKS proxy URL %q: %w", proxyServer, err)
+		}
+		ctxDialer, ok := dialer.(proxy.ContextDialer)
+		if !ok {
+			return nil, "", fmt.Errorf("SOCKS proxy dialer does not support contexts")
+		}
+
+		transport := &http.Transport{
+			TLSClientConfig: tlsconf,
+			DialContext:     ctxDialer.DialContext,
+		}
+
+		return &http.Client{
+			Transport: transport,
+			Timeout:   time.Duration(timeoutSeconds) * time.Second,
+		}, "", nil
+	default:
+		return nil, "", fmt.Errorf("unsupported proxy scheme %q (use http, https, socks5, or socks5h)", proxyURL.Scheme)
+	}
 }
 
 func nextVmId(pconf *providerConfiguration) (nextId pveSDK.GuestID, err error) {
