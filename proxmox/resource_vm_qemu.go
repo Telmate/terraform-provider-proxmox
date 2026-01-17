@@ -1027,6 +1027,9 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
+	// NewActiveRawConfigQemuFromApi do not call ReadVMHA() so hagroup is not populated yet
+	client.ReadVMHA(ctx, vmr)
+
 	d.SetId(id.Guest{
 		ID:   vmr.VmId(),
 		Node: vmr.Node(),
