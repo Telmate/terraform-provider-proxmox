@@ -48,7 +48,7 @@ func Terraform(config pveAPI.QemuNetworkInterfaces, d *schema.ResourceData) {
 			params[schemaQueues] = int(*v.MultiQueue)
 		}
 		if v.RateLimitKBps != nil {
-			params[schemaRate] = int(*v.RateLimitKBps * 1000)
+			params[schemaRate] = int(*v.RateLimitKBps / 1000)
 		}
 		if v.NativeVlan != nil {
 			params[schemaNativeVlan] = int(*v.NativeVlan)
