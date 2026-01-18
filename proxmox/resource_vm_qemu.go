@@ -1338,6 +1338,30 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 		}
 		ciAgentEnabled = true
 	}
+	
+	skipIPv4 := d.Get(schemaSkipIPv4).(bool)
+	skipIPv6 := d.Get(schemaSkipIPv6).(bool)
+
+	// If os_type=cloud-init and ipconfig0 missing (or has no DHCP/static), skip ipv4 and ipv6
+	if strings.EqualFold(d.Get("os_type").(string), "cloud-init") && config != nil && config.CloudInit != nil {
+		// ipconfig0 existence
+		_, hasIP0 := config.CloudInit.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID0]
+
+		// DHCP/static address probe
+		noAddr := false
+		if hasIP0 {
+			cicustom := config.CloudInit.Custom != nil && config.CloudInit.Custom.Network != nil
+			tmpConn := parseCloudInitInterface(config.CloudInit.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID0], cicustom, false, false)
+			noAddr = !tmpConn.hasRequiredIP()
+		}
+
+		if !hasIP0 || noAddr {
+			skipIPv4 = true
+			skipIPv6 = true
+			ciAgentEnabled = false
+			logger.Info().Int(vmID.Root, int(vmr.VmId())).Msg("os_type=cloud-init with missing/empty ipconfig0 -> skipping IPv4/IPv6 discovery and guest-agent")
+		}
+	}
 
 	log.Print("[INFO][initConnInfo] trying to get vm ip address for provisioner")
 	logger.Info().Int(vmID.Root, int(vmr.VmId())).Msgf("trying to get vm ip address for provisioner")
@@ -1350,8 +1374,8 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 		time.Duration(d.Get(schemaAgentTimeout).(int))*time.Second,
 		time.Duration(d.Get(schemaAdditionalWait).(int))*time.Second,
 		ciAgentEnabled,
-		d.Get(schemaSkipIPv4).(bool),
-		d.Get(schemaSkipIPv6).(bool),
+		skipIPv4,
+		skipIPv6,
 		hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
@@ -1399,28 +1423,35 @@ func getPrimaryIP(
 		SkipIPv6: skipIPv6,
 	}
 	if hasCiDisk { // Check if we have a Cloud-Init disk, cloud-init setting won't have any effect if without it.
-		if cloudInit != nil { // Check if we have a Cloud-Init configuration
-			log.Print("[INFO][getPrimaryIP] vm has a cloud-init configuration")
-			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf(" vm has a cloud-init configuration")
-			var cicustom bool
-			if cloudInit.Custom != nil && cloudInit.Custom.Network != nil {
-				cicustom = true
-			}
-			conn = parseCloudInitInterface(cloudInit.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID0], cicustom, conn.SkipIPv4, conn.SkipIPv6)
-			// early return, we have all information we wanted
-			if conn.hasRequiredIP() {
-				if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
-					return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-						Severity: diag.Warning,
-						Summary:  "Cloud-init is enabled but no IP config is set",
-						Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled"}}
+		if cloudInit != nil {
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msg("vm has a cloud-init configuration")
+			cicustom := cloudInit.Custom != nil && cloudInit.Custom.Network != nil
+
+			if ni, ok := cloudInit.NetworkInterfaces[pveSDK.QemuNetworkInterfaceID0]; ok {
+				conn = parseCloudInitInterface(ni, cicustom, conn.SkipIPv4, conn.SkipIPv6)
+				if conn.hasRequiredIP() {
+					if conn.IPs.IPv4 == "" && conn.IPs.IPv6 == "" {
+						return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+							Severity: diag.Warning,
+							Summary:  "Cloud-init is enabled but no IP config is set",
+							Detail:   "Cloud-init is enabled in your configuration but no static IP address is set, nor is the DHCP option enabled",
+						}}
+					}
+					return conn.IPs, diag.Diagnostics{}
 				}
-				return conn.IPs, diag.Diagnostics{}
+			} else {
+				// No ipconfig0 present
+				return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Cloud-init is enabled but ipconfig0 is missing",
+				Detail:   "No primary interface (ipconfig0) found in the cloud-init network config; skipping IP discovery.",
+				}}
 			}
 		} else {
 			return primaryIPs{}, diag.Diagnostics{diag.Diagnostic{
-				Severity: diag.Warning,
-				Summary:  "VM has a Cloud-init disk but no Cloud-init settings"}}
+			Severity: diag.Warning,
+			Summary:  "VM has a Cloud-init disk but no Cloud-init settings",
+			}}
 		}
 	}
 
