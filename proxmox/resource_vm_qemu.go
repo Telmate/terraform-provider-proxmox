@@ -90,6 +90,71 @@ func resourceVmQemu() *schema.Resource {
 					return d.HasChange("vm_state")
 				},
 			),
+			func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+				cloneName, hasClone := d.GetOk("clone")
+				cloneID := d.Get("clone_id").(int)
+				if !hasClone && cloneID == 0 {
+					return nil
+				}
+
+				if v, ok := d.GetOk("full_clone"); ok {
+					if b, ok2 := v.(bool); ok2 && !b {
+						return nil
+					}
+				}
+
+				csRaw, okCS := d.GetOk("clone_storage")
+				cfRaw, okCF := d.GetOk("clone_format")
+				if !okCS || !okCF {
+					return nil
+				}
+
+				cs, _ := csRaw.(string)
+				cf, _ := cfRaw.(string)
+				cs = strings.TrimSpace(cs)
+				cf = strings.TrimSpace(cf)
+				if cs == "" || cf == "" {
+					return nil
+				}
+
+				disksRaw, ok := d.GetOk("disk")
+				if !ok {
+					return nil
+				}
+				disks, ok := disksRaw.([]interface{})
+				if !ok {
+					return nil
+				}
+
+				for idx, dr := range disks {
+					m, ok := dr.(map[string]interface{})
+					if !ok {
+						continue
+					}
+
+					ds, _ := m["storage"].(string)
+					df, _ := m["format"].(string)
+					ds = strings.TrimSpace(ds)
+					df = strings.TrimSpace(df)
+
+					if ds == "" || ds != cs {
+						continue
+					}
+					if df == "" || strings.EqualFold(df, cf) {
+						continue
+					}
+
+					return fmt.Errorf(
+						"invalid combination of clone_storage/clone_format and disk[%d].format: "+
+							"full clone of %v to storage %q with format %q, "+
+							"but disk[%d] uses the same storage %q with a different format %q. "+
+							"Either remove clone_format, or set disk[%d].format = %q, or use a different storage",
+						idx, cloneName, cs, cf, idx, ds, df, idx, cf,
+					)
+				}
+
+				return nil
+			},
 			reboot.CustomizeDiff(),
 		),
 
@@ -189,6 +254,17 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 				Default:  true,
+			},
+			"clone_storage": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Target storage for full clone.",
+			},
+
+			"clone_format": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Disk format to use for full clone (e.g. qcow2, raw).",
 			},
 			"hastate": {
 				Type:     schema.TypeString,
@@ -666,6 +742,28 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 						ID:   guestID,
 						Name: &guestName,
 						Pool: poolName}}
+
+				var cloneStorage *string
+				if v, ok := d.GetOk("clone_storage"); ok {
+					if s, ok2 := v.(string); ok2 && s != "" {
+						cloneStorage = &s
+					}
+				}
+
+				var cloneFormat *pveSDK.QemuDiskFormat
+				if v, ok := d.GetOk("clone_format"); ok {
+					if s, ok2 := v.(string); ok2 && s != "" {
+						f := pveSDK.QemuDiskFormat(s)
+						cloneFormat = &f
+					}
+				}
+
+				if cloneStorage != nil {
+					cloneSettings.Full.Storage = cloneStorage
+				}
+				if cloneFormat != nil {
+					cloneSettings.Full.StorageFormat = cloneFormat
+				}
 			}
 
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
