@@ -8,7 +8,7 @@ To get up and running this is a minimal example:
 resource "proxmox_lxc_guest" "minimal-example" {
     name         = "minimal-example"
     power_state  = "running"
-    node         = "pve-1"
+    target_node  = "pve-1"
     unprivileged = true
     password     = "yourpassword"
     template {
