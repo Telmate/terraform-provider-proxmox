@@ -27,20 +27,23 @@ func SchemaMount() *schema.Schema {
 								Summary:  schemaID + " cannot be empty",
 								Severity: diag.Error}}
 						}
-						if len(v) > 2 {
-							if v[0:2] != prefixSchemaID {
+						if len(v) > len(prefixSchemaID) {
+							if v[0:len(prefixSchemaID)] != prefixSchemaID {
 								return diag.Diagnostics{{
 									Summary:  schemaID + " must start with '" + prefixSchemaID + "'",
 									Severity: diag.Error}}
 							}
-							num, err := strconv.ParseUint(v[2:], 10, 64) // validate that the rest is a number
+							num, err := strconv.ParseUint(v[len(prefixSchemaID):], 10, 64) // validate that the rest is a number
 							if err != nil || num > maximumID {
 								return diag.Diagnostics{{
 									Summary:  "invalid " + schemaID,
 									Severity: diag.Error}}
 							}
+							return nil
 						}
-						return nil
+						return diag.Diagnostics{{
+							Summary:  schemaID + " must start with '" + prefixSchemaID + "'",
+							Severity: diag.Error}}
 					}},
 				schemaType: {
 					Type:     schema.TypeString,
