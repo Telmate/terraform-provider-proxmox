@@ -5,10 +5,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func Terraform(networks pveSDK.LxcNetworks, d *schema.ResourceData) {
+func Terraform(networks pveSDK.LxcNetworks, d *schema.ResourceData) error {
 	if tfConfig, ok := d.GetOk(RootNetwork); ok {
-		d.Set(RootNetwork, terraformNetwork(networks, tfConfig.([]any)))
+		devices, err := terraformNetwork(networks, tfConfig.([]any))
+		if err != nil {
+			return err
+		}
+		d.Set(RootNetwork, devices)
 	} else {
 		d.Set(RootNetworks, terraformNetworks(networks))
 	}
+	return nil
 }
