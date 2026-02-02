@@ -289,7 +289,9 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveS
 	memory.Terraform(config.Memory, d)
 	mounts.Terraform(config.Mounts, d)
 	name.Terraform_Unsafe(config.Name, d)
-	networks.Terraform(config.Networks, d)
+	if err = networks.Terraform(config.Networks, d); err != nil {
+		return diag.FromErr(err)
+	}
 	node.Terraform(*config.Node, d)
 	operatingsystem.Terraform(config.OperatingSystem, d)
 	pool.Terraform(config.Pool, d)

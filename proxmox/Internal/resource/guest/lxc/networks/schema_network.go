@@ -2,6 +2,7 @@ package networks
 
 import (
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/validate"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -16,14 +17,10 @@ func SchemaNetwork() *schema.Schema {
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				schemaID: {
-					Type:     schema.TypeInt,
+					Type:     schema.TypeString,
 					Required: true,
 					ValidateDiagFunc: func(i any, k cty.Path) diag.Diagnostics {
-						v := i.(int)
-						if v < 0 {
-							return diag.Errorf("%s must be in the range 0 - %d, got: %d", schemaID, maximumID, v)
-						}
-						return diag.FromErr(pveSDK.LxcNetworkID(v).Validate())
+						return validate.ID(i.(string), prefixSchemaID, schemaID, maximumID)
 					}},
 				schemaBridge:      subSchemaBridge(),
 				schemaConnected:   subSchemaConnected(),

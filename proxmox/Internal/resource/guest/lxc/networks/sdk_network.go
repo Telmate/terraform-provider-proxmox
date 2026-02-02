@@ -2,6 +2,7 @@ package networks
 
 import (
 	"net"
+	"strconv"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
@@ -12,7 +13,8 @@ func sdkNetwork(schema []any) (pveSDK.LxcNetworks, diag.Diagnostics) {
 	config := pveSDK.LxcNetworks{}
 	for _, e := range schema {
 		schemaMap := e.(map[string]any)
-		id := pveSDK.LxcNetworkID(schemaMap[schemaID].(int))
+		rawID, _ := strconv.ParseUint(schemaMap[schemaID].(string)[len(prefixSchemaID):], 10, 64)
+		id := pveSDK.LxcNetworkID(rawID)
 		if _, duplicate := config[id]; duplicate {
 			return nil, diag.Diagnostics{diag.Diagnostic{
 				Summary:  "Duplicate network interface " + schemaID + " " + id.String(),
