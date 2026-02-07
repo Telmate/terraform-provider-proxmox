@@ -91,6 +91,7 @@ func resourceVmQemu() *schema.Resource {
 				},
 			),
 			reboot.CustomizeDiff(),
+			validateVGAAndSerialDiff,
 		),
 
 		Schema: map[string]*schema.Schema{
@@ -1519,4 +1520,57 @@ func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pveSDK.QemuGuestAgent {
 	return &pveSDK.QemuGuestAgent{
 		Enable: &tmpEnable,
 	}
+}
+
+// validateVGAAndSerialDiff is a CustomizeDiff function that validates VGA and Serial
+// configuration during terraform plan phase.
+func validateVGAAndSerialDiff(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+	// Safely get VGA configuration
+	vgaRaw, vgaExists := d.GetOk("vga")
+	if !vgaExists {
+		return nil // No VGA configured, validation not needed
+	}
+
+	// VGA is stored as a Set in the schema
+	vgaSet, ok := vgaRaw.(*schema.Set)
+	if !ok {
+		return nil // Invalid type, skip validation
+	}
+
+	vgaList := vgaSet.List()
+	if len(vgaList) == 0 {
+		return nil // Empty VGA list, validation not needed
+	}
+
+	// Extract VGA configuration
+	vgaMap, ok := vgaList[0].(map[string]interface{})
+	if !ok {
+		return nil // Invalid format, skip validation
+	}
+
+	// Check if VGA type is "serial"
+	vgaType, ok := vgaMap["type"].(string)
+	if !ok || vgaType != "serial" {
+		return nil // Not serial type, validation not needed
+	}
+
+	// VGA type is "serial", now validate that serial devices exist
+	serialRaw, serialExists := d.GetOk("serial")
+	if !serialExists {
+		return fmt.Errorf("when vga.type is set to 'serial', at least one serial device must be configured in the 'serial' block")
+	}
+
+	// Serial is stored as a Set in the schema
+	serialSet, ok := serialRaw.(*schema.Set)
+	if !ok || serialSet.Len() == 0 {
+		return fmt.Errorf("when vga.type is set to 'serial', at least one serial device must be configured in the 'serial' block")
+	}
+
+	// Verify at least one serial device is properly configured
+	serialList := serialSet.List()
+	if len(serialList) == 0 {
+		return fmt.Errorf("when vga.type is set to 'serial', at least one serial device must be configured in the 'serial' block")
+	}
+
+	return nil
 }
