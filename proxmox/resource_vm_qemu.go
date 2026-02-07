@@ -89,6 +89,7 @@ func resourceVmQemu() *schema.Resource {
 				},
 			),
 			reboot.CustomizeDiff(),
+			validateVGAAndSerialDiff,
 		),
 
 		Schema: map[string]*schema.Schema{
@@ -612,10 +613,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		config.EFIDisk = qemuEfiDisks[0]
 	}
 
-	if err := validateVGAAndSerial(d); err != nil {
-			return diag.FromErr(err)
-    }
-
 	var vmr *pveSDK.VmRef
 	if guestID := vmID.Get(d); guestID != 0 { // Manually set vmID
 		log.Print("[DEBUG][QemuVmCreate] checking if vmId: " + guestID.String() + " already exists")
@@ -874,10 +871,6 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	if tmpDiags.HasError() {
 		return diags
 	}
-
-	if err := validateVGAAndSerial(d); err != nil {
-        return diag.FromErr(err)
-    }
 
 	logger.Debug().Int(vmID.Root, int(resourceID.ID)).Msgf("Updating VM with the following configuration: %+v", config)
 
@@ -1530,36 +1523,55 @@ func mapToSDK_QemuGuestAgent(d *schema.ResourceData) *pveSDK.QemuGuestAgent {
 	}
 }
 
-func validateVGAAndSerial(d *schema.ResourceData) error {
-    // Get VGA configuration
-    vgaList := d.Get("vga").([]interface{})
+// validateVGAAndSerialDiff is a CustomizeDiff function that validates VGA and Serial
+// configuration during terraform plan phase.
+func validateVGAAndSerialDiff(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+	// Safely get VGA configuration
+	vgaRaw, vgaExists := d.GetOk("vga")
+	if !vgaExists {
+		return nil // No VGA configured, validation not needed
+	}
 
-    if len(vgaList) > 0 {
-        vga := vgaList[0].(map[string]interface{})
-        vgaType := vga["type"].(string)
+	// VGA is stored as a Set in the schema
+	vgaSet, ok := vgaRaw.(*schema.Set)
+	if !ok {
+		return nil // Invalid type, skip validation
+	}
 
-        // Check if vga type is serial0, serial1, serial2, or serial3
-        if strings.HasPrefix(vgaType, "serial") {
-            // Extract serial number (0-3)
-            serialNum := strings.TrimPrefix(vgaType, "serial")
+	vgaList := vgaSet.List()
+	if len(vgaList) == 0 {
+		return nil // Empty VGA list, validation not needed
+	}
 
-            // Check if corresponding serial device is defined
-            serialList := d.Get("serial").([]interface{})
-            serialFound := false
+	// Extract VGA configuration
+	vgaMap, ok := vgaList[0].(map[string]interface{})
+	if !ok {
+		return nil // Invalid format, skip validation
+	}
 
-            for _, s := range serialList {
-                serial := s.(map[string]interface{})
-                if fmt.Sprintf("%d", serial["id"].(int)) == serialNum {
-                    serialFound = true
-                    break
-                }
-            }
+	// Check if VGA type is "serial"
+	vgaType, ok := vgaMap["type"].(string)
+	if !ok || vgaType != "serial" {
+		return nil // Not serial type, validation not needed
+	}
 
-            if !serialFound {
-                return fmt.Errorf("vga type '%s' requires serial device with id=%s to be defined", vgaType, serialNum)
-            }
-        }
-    }
+	// VGA type is "serial", now validate that serial devices exist
+	serialRaw, serialExists := d.GetOk("serial")
+	if !serialExists {
+		return fmt.Errorf("when vga.type is set to 'serial', at least one serial device must be configured in the 'serial' block")
+	}
 
-    return nil
+	// Serial is stored as a Set in the schema
+	serialSet, ok := serialRaw.(*schema.Set)
+	if !ok || serialSet.Len() == 0 {
+		return fmt.Errorf("when vga.type is set to 'serial', at least one serial device must be configured in the 'serial' block")
+	}
+
+	// Verify at least one serial device is properly configured
+	serialList := serialSet.List()
+	if len(serialList) == 0 {
+		return fmt.Errorf("when vga.type is set to 'serial', at least one serial device must be configured in the 'serial' block")
+	}
+
+	return nil
 }
