@@ -818,7 +818,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	// TODO in the future we should let the SDK handle this situation.
 	if cloudinit.NeedsReboot(config.CloudInit, d) {
 		if !automaticReboot {
-			reboot.ErrorQemu(d)
+			return append(diags, reboot.ErrorQemu(d))
 		}
 		config.State = util.Pointer(pveSDK.PowerStateStopped)
 	} else {
