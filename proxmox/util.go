@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -293,12 +294,20 @@ func AssertNoNonSchemaValues(
 	// the keys in our resource schema. if they aren't things fail in a very weird and hidden way
 	for _, deviceEntry := range devices {
 		for key := range deviceEntry {
-			if _, ok := schemaDef.Elem.(*schema.Resource).Schema[key]; !ok {
-				if key == "id" { // we purposely ignore id here as that is implied by the order in the TypeList/QemuDevice(list)
-					continue
-				}
-				return fmt.Errorf("proxmox provider error: proxmox API returned new parameter '%v' we cannot process", key)
+			// First try exact match
+			if _, ok := schemaDef.Elem.(*schema.Resource).Schema[key]; ok {
+				continue
 			}
+			// Try with underscores instead of hyphens (for keys like "host-managed" -> "host_managed")
+			keyWithUnderscore := strings.ReplaceAll(key, "-", "_")
+			if _, ok := schemaDef.Elem.(*schema.Resource).Schema[keyWithUnderscore]; ok {
+				continue
+			}
+			// Ignore "id" as it's implied by the order in the TypeList
+			if key == "id" {
+				continue
+			}
+			return fmt.Errorf("proxmox provider error: proxmox API returned new parameter '%v' we cannot process", key)
 		}
 	}
 
@@ -312,10 +321,13 @@ func adaptDeviceToConf(
 ) map[string]interface{} {
 	// Value type should be one of types allowed by Terraform schema types.
 	for key, value := range device {
+		// Normalize key: replace hyphens with underscores for Terraform schema compatibility
+		normalizedKey := strings.ReplaceAll(key, "-", "_")
+		
 		// This nested switch is used for nested config like in `net[n]`,
 		// where Proxmox uses `key=<0|1>` in string" at the same time
 		// a boolean could be used in ".tf" files.
-		switch conf[key].(type) {
+		switch conf[normalizedKey].(type) {
 		case bool:
 			switch value := value.(type) {
 			// If the key is bool and value is int (which comes from Proxmox API),
@@ -324,15 +336,15 @@ func adaptDeviceToConf(
 				sValue := strconv.Itoa(value)
 				bValue, err := strconv.ParseBool(sValue)
 				if err == nil {
-					conf[key] = bValue
+					conf[normalizedKey] = bValue
 				}
 			// If value is bool, which comes from Terraform conf, add it directly.
 			case bool:
-				conf[key] = value
+				conf[normalizedKey] = value
 			}
 		// Anything else will be added as it is.
 		default:
-			conf[key] = value
+			conf[normalizedKey] = value
 		}
 	}
 
