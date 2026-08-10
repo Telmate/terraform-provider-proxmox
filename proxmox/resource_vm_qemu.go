@@ -86,6 +86,7 @@ func resourceVmQemu() *schema.Resource {
 					return d.HasChange("vm_state")
 				},
 			),
+			efi.CustomizeDiff(),
 			reboot.CustomizeDiff(),
 		),
 
@@ -970,9 +971,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 	if config.CloudInit != nil {
 		cloudinit.Terraform(config.CloudInit, d)
 	}
-	if config.EfiDisk != nil {
-		efi.Terraform(config.EfiDisk, d)
-	}
+	efi.Terraform(config.EfiDisk, d)
 	mapToTerraform_Memory(config.Memory, d)
 	if len(config.Networks) != 0 {
 		network.Terraform(config.Networks, d)
