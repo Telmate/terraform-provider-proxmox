@@ -10,3 +10,6 @@ bin
 vendor/*
 
 __debug*
+
+*coverage.html
+*coverage.out

@@ -72,9 +72,7 @@ vet:
 	@echo " -> vetting code"
 	@go vet ./...
 
-test:
-	@echo " -> testing code"
-	@go test -v ./...
+test: test_unit
 
 build: clean
 	@echo " -> Building"
@@ -95,6 +93,15 @@ local-dev-install: build
 	mkdir -p ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 	cp bin/terraform-provider-proxmox ~/.terraform.d/plugins/localhost/telmate/proxmox/$(MAJOR).$(MINOR).$(NEXT_MICRO)/$(KERNEL)_$(ARCH)/
 
-
 clean:
 	@git clean -f -d
+
+.PHONY: test_coverage
+test_coverage:
+	@go test -coverprofile=_coverage.out ./... \
+		&& go tool cover -html=_coverage.out -o _coverage.html
+
+.PHONY: test_unit
+test_unit: # Unit tests
+	@echo " -> running unit tests"
+	@go test -race -vet=off ./...
