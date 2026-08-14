@@ -279,7 +279,12 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveS
 		Node: vmr.Node(),
 		Type: id.GuestLxc}.String())
 
-	config := raw.Get(*vmr, pveSDK.PowerStateUnknown)
+	var poolPtr *pveSDK.PoolName
+	if v := vmr.Pool(); v != "" {
+		poolPtr = &v
+	}
+
+	config := raw.Get(poolPtr, pveSDK.PowerStateUnknown)
 
 	architecture.Terraform(config.Architecture, d)
 	cpu.Terraform(config.CPU, d)
