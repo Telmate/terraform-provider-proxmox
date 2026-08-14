@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
 func sdkNetworks(schema map[string]any) pveSDK.LxcNetworks {
@@ -23,16 +22,16 @@ func sdkNetworks(schema map[string]any) pveSDK.LxcNetworks {
 			mac, _ = net.ParseMAC(schemaMap[schemaMAC].(string))
 		}
 		config[pveSDK.LxcNetworkID(tmpID)] = pveSDK.LxcNetwork{
-			Bridge:        util.Pointer(schemaMap[schemaBridge].(string)),
-			Connected:     util.Pointer(schemaMap[schemaConnected].(bool)),
-			Firewall:      util.Pointer(schemaMap[schemaFirewall].(bool)),
+			Bridge:        new(schemaMap[schemaBridge].(string)),
+			Connected:     new(schemaMap[schemaConnected].(bool)),
+			Firewall:      new(schemaMap[schemaFirewall].(bool)),
 			IPv4:          sdkNetworksIPv4(schemaMap[schmemaIPv4].([]any)),
 			IPv6:          sdkNetworksIPv6(schemaMap[schmemaIPv6].([]any)),
-			MAC:           util.Pointer(mac),
-			Mtu:           util.Pointer(pveSDK.MTU(schemaMap[schemaMTU].(int))),
-			Name:          util.Pointer(pveSDK.LxcNetworkName(schemaMap[schemaName].(string))),
-			NativeVlan:    util.Pointer(pveSDK.Vlan(schemaMap[schemaNativeVlan].(int))),
-			RateLimitKBps: util.Pointer(pveSDK.GuestNetworkRate(schemaMap[schemaRateLimit].(int)))}
+			MAC:           new(mac),
+			Mtu:           new(pveSDK.MTU(schemaMap[schemaMTU].(int))),
+			Name:          new(pveSDK.LxcNetworkName(schemaMap[schemaName].(string))),
+			NativeVlan:    new(pveSDK.Vlan(schemaMap[schemaNativeVlan].(int))),
+			RateLimitKBps: new(pveSDK.GuestNetworkRate(schemaMap[schemaRateLimit].(int)))}
 	}
 	return config
 }

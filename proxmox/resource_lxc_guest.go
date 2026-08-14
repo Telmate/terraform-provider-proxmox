@@ -323,7 +323,7 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 		Features:        features.SDK(privilidged, d),
 		Memory:          memory.SDK(d),
 		Name:            guestName,
-		StartAtNodeBoot: util.Pointer(startatnodeboot.SDK(d)),
+		StartAtNodeBoot: new(startatnodeboot.SDK(d)),
 		StartupShutdown: startupshutdown.SDK(d),
 		State:           powerstate.SDK(powerstate.LegacyFalse, d),
 		Swap:            swap.SDK(d),
