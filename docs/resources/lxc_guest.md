@@ -210,41 +210,43 @@ The `data` field is used to configure a data mount, And is mutually exclusive wi
 
 The `network` field is used to configure the network interfaces. It may be specified multiple times, each instance requires a unique `id` and `name` value. `network` is mutually exclusive with `networks`.
 
-| Argument        | Type    | Default Value | Description |
-|:----------------|---------|---------------|:------------|
-| `bridge`        | `string`|               | **Required**: Bridge the network interface will be connected to.|
-| `connected`     | `bool`  | `true`        | Wheter the network interface will be connected.|
-| `firewall`      | `bool`  | `false`       | Wheter the network interface will be protected by the firewall.|
-| `id`            | `string`|               | **Required**: The unique id of the network interface. Must be prefixed with `net`, example: `net0`. Maximum amount of network interfaces is 16.|
-| `ipv4_address`  | `string`|               | IPv4 address of the network interface.|
-| `ipv4_dhcp`     | `bool`  | `false`       | Wheter IPv4 DHCP is enabled on the network interface.|
-| `ipv4_gateway`  | `string`|               | IPv4 gateway of the network interface.|
-| `ipv6_address`  | `string`|               | IPv6 address of the network interface.|
-| `ipv6_dhcp`     | `bool`  | `false`       | Wheter IPv6 DHCP is enabled on the network interface.|
-| `ipv6_gateway`  | `string`|               | IPv6 gateway of the network interface.|
-| `mac`           | `string`|               | MAC address of the network interface.|
-| `mtu`           | `int`   |               | MTU of the network interface.|
-| `name`          | `string`|               | **Required**: Name of the network interface inside the guest. The name must be unique example: `eth0`.|
-| `rate_limit`    | `int`   |               | Rate limit of the network interface in Kbit/s. `0` means unlimited.|
-| `slaac`         | `bool`  | `false`       | Wheter SLAAC is enabled on the network interface. Conflicts with IPv6 settings.|
-| `vlan_native`   | `int`   |               | Native VLAN of the network interface.|
+| Argument        | Type    | Default Value | Description
+|:----------------|---------|---------------|:-----------
+| `bridge`        | `string`|               | **Required**: Bridge the network interface will be connected to.
+| `connected`     | `bool`  | `true`        | Wheter the network interface will be connected.
+| `firewall`      | `bool`  | `false`       | Wheter the network interface will be protected by the firewall.
+| `host_managed`  | `bool`  | `true`        | Wheter the network interface is managed by proxmox.
+| `id`            | `string`|               | **Required**: The unique id of the network interface. Must be prefixed with `net`, example: `net0`. Maximum amount of network interfaces is 16.
+| `ipv4_address`  | `string`|               | IPv4 address of the network interface.
+| `ipv4_dhcp`     | `bool`  | `false`       | Wheter IPv4 DHCP is enabled on the network interface.
+| `ipv4_gateway`  | `string`|               | IPv4 gateway of the network interface.
+| `ipv6_address`  | `string`|               | IPv6 address of the network interface.
+| `ipv6_dhcp`     | `bool`  | `false`       | Wheter IPv6 DHCP is enabled on the network interface.
+| `ipv6_gateway`  | `string`|               | IPv6 gateway of the network interface.
+| `mac`           | `string`|               | MAC address of the network interface.
+| `mtu`           | `int`   |               | MTU of the network interface.
+| `name`          | `string`|               | **Required**: Name of the network interface inside the guest. The name must be unique example: `eth0`.
+| `rate_limit`    | `int`   |               | Rate limit of the network interface in Kbit/s. `0` means unlimited.
+| `slaac`         | `bool`  | `false`       | Wheter SLAAC is enabled on the network interface. Conflicts with IPv6 settings.
+| `vlan_native`   | `int`   |               | Native VLAN of the network interface.
 
 ### Networks Reference
 
 The `networks` field is used to configure the network interfaces. It may only be specified once. `networks` is mutually exclusive with `network`. `mounts` has 16 sub items, with each sub item representing a unique id, example: `net0`, `net1`, etc. Every slot has the following configuration options:
 
-| Argument     | Type    | Default Value | Description |
-|:-------------|---------|---------------|:------------|
-| `bridge`     | `string`|               | **Required**: Bridge the network interface will be connected to.|
-| `connected`  | `bool`  | `true`        | Wheter the network interface will be connected.|
-| `firewall`   | `bool`  | `false`       | Wheter the network interface will be protected by the firewall.|
-| `ipv4`       | `nested`|               | IPv4 configuration, see [IPv4 Reference](#ipv4-reference).|
-| `ipv6`       | `nested`|               | IPv6 configuration, see [IPv6 Reference](#ipv6-reference).|
-| `mac`        | `string`|               | MAC address of the network interface.|
-| `mtu`        | `int`   |               | MTU of the network interface.|
-| `name`       | `string`|               | **Required**: Name of the network interface inside the guest. The name must be unique example: `eth0`.|
-| `rate_limit` | `int`   |               | Rate limit of the network interface in Kbit/s. `0` means unlimited.|
-| `vlan_native`| `int`   |               | Native VLAN of the network interface.|
+| Argument      | Type    | Default Value | Description
+|:--------------|---------|---------------|:-----------
+| `bridge`      | `string`|               | **Required**: Bridge the network interface will be connected to.
+| `connected`   | `bool`  | `true`        | Wheter the network interface will be connected.
+| `firewall`    | `bool`  | `false`       | Wheter the network interface will be protected by the firewall.
+| `host_managed`| `bool`  | `true`        | Wheter the network interface is managed by proxmox.
+| `ipv4`        | `nested`|               | IPv4 configuration, see [IPv4 Reference](#ipv4-reference).
+| `ipv6`        | `nested`|               | IPv6 configuration, see [IPv6 Reference](#ipv6-reference).
+| `mac`         | `string`|               | MAC address of the network interface.
+| `mtu`         | `int`   |               | MTU of the network interface.
+| `name`        | `string`|               | **Required**: Name of the network interface inside the guest. The name must beunique example: `eth0`.
+| `rate_limit`  | `int`   |               | Rate limit of the network interface in Kbit/s. `0` means unlimited.
+| `vlan_native` | `int`   |               | Native VLAN of the network interface.
 
 #### IPv4 Reference
 

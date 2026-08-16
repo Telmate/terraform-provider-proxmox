@@ -4,10 +4,17 @@ import (
 	"strconv"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func terraformNetworks(config pveSDK.LxcNetworks) []any {
+func terraformNetworks(config pveSDK.LxcNetworks, d *schema.ResourceData) []any {
 	mapParams := make(map[string]any, networksAmount)
+	var networkMap map[string]any
+	if tfConfig := d.Get(RootNetworks); tfConfig != nil {
+		if v, ok := tfConfig.([]any); ok && len(v) > 0 {
+			networkMap = v[0].(map[string]any)
+		}
+	}
 	for k, v := range config {
 		settings := map[string]any{
 			schemaBridge:    *v.Bridge,
@@ -15,6 +22,19 @@ func terraformNetworks(config pveSDK.LxcNetworks) []any {
 			schemaFirewall:  *v.Firewall,
 			schemaMAC:       v.MAC.String(),
 			schemaName:      v.Name.String()}
+		if v.HostManaged != nil {
+			settings[schemaHostManaged] = *v.HostManaged
+		} else {
+			hostManaged := defaultHostManaged
+			if v, ok := networkMap[prefixSchemaID+k.String()]; ok {
+				if vv, ok := v.([]any); ok && len(vv) > 0 {
+					if vvv, ok := vv[0].(map[string]any)[schemaHostManaged]; ok {
+						hostManaged = vvv.(bool)
+					}
+				}
+			}
+			settings[schemaHostManaged] = hostManaged
+		}
 		if v.Mtu != nil {
 			settings[schemaMTU] = int(*v.Mtu)
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
-func sdkNetwork(schema []any) (pveSDK.LxcNetworks, diag.Diagnostics) {
+func sdkNetwork(version pveSDK.EncodedVersion, schema []any) (pveSDK.LxcNetworks, diag.Diagnostics) {
 	config := pveSDK.LxcNetworks{}
 	for _, e := range schema {
 		schemaMap := e.(map[string]any)
@@ -23,10 +23,15 @@ func sdkNetwork(schema []any) (pveSDK.LxcNetworks, diag.Diagnostics) {
 		if v := schemaMap[schemaMAC].(string); v != "" {
 			mac, _ = net.ParseMAC(schemaMap[schemaMAC].(string))
 		}
+		var hostManaged *bool
+		if version >= HostManagedVersion() {
+			hostManaged = new(schemaMap[schemaHostManaged].(bool))
+		}
 		config[id] = pveSDK.LxcNetwork{
 			Bridge:        new(schemaMap[schemaBridge].(string)),
 			Connected:     new(schemaMap[schemaConnected].(bool)),
 			Firewall:      new(schemaMap[schemaFirewall].(bool)),
+			HostManaged:   hostManaged,
 			IPv4:          sdkNetworkIPv4(schemaMap),
 			IPv6:          sdkNetworkIPv6(schemaMap),
 			MAC:           &mac,
