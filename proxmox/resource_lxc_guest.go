@@ -32,6 +32,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -46,7 +47,10 @@ func resourceLxcGuest() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
-		CustomizeDiff: reboot.CustomizeDiff(),
+		CustomizeDiff: customdiff.All(
+			networks.CustomizeDiff(),
+			reboot.CustomizeDiff(),
+		),
 
 		Schema: map[string]*schema.Schema{
 			architecture.Root:            architecture.Schema(),
@@ -97,8 +101,13 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 	client := pconf.Client
 	clientNew := pconf.NewClient
 
+	version, err := client.Version(ctx)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	privileged := privilege.SDK(d)
-	config, tmpDiags := lxcSDK(privileged, d)
+	config, tmpDiags := lxcSDK(privileged, version, d)
 	diags = append(diags, tmpDiags...)
 	if diags.HasError() {
 		return diags
@@ -107,7 +116,8 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 	config.Privileged = &privileged
 
 	// Set the node for the LXC container
-	targetNode, err := node.SdkCreate(d)
+	var targetNode pveSDK.NodeName
+	targetNode, err = node.SdkCreate(d)
 	if err != nil {
 		return append(diags, diag.Diagnostic{
 			Summary:  err.Error(),
@@ -176,9 +186,14 @@ func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta an
 
 	diags := lxcGuestWarning()
 
+	version, err := client.Version(ctx)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
 	// Get vm reference
 	var resourceID id.Guest
-	err := resourceID.Parse(d.Id())
+	err = resourceID.Parse(d.Id())
 	if err != nil {
 		d.SetId("")
 		return append(diags, diag.Diagnostic{
@@ -194,7 +209,7 @@ func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta an
 	}
 
 	// create a new config from the resource data
-	config, tmpDiags := lxcSDK(privilege.SDK(d), d)
+	config, tmpDiags := lxcSDK(privilege.SDK(d), version, d)
 	diags = append(diags, tmpDiags...)
 	if diags.HasError() {
 		return diags
@@ -279,7 +294,12 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveS
 		Node: vmr.Node(),
 		Type: id.GuestLxc}.String())
 
-	config := raw.Get(*vmr, pveSDK.PowerStateUnknown)
+	var poolPtr *pveSDK.PoolName
+	if v := vmr.Pool(); v != "" {
+		poolPtr = &v
+	}
+
+	config := raw.Get(poolPtr, pveSDK.PowerStateUnknown)
 
 	architecture.Terraform(config.Architecture, d)
 	cpu.Terraform(config.CPU, d)
@@ -310,7 +330,7 @@ func resourceLxcGuestDelete(ctx context.Context, d *schema.ResourceData, meta an
 	return guestDelete(ctx, d, meta, "LXC")
 }
 
-func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
+func lxcSDK(privilidged bool, version pveSDK.Version, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Diagnostics) {
 	var guestName *pveSDK.GuestName
 	if v := name.SDK(d); v != "" {
 		guestName = &v
@@ -323,14 +343,14 @@ func lxcSDK(privilidged bool, d *schema.ResourceData) (pveSDK.ConfigLXC, diag.Di
 		Features:        features.SDK(privilidged, d),
 		Memory:          memory.SDK(d),
 		Name:            guestName,
-		StartAtNodeBoot: util.Pointer(startatnodeboot.SDK(d)),
+		StartAtNodeBoot: new(startatnodeboot.SDK(d)),
 		StartupShutdown: startupshutdown.SDK(d),
 		State:           powerstate.SDK(powerstate.LegacyFalse, d),
 		Swap:            swap.SDK(d),
 		Tags:            tags.SDK(d),
 	}
 	var diags, tmpDiags diag.Diagnostics
-	config.Networks, diags = networks.SDK(d)
+	config.Networks, diags = networks.SDK(version.Encode(), d)
 	if diags.HasError() {
 		return config, diags
 	}

@@ -5,10 +5,9 @@ import (
 	"strconv"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
 
-func sdkNetworks(schema map[string]any) pveSDK.LxcNetworks {
+func sdkNetworks(version pveSDK.EncodedVersion, schema map[string]any) pveSDK.LxcNetworks {
 	config := make(pveSDK.LxcNetworks, len(schema))
 	for k, v := range schema {
 		tmpID, _ := strconv.ParseUint(k[len(prefixSchemaID):], 10, 64)
@@ -22,17 +21,22 @@ func sdkNetworks(schema map[string]any) pveSDK.LxcNetworks {
 		if v := schemaMap[schemaMAC].(string); v != "" {
 			mac, _ = net.ParseMAC(schemaMap[schemaMAC].(string))
 		}
+		var hostManaged *bool
+		if version >= HostManagedVersion() {
+			hostManaged = new(schemaMap[schemaHostManaged].(bool))
+		}
 		config[pveSDK.LxcNetworkID(tmpID)] = pveSDK.LxcNetwork{
-			Bridge:        util.Pointer(schemaMap[schemaBridge].(string)),
-			Connected:     util.Pointer(schemaMap[schemaConnected].(bool)),
-			Firewall:      util.Pointer(schemaMap[schemaFirewall].(bool)),
+			Bridge:        new(schemaMap[schemaBridge].(string)),
+			Connected:     new(schemaMap[schemaConnected].(bool)),
+			Firewall:      new(schemaMap[schemaFirewall].(bool)),
+			HostManaged:   hostManaged,
 			IPv4:          sdkNetworksIPv4(schemaMap[schmemaIPv4].([]any)),
 			IPv6:          sdkNetworksIPv6(schemaMap[schmemaIPv6].([]any)),
-			MAC:           util.Pointer(mac),
-			Mtu:           util.Pointer(pveSDK.MTU(schemaMap[schemaMTU].(int))),
-			Name:          util.Pointer(pveSDK.LxcNetworkName(schemaMap[schemaName].(string))),
-			NativeVlan:    util.Pointer(pveSDK.Vlan(schemaMap[schemaNativeVlan].(int))),
-			RateLimitKBps: util.Pointer(pveSDK.GuestNetworkRate(schemaMap[schemaRateLimit].(int)))}
+			MAC:           new(mac),
+			Mtu:           new(pveSDK.MTU(schemaMap[schemaMTU].(int))),
+			Name:          new(pveSDK.LxcNetworkName(schemaMap[schemaName].(string))),
+			NativeVlan:    new(pveSDK.Vlan(schemaMap[schemaNativeVlan].(int))),
+			RateLimitKBps: new(pveSDK.GuestNetworkRate(schemaMap[schemaRateLimit].(int)))}
 	}
 	return config
 }
@@ -42,7 +46,6 @@ func sdkNetworksIPv4(schema []any) *pveSDK.LxcIPv4 {
 	var gateway pveSDK.IPv4Address
 	if len(schema) == 1 {
 		v := schema[0].(map[string]any)
-		_ = v
 		if v[schemaDHCP].(bool) {
 			return &pveSDK.LxcIPv4{DHCP: true}
 		}
@@ -57,9 +60,8 @@ func sdkNetworksIPv4(schema []any) *pveSDK.LxcIPv4 {
 func sdkNetworksIPv6(schema []any) *pveSDK.LxcIPv6 {
 	var address pveSDK.IPv6CIDR
 	var gateway pveSDK.IPv6Address
-	if len(schema) == 1 {
+	if len(schema) == 1 && schema[0] != nil {
 		v := schema[0].(map[string]any)
-		_ = v
 		if v[schemaDHCP].(bool) {
 			return &pveSDK.LxcIPv6{DHCP: true}
 		}

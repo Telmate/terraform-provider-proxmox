@@ -13,7 +13,7 @@ func Terraform(networks pveSDK.LxcNetworks, d *schema.ResourceData) error {
 		}
 		d.Set(RootNetwork, devices)
 	} else {
-		d.Set(RootNetworks, terraformNetworks(networks))
+		d.Set(RootNetworks, terraformNetworks(networks, d))
 	}
 	return nil
 }

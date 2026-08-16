@@ -6,12 +6,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func SDK(d *schema.ResourceData) (pveSDK.LxcNetworks, diag.Diagnostics) {
+func SDK(version pveSDK.EncodedVersion, d *schema.ResourceData) (pveSDK.LxcNetworks, diag.Diagnostics) {
 	if v, ok := d.GetOk(RootNetwork); ok { // network
-		return sdkNetwork(v.([]any))
+		return sdkNetwork(version, v.([]any))
 	} else if v := d.Get(RootNetworks).([]any); len(v) == 1 { // networks
 		if subSchema, ok := v[0].(map[string]any); ok {
-			return sdkNetworks(subSchema), nil
+			return sdkNetworks(version, subSchema), nil
 		}
 	}
 	// Defaults

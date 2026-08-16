@@ -25,6 +25,7 @@ func SchemaNetwork() *schema.Schema {
 				schemaBridge:      subSchemaBridge(),
 				schemaConnected:   subSchemaConnected(),
 				schemaFirewall:    subSchemaFirewall(),
+				schemaHostManaged: subSchemaHostManaged(),
 				schemaIPv4Address: subSchemaIPv4Address(true, schemaIPv4Address, schema.Schema{}),
 				schemaIPv4DHCP:    subSchemaDHCP(schema.Schema{}),
 				schemaIPv4Gateway: subSchemaIPv4Gateway(true, schemaIPv4Gateway, schema.Schema{}),

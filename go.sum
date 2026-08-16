@@ -4,10 +4,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ProtonMail/go-crypto v1.4.1 h1:9RfcZHqEQUvP8RzecWEUafnZVtEvrBVL9BiF67IQOfM=
 github.com/ProtonMail/go-crypto v1.4.1/go.mod h1:e1OaTyu5SYVrO9gKOEhTc+5UcXtTUa+P3uLudwcgPqo=
-github.com/Telmate/proxmox-api-go v0.0.0-20260705170205-4373c9183084 h1:Fbi+cbLbFUPU/YWtP+h7kncX9svAy7kph2PrTE5XNcc=
-github.com/Telmate/proxmox-api-go v0.0.0-20260705170205-4373c9183084/go.mod h1:90hDRcdB9vqdHdtkKje50NGkGbphbGKhtefqezo/Bgc=
-github.com/Telmate/proxmox-api-go v0.0.0-20260730191320-ad30e082d0b2 h1:Bb08DOUAg6T9XpOXbW45fkzmu1t4vaIcpTUIBCbCeM8=
-github.com/Telmate/proxmox-api-go v0.0.0-20260730191320-ad30e082d0b2/go.mod h1:8Ibp7735ao2KgxxdRjqQKktH0RA6TTTfRL7aw1gj324=
+github.com/Telmate/proxmox-api-go v0.0.0-20260811170036-d21834931666 h1:mnnCE8Ws3UClCeOrDTApDHrT6zjGUgEa+LvvCHiieds=
+github.com/Telmate/proxmox-api-go v0.0.0-20260811170036-d21834931666/go.mod h1:8Ibp7735ao2KgxxdRjqQKktH0RA6TTTfRL7aw1gj324=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
 github.com/agext/levenshtein v1.2.3/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/apparentlymart/go-textseg/v12 v12.0.0/go.mod h1:S/4uRK2UtaQttw1GenVJEynmyUenKwP++x/+DdGV/Ec=

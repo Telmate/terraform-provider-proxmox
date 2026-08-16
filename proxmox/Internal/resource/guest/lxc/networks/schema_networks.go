@@ -36,14 +36,15 @@ func networksSubSchema(slot string) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				schemaBridge:     subSchemaBridge(),
-				schemaConnected:  subSchemaConnected(),
-				schemaFirewall:   subSchemaFirewall(),
-				schemaMAC:        subSchemaMAC(false, pathSimple+schemaMAC),
-				schemaMTU:        subSchemaMTU(false, pathSimple+schemaMTU),
-				schemaName:       subSchemaName(false, pathSimple+schemaName),
-				schemaNativeVlan: subSchemaNativeVlan(false, pathSimple+schemaNativeVlan),
-				schemaRateLimit:  subSchemaRate(false, pathSimple+schemaRateLimit),
+				schemaBridge:      subSchemaBridge(),
+				schemaConnected:   subSchemaConnected(),
+				schemaFirewall:    subSchemaFirewall(),
+				schemaHostManaged: subSchemaHostManaged(),
+				schemaMAC:         subSchemaMAC(false, pathSimple+schemaMAC),
+				schemaMTU:         subSchemaMTU(false, pathSimple+schemaMTU),
+				schemaName:        subSchemaName(false, pathSimple+schemaName),
+				schemaNativeVlan:  subSchemaNativeVlan(false, pathSimple+schemaNativeVlan),
+				schemaRateLimit:   subSchemaRate(false, pathSimple+schemaRateLimit),
 				schmemaIPv4: {
 					Type:     schema.TypeList,
 					Optional: true,

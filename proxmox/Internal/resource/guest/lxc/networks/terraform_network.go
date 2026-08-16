@@ -32,6 +32,17 @@ func terraformNetwork(config pveSDK.LxcNetworks, tfConfig []any) ([]map[string]a
 			schemaID:        prefixSchemaID + strconv.FormatUint(uint64(i), 10),
 			schemaName:      v.Name.String()}
 		mac.Terraform(v.MAC.String(), int(i), tfMap, schemaMAC, params)
+		if v.HostManaged != nil {
+			params[schemaHostManaged] = *v.HostManaged
+		} else {
+			hostManaged := defaultHostManaged
+			if v, ok := tfMap[int(i)].(map[string]any); ok {
+				if vv, ok := v[schemaHostManaged]; ok {
+					hostManaged = vv.(bool)
+				}
+			}
+			params[schemaHostManaged] = hostManaged
+		}
 		if v.Mtu != nil {
 			params[schemaMTU] = int(*v.Mtu)
 		}
