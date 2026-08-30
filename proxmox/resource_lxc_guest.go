@@ -2,12 +2,14 @@ package proxmox
 
 import (
 	"context"
+	"time"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/clone"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/dns"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/guestid"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/ip"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/architecture"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/lxc/features"
@@ -29,14 +31,20 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/reboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startatnodeboot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startupshutdown"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/wait"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 var lxcNewResourceDef *schema.Resource
+
+const (
+	schemaNetworkTimeout = "network_timeout"
+)
 
 func resourceLxcGuest() *schema.Resource {
 	lxcNewResourceDef = &schema.Resource{
@@ -60,6 +68,10 @@ func resourceLxcGuest() *schema.Resource {
 			dns.Root:                     dns.Schema(),
 			features.Root:                features.Schema(),
 			guestid.Root:                 guestid.Schema(),
+			ip.RootLxcV4:                 ip.SchemaV4(),
+			ip.RootLxcV6:                 ip.SchemaV6(),
+			ip.RootSkipV4:                ip.SchemaSkipV4(),
+			ip.RootSkipV6:                ip.SchemaSkipV6(),
 			memory.Root:                  memory.Schema(),
 			mounts.RootMount:             mounts.SchemaMount(),
 			mounts.RootMounts:            mounts.SchemaMounts(),
@@ -84,7 +96,18 @@ func resourceLxcGuest() *schema.Resource {
 			swap.Root:                    swap.Schema(),
 			tags.Root:                    tags.Schema(),
 			template.Root:                template.Schema(),
-		},
+			wait.Root:                    wait.Schema(),
+			schemaNetworkTimeout: {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     30,
+				Description: "Timeout in seconds to keep trying to obtain an IP address.",
+				ValidateDiagFunc: func(i any, k cty.Path) diag.Diagnostics {
+					if i.(int) > 0 {
+						return nil
+					}
+					return diag.Errorf(schemaNetworkTimeout + " must be greater than 0")
+				}}},
 		Timeouts: resourceTimeouts(),
 	}
 
@@ -113,6 +136,7 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 		return diags
 	}
 	config.ID = guestid.SDK(d)
+	config.Pool = new(pool.SDK(d))
 	config.Privileged = &privileged
 
 	// Set the node for the LXC container
@@ -161,7 +185,6 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 			OsTemplate:    template.SDK(d),
 			PublicSSHkeys: ssh_public_keys.SDK(d),
 			UserPassword:  password.SDK(d)}
-		config.Pool = util.Pointer(pool.SDK(d))
 		vmr, err = config.Create(ctx, client)
 		if err != nil {
 			return append(diags, diag.Diagnostic{
@@ -174,7 +197,7 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 			Type: id.GuestLxc}.String())
 	}
 
-	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, &version, true)...)
 }
 
 func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -235,7 +258,7 @@ func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta an
 			Severity: diag.Error})
 	}
 
-	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, &version, true)...)
 }
 
 func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -267,25 +290,21 @@ func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, m
 	if err := client.CheckVmRef(ctx, vmr); err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
-	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, nil, false)...)
 }
 
-func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client) diag.Diagnostics {
+func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client, version *pveSDK.Version, waitForAgent bool) diag.Diagnostics {
+	newClient := client.New()
 	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
 	if err != nil {
-		return diag.Diagnostics{{
-			Summary:  err.Error(),
-			Severity: diag.Error}}
+		return diag.FromErr(err)
 	}
 
 	var raw pveSDK.RawConfigLXC
 	var pending bool
 	raw, pending, err = pveSDK.NewActiveRawConfigLXCFromApi(ctx, vmr, client)
 	if err != nil {
-		return diag.Diagnostics{
-			diag.Diagnostic{
-				Summary:  err.Error(),
-				Severity: diag.Error}}
+		return diag.FromErr(err)
 	}
 	reboot.SetRequired(pending, d)
 
@@ -313,17 +332,39 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveS
 	if err = networks.Terraform(config.Networks, d); err != nil {
 		return diag.FromErr(err)
 	}
-	node.Terraform(*config.Node, d)
+	node.Terraform(vmr.Node(), d)
 	operatingsystem.Terraform(config.OperatingSystem, d)
 	pool.Terraform(config.Pool, d)
-	powerstate.Terraform(guestStatus.GetState(), false, d)
+	state := guestStatus.GetState()
+	powerstate.Terraform(state, false, d)
 	privilege.Terraform(*config.Privileged, d)
 	rootmount.Terraform(config.BootMount, d)
 	startatnodeboot.Terraform(*config.StartAtNodeBoot, d)
 	startupshutdown.Terraform(config.StartupShutdown, d)
 	swap.Terraform(config.Swap, d)
 	tags.Terraform(config.Tags, d)
-	return nil
+
+	var diags diag.Diagnostics
+	if state == pveSDK.PowerStateRunning {
+		if len(config.Networks) == 0 {
+			return nil
+		}
+		conn := &connectionInfo{
+			SkipIPv4: d.Get(ip.RootSkipV4).(bool),
+			SkipIPv6: d.Get(ip.RootSkipV6).(bool),
+		}
+		var timeout time.Duration
+		if waitForAgent {
+			timeout = time.Duration(d.Get(schemaNetworkTimeout).(int)) * time.Second
+		}
+		tmpDiags := lxcGetIP(ctx, client, newClient, conn, config.Networks, *vmr, timeout, wait.GetDuration(d), version)
+		if len(tmpDiags) > 0 {
+			diags = append(diags, tmpDiags...)
+		}
+		d.Set(ip.RootLxcV4, conn.IPs.IPv4)
+		d.Set(ip.RootLxcV6, conn.IPs.IPv6)
+	}
+	return diags
 }
 
 func resourceLxcGuestDelete(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -364,4 +405,52 @@ func lxcGuestWarning() diag.Diagnostics {
 		Detail:   "The LXC Guest resource is experimental. The schema and functionality may change in future releases without a major version bump.",
 		Summary:  "LXC Guest resource is experimental",
 		Severity: diag.Warning}}
+}
+
+func lxcGetIP(ctx context.Context, client *pveSDK.Client, newClient pveSDK.ClientNew, conn *connectionInfo, network pveSDK.LxcNetworks, vmr pveSDK.VmRef, retryDuration, retryInterval time.Duration, version *pveSDK.Version) diag.Diagnostics {
+	var name pveSDK.LxcNetworkName
+	for i := range networks.NetworksAmount {
+		if v, ok := network[pveSDK.LxcNetworkID(i)]; ok {
+			if v.IPv4 != nil && v.IPv4.Address != nil {
+				conn.SkipIPv4 = true
+				conn.IPs.IPv4 = v.IPv4.Address.String()
+			}
+			if v.IPv6 != nil && v.IPv6.Address != nil {
+				conn.SkipIPv6 = true
+				conn.IPs.IPv6 = v.IPv6.Address.String()
+			}
+			name = *v.Name
+			break
+		}
+	}
+	if !conn.SkipIPv4 || !conn.SkipIPv6 {
+		if version == nil {
+			tmpVersion, err := client.Version(ctx)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			version = &tmpVersion
+		}
+		if version.Encode() < (pveSDK.Version{Major: 9, Minor: 1}.Encode()) {
+			return nil
+		}
+		endTime := time.Now().Add(retryDuration)
+		for {
+			info, err := newClient.LxcGuest.ReadNetworkInterfaceInfo(ctx, vmr)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			if interfaceInfo, ok := info.SelectName(name); ok {
+				conn.parsePrimaryIPs(interfaceInfo.GetIpAddresses())
+				if conn.hasRequiredIP() {
+					return nil
+				}
+			}
+			if !time.Now().Before(endTime) {
+				return conn.agentDiagnostics(schemaNetworkTimeout, "", "")
+			}
+			time.Sleep(retryInterval)
+		}
+	}
+	return nil
 }

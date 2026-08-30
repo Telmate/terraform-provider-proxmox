@@ -7,8 +7,8 @@ import (
 )
 
 func SchemaNetworks() *schema.Schema {
-	schemaItems := make(map[string]*schema.Schema, networksAmount)
-	for i := range networksAmount {
+	schemaItems := make(map[string]*schema.Schema, NetworksAmount)
+	for i := range NetworksAmount {
 		id := strconv.Itoa(i)
 		schemaItems[prefixSchemaID+id] = networksSubSchema(prefixSchemaID + id)
 	}

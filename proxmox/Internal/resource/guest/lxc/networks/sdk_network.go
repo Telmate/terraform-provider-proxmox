@@ -40,7 +40,7 @@ func sdkNetwork(version pveSDK.EncodedVersion, schema []any) (pveSDK.LxcNetworks
 			NativeVlan:    new(pveSDK.Vlan(schemaMap[schemaNativeVlan].(int))),
 			RateLimitKBps: new(pveSDK.GuestNetworkRate(schemaMap[schemaRateLimit].(int)))}
 	}
-	for i := range pveSDK.LxcNetworkID(networksAmount) { // ensure all networks are present
+	for i := range pveSDK.LxcNetworkID(NetworksAmount) { // ensure all networks are present
 		if _, ok := config[i]; !ok {
 			config[i] = pveSDK.LxcNetwork{Delete: true}
 		}

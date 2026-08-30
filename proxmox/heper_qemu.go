@@ -80,7 +80,7 @@ func (conn connectionInfo) hasRequiredIP() bool {
 	return true
 }
 
-func (conn connectionInfo) parsePrimaryIPs(ipAddresses []net.IP) connectionInfo {
+func (conn *connectionInfo) parsePrimaryIPs(ipAddresses []net.IP) {
 	for i := range ipAddresses {
 		if ipAddresses[i].IsGlobalUnicast() {
 			if ipAddresses[i].To4() != nil {
@@ -94,5 +94,4 @@ func (conn connectionInfo) parsePrimaryIPs(ipAddresses []net.IP) connectionInfo 
 			}
 		}
 	}
-	return conn
 }

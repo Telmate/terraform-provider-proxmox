@@ -46,7 +46,7 @@ const (
 	schemaIPv6DHCP    = "ipv6_" + schemaDHCP
 	schemaIPv6Gateway = "ipv6_" + schemaGateway
 
-	networksAmount = pveSDK.LxcNetworksAmount
+	NetworksAmount = pveSDK.LxcNetworksAmount
 	maximumID      = pveSDK.LxcNetworkIdMaximum
 
 	defaultConnected   = true
@@ -264,7 +264,7 @@ func CustomizeDiff() schema.CustomizeDiffFunc {
 			}
 		} else if v := d.Get(RootNetworks).([]any); len(v) == 1 { // networks
 			if subSchema, ok := v[0].(map[string]any); ok {
-				for i := range networksAmount {
+				for i := range NetworksAmount {
 					id := prefixSchemaID + strconv.Itoa(i)
 					schemaArray := subSchema[id].([]any)
 					if len(schemaArray) == 0 {

@@ -99,7 +99,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Default:     90,
-				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection.",
+				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent.",
 				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 					v, ok := i.(int)
 					if !ok {
@@ -1352,7 +1352,7 @@ func getPrimaryIP(
 			if raw, ok := interfaces.SelectMacAddress(primaryMacAddress); ok {
 				log.Printf("[INFO][getPrimaryIP] Qemu Agent found MAC")
 				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Qemu Agent found MAC")
-				conn = conn.parsePrimaryIPs(raw.GetIpAddresses())
+				conn.parsePrimaryIPs(raw.GetIpAddresses())
 				if conn.hasRequiredIP() {
 					return conn.IPs, diag.Diagnostics{}
 				}

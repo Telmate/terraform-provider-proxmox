@@ -7,6 +7,8 @@ const (
 	RootSkipV6 = "skip_ipv6"
 	RootQemuV4 = "default_ipv4_address"
 	RootQemuV6 = "default_ipv6_address"
+	RootLxcV4  = "ipv4_address"
+	RootLxcV6  = "ipv6_address"
 )
 
 func SchemaSkipV4() *schema.Schema {

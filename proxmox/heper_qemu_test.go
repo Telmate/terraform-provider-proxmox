@@ -351,7 +351,8 @@ func Test_ParsePrimaryIPs(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			require.Equal(t, test.output, test.input.conn.parsePrimaryIPs(test.input.nets))
+			test.input.conn.parsePrimaryIPs(test.input.nets)
+			require.Equal(t, test.output, test.input.conn)
 		})
 	}
 }
