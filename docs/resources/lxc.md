@@ -78,12 +78,12 @@ resource "proxmox_lxc" "multiple_mountpoints" {
 
   // Device Mount Point
   mountpoint {
-    key     = "2"
-    slot    = 2
-    storage = "/dev/sdg"
-    volume  = "/dev/sdg"
-    mp      = "/mnt/container/device-mount-point"
-    size    = "32G"
+    key          = "2"
+    slot         = 2
+    storage      = "/dev/sdg"
+    volume       = "/dev/sdg"
+    mp           = "/mnt/container/device-mount-point"
+    size         = "32G"
   }
 
   network {
@@ -127,6 +127,14 @@ resource "proxmox_lxc" "advanced_features" {
     storage = "/mnt/host/nfs"
     mp      = "/mnt/container/nfs"
     size    = "250G"
+
+    // mountoptions can be omitted: all options will be disabled.
+    // Each option should be set to true as follows:
+    // Don't set options to false; simply omit them.
+    mountoptions = {
+        "lazytime"  : true,
+        "nodev"     : true
+        }
   }
 
   network {
@@ -219,6 +227,7 @@ The following arguments may be optionally defined when using this resource:
     * `quota` - A boolean for enabling user quotas inside the container for this mount point. Default is `false`.
     * `replicate` - A boolean for including this volume in a storage replica job. Default is `false`.
     * `shared` - A boolean for marking the volume as available on all nodes. Default is `false`.
+    * `mountoptions` - A map for setting the lxc mount options disks. Default is `null` meaning all options disabled.
 * `nameserver` - The DNS server IP address used by the container. If neither `nameserver` nor `searchdomain` are
   specified, the values of the Proxmox host will be used by default.
 * `network` - An object defining a network interface for the container. Can be specified multiple times.
