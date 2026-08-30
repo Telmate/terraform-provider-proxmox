@@ -218,11 +218,11 @@ func Provider() *schema.Provider {
 			"proxmox_ha_groups": DataHAGroup(),
 		},
 
-		ConfigureFunc: providerConfigure,
+		ConfigureContextFunc: providerConfigure,
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (any, error) {
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	client, err := getClient(
 		d.Get(schemaPmApiUrl).(string),
 		d.Get(schemaPmUser).(string),
@@ -237,7 +237,7 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 		d.Get(schemaPmProxyServer).(string),
 	)
 	if err != nil {
-		return nil, err
+		return nil, diag.FromErr(err)
 	}
 
 	minimumPermissions := []string{
@@ -280,17 +280,17 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 		}
 		var userID pveSDK.UserID
 		if err := userID.Parse(id); err != nil {
-			return nil, err
+			return nil, diag.FromErr(err)
 		}
 		permList, err := client.GetUserPermissions(context.Background(), userID, "/")
 		if err != nil {
-			return nil, err
+			return nil, diag.FromErr(err)
 		}
 		sort.Strings(permList)
 		sort.Strings(minimumPermissions)
 		permDiff := permissions_check(permList, minimumPermissions)
 		if len(permDiff) != 0 {
-			return nil, fmt.Errorf("permissions for user/token "+userID.String()+" are not sufficient, please provide also the following permissions that are missing: %v", permDiff)
+			return nil, diag.Errorf("permissions for user/token "+userID.String()+" are not sufficient, please provide also the following permissions that are missing: %v", permDiff)
 		}
 	}
 
@@ -301,7 +301,7 @@ func providerConfigure(d *schema.ResourceData) (any, error) {
 		if ok {
 			logLevels[logger] = levelAsString
 		} else {
-			return nil, fmt.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
+			return nil, diag.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
 		}
 	}
 

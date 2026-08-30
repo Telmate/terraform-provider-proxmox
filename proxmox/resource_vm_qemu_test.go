@@ -28,10 +28,11 @@ func testAccPreCheck(t *testing.T) {
 	}
 }
 
-func testAccProxmoxProviderFactory() map[string]*schema.Provider {
-	providers := map[string]*schema.Provider{
-		"proxmox": Provider(),
-	}
+func testAccProxmoxProviderFactory() map[string]func() (*schema.Provider, error) {
+	providers := map[string]func() (*schema.Provider, error){
+		"proxmox": func() (*schema.Provider, error) {
+			return Provider(), nil
+		}}
 	// TODO move this log configuration elsewhere, it doesn't make sense here but
 	// it's a short term solution to test the testing out
 	ConfigureLogger(true, "../../acctest.log", map[string]string{"_default": "debug", "_capturelog": ""})
@@ -207,8 +208,8 @@ func TestAccProxmoxVmQemu_BasicCreate(t *testing.T) {
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProxmoxProviderFactory(),
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProxmoxProviderFactory(),
 		//CheckDestroy: testAccCheckExampleResourceDestroy,
 		Steps: []resource.TestStep{
 			{
@@ -228,8 +229,8 @@ func TestAccProxmoxVmQemu_StandardCreate(t *testing.T) {
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProxmoxProviderFactory(),
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProxmoxProviderFactory(),
 		//CheckDestroy: testAccCheckExampleResourceDestroy,
 		Steps: []resource.TestStep{
 			{
@@ -274,8 +275,8 @@ func TestAccProxmoxVmQemu_BasicCreateClone(t *testing.T) {
 	clonePath := fmt.Sprintf("proxmox_vm_qemu.%s", cloneName)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProxmoxProviderFactory(),
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProxmoxProviderFactory(),
 		//CheckDestroy: testAccCheckExampleResourceDestroy,
 		Steps: []resource.TestStep{
 			{
@@ -301,8 +302,8 @@ func TestAccProxmoxVmQemu_CreateCloneWithTwoDisks(t *testing.T) {
 	clonePath := fmt.Sprintf("proxmox_vm_qemu.%s", cloneName)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProxmoxProviderFactory(),
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProxmoxProviderFactory(),
 		//CheckDestroy: testAccCheckExampleResourceDestroy,
 		Steps: []resource.TestStep{
 			{
@@ -328,8 +329,8 @@ func TestAccProxmoxVmQemu_PxeCreate(t *testing.T) {
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProxmoxProviderFactory(),
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProxmoxProviderFactory(),
 		//CheckDestroy: testAccCheckExampleResourceDestroy,
 		Steps: []resource.TestStep{
 			{
@@ -349,8 +350,8 @@ func TestAccProxmoxVmQemu_UpdateNoReboot(t *testing.T) {
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProxmoxProviderFactory(),
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProxmoxProviderFactory(),
 
 		Steps: []resource.TestStep{
 			{
@@ -378,8 +379,8 @@ func TestAccProxmoxVmQemu_UpdateRebootRequired(t *testing.T) {
 	resourcePath := fmt.Sprintf("proxmox_vm_qemu.%s", resourceName)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProxmoxProviderFactory(),
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProxmoxProviderFactory(),
 
 		Steps: []resource.TestStep{
 			{
