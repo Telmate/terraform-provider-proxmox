@@ -5,13 +5,8 @@ import (
 	"strings"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/ip"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-)
-
-const (
-	errorGuestAgentNoIPSummary   string = "Qemu Guest Agent is enabled but no IP config is found"
-	errorGuestAgentNoIPv4Summary string = "Qemu Guest Agent is enabled but no IPv4 address is found"
-	errorGuestAgentNoIPv6Summary string = "Qemu Guest Agent is enabled but no IPv6 address is found"
 )
 
 func parseCloudInitInterface(ipConfig pveSDK.CloudInitNetworkConfig, ciCustom, skipIPv4, skipIPv6 bool) (conn connectionInfo) {
@@ -47,27 +42,33 @@ type connectionInfo struct {
 	SkipIPv6 bool
 }
 
-func (conn connectionInfo) agentDiagnostics() diag.Diagnostics {
+const (
+	errorNoIPSummary   = "no IP config is found"
+	errorNoIPv4Summary = "no IPv4 address is found"
+	errorNoIPv6Summary = "no IPv6 address is found"
+)
+
+func (conn connectionInfo) agentDiagnostics(key, prefixSummary, prefixDetail string) diag.Diagnostics {
 	if conn.IPs.IPv4 == "" {
 		if conn.IPs.IPv6 == "" {
 			return diag.Diagnostics{diag.Diagnostic{
 				Severity: diag.Warning,
-				Summary:  errorGuestAgentNoIPSummary,
-				Detail:   "Qemu Guest Agent is enabled in your configuration but no IP address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue."}}
+				Summary:  prefixSummary + errorNoIPSummary,
+				Detail:   prefixDetail + "no IP address was found before the time ran out, increasing '" + key + "' could resolve this issue."}}
 		}
 		if !conn.SkipIPv4 {
 			return diag.Diagnostics{diag.Diagnostic{
 				Severity: diag.Warning,
-				Summary:  errorGuestAgentNoIPv4Summary,
-				Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv4 address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue. To suppress this warning set '" + schemaSkipIPv4 + "' to true."}}
+				Summary:  prefixSummary + errorNoIPv4Summary,
+				Detail:   prefixDetail + "no IPv4 address was found before the time ran out, increasing '" + key + "' could resolve this issue. To suppress this warning set '" + ip.RootSkipV4 + "' to true."}}
 		}
 		return diag.Diagnostics{}
 	}
 	if conn.IPs.IPv6 == "" && !conn.SkipIPv6 {
 		return diag.Diagnostics{diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  errorGuestAgentNoIPv6Summary,
-			Detail:   "Qemu Guest Agent is enabled in your configuration but no IPv6 address was found before the time ran out, increasing '" + schemaAgentTimeout + "' could resolve this issue. To suppress this warning set '" + schemaSkipIPv6 + "' to true."}}
+			Summary:  prefixSummary + errorNoIPv6Summary,
+			Detail:   prefixDetail + "no IPv6 address was found before the time ran out, increasing '" + key + "' could resolve this issue. To suppress this warning set '" + ip.RootSkipV6 + "' to true."}}
 	}
 	return diag.Diagnostics{}
 }

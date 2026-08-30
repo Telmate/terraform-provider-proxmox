@@ -18,22 +18,22 @@ func Test_connectionInfo_agentDiagnostics(t *testing.T) {
 	}{
 		{name: `empty empty false false`,
 			input:  connectionInfo{primaryIPs{"", ""}, false, false},
-			output: errorGuestAgentNoIPSummary},
+			output: errorNoIPSummary},
 		{name: `empty empty false true`,
 			input:  connectionInfo{primaryIPs{"", ""}, false, true},
-			output: errorGuestAgentNoIPSummary},
+			output: errorNoIPSummary},
 		{name: `empty empty true false`,
 			input:  connectionInfo{primaryIPs{"", ""}, true, false},
-			output: errorGuestAgentNoIPSummary},
+			output: errorNoIPSummary},
 		{name: `empty empty true true`,
 			input:  connectionInfo{primaryIPs{"", ""}, true, true},
-			output: errorGuestAgentNoIPSummary},
+			output: errorNoIPSummary},
 		{name: `empty set false false`,
 			input:  connectionInfo{primaryIPs{"", "set"}, false, false},
-			output: errorGuestAgentNoIPv4Summary},
+			output: errorNoIPv4Summary},
 		{name: `empty set false true`,
 			input:  connectionInfo{primaryIPs{"", "set"}, false, true},
-			output: errorGuestAgentNoIPv4Summary},
+			output: errorNoIPv4Summary},
 		{name: `empty set true false`,
 			input:  connectionInfo{primaryIPs{"", "set"}, true, false},
 			output: ""},
@@ -42,13 +42,13 @@ func Test_connectionInfo_agentDiagnostics(t *testing.T) {
 			output: ""},
 		{name: `set empty false false`,
 			input:  connectionInfo{primaryIPs{"set", ""}, false, false},
-			output: errorGuestAgentNoIPv6Summary},
+			output: errorNoIPv6Summary},
 		{name: `set empty false true`,
 			input:  connectionInfo{primaryIPs{"set", ""}, false, true},
 			output: ""},
 		{name: `set empty true false`,
 			input:  connectionInfo{primaryIPs{"set", ""}, true, false},
-			output: errorGuestAgentNoIPv6Summary},
+			output: errorNoIPv6Summary},
 		{name: `set empty true true`,
 			input:  connectionInfo{primaryIPs{"set", ""}, true, true},
 			output: ""},
@@ -68,11 +68,11 @@ func Test_connectionInfo_agentDiagnostics(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			if test.output != "" {
-				tmpDiag := test.input.agentDiagnostics()
+				tmpDiag := test.input.agentDiagnostics("", "", "")
 				require.Len(t, tmpDiag, 1)
 				require.Equal(t, test.output, tmpDiag[0].Summary)
 			} else {
-				require.Equal(t, diag.Diagnostics{}, test.input.agentDiagnostics())
+				require.Equal(t, diag.Diagnostics{}, test.input.agentDiagnostics("", "", ""))
 			}
 		})
 	}
