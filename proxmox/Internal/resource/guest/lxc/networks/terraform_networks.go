@@ -8,7 +8,7 @@ import (
 )
 
 func terraformNetworks(config pveSDK.LxcNetworks, d *schema.ResourceData) []any {
-	mapParams := make(map[string]any, networksAmount)
+	mapParams := make(map[string]any, NetworksAmount)
 	var networkMap map[string]any
 	if tfConfig := d.Get(RootNetworks); tfConfig != nil {
 		if v, ok := tfConfig.([]any); ok && len(v) > 0 {

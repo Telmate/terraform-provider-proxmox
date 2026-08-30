@@ -20,7 +20,7 @@ func terraformNetwork(config pveSDK.LxcNetworks, tfConfig []any) ([]map[string]a
 		tfMap[id] = tfConfig[i]
 	}
 	var index int
-	for i := range pveSDK.LxcNetworkID(networksAmount) {
+	for i := range pveSDK.LxcNetworkID(NetworksAmount) {
 		v, ok := config[i]
 		if !ok {
 			continue

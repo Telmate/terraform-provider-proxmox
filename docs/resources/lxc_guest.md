@@ -52,10 +52,13 @@ resource "proxmox_lxc_guest" "minimal-example" {
 | `dns`               | `nested`|                          | DNS configuration, see [DNS Reference](#dns-reference).|
 | `features`          | `nested`|                          | Features configuration, see [Features Reference](#features-reference).|
 | `guest_id`          | `int`   |                          | **Forces Recreation**, **Computed**: The numeric ID of the guest container also known as `vmid`. If not specified, an ID will be automatically assigned.|
+| `ipv4_address`      | `str`   |                          | **Computed** Read-only attribute. Returns the ip of the first configured network interface. The setting `skip_ipv4` has influence on this.|
+| `ipv6_address`      | `str`   |                          | **Computed** Read-only attribute. Returns the ip of the first configured network interface. The setting `skip_ipv6` has influence on this.|
 | `memory`            | `int`   | `512`                    | The amount of memory to allocate to the guest in Megabytes.|
 | `mount`             | `array` |                          | Storage mounts configured as individual array items, see [Mount Reference](#mount-reference).|
 | `mounts`            | `nested`|                          | Storage mounts configured as nested sub items, see [Mounts Reference](#mounts-reference).|
 | `name`              | `string`|                          | **Required**: The name of the container.|
+| `network_timeout`   | `int`   | `90`                     | Timeout in seconds to keep trying to obtain an IP address from the network info onece we have a connection. |
 | `network`           | `array` |                          | Network interfaces configured as individual array items, see [Network Reference](#network-reference).|
 | `networks`          | `nested`|                          | Network interfaces configured as nested sub items, see [Networks Reference](#networks-reference).|
 | `os`                | `string`|                          | **Computed**: The name of the OS inside the guest.|
@@ -64,6 +67,8 @@ resource "proxmox_lxc_guest" "minimal-example" {
 | `power_state`       | `string`| `"running"`              | Power state of the guest, can be `"running"` or `"stopped"`.|
 | `privileged`        | `bool`  |                          | **Forces Recreation**: If the guest is privileged or unprivileged. Can only be `true` or unset. Mutually exclusive with `unprivileged`.|
 | `root_mount`        | `nested`|                          | **Required**: Configuration of the root/boot mount/disk of the guest container. **Note:** Size can only be increased, not decreased.|
+| `skip_ipv4`         | `bool`  | `false`                  | Tells Terraform that acquiring an IPv4 address from the network info isn't required, it will still return an ipv4 address if it could obtain one. Useful for reducing retries in environments without ipv4.|
+| `skip_ipv6`         | `bool`  | `false`                  | Tells Terraform that acquiring an IPv6 address from the network info isn't required, it will still return an ipv6 address if it could obtain one. Useful for reducing retries in environments without ipv6.|
 | `ssh_public_key`    | `string`|                          | **Forces Recreation** SSH public key of the root user inside the guest container.|
 | `start_at_node_boot`| `bool`  | `false`                  | Whether the guest should start automatically when the Proxmox node boots.|
 | `startup_shutdown`  | `nested`|                          | Startup and shutdown configuration of the guest, see [Startup and Shutdown Reference](#startup-and-shutdown-reference).|

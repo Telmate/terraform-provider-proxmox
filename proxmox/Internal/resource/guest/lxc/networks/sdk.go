@@ -15,7 +15,7 @@ func SDK(version pveSDK.EncodedVersion, d *schema.ResourceData) (pveSDK.LxcNetwo
 		}
 	}
 	// Defaults
-	config := make(pveSDK.LxcNetworks, networksAmount)
+	config := make(pveSDK.LxcNetworks, NetworksAmount)
 	for i := range pveSDK.LxcNetworkID(maximumID) {
 		config[i] = pveSDK.LxcNetwork{Delete: true}
 	}

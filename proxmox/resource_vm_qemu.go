@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/description"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/ip"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/name"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
@@ -42,6 +43,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startupshutdown"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/tags"
 	vmID "github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/vmid"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/wait"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 )
@@ -52,10 +54,7 @@ import (
 var thisResource *schema.Resource
 
 const (
-	schemaAdditionalWait = "additional_wait"
-	schemaAgentTimeout   = "agent_timeout"
-	schemaSkipIPv4       = "skip_ipv4"
-	schemaSkipIPv6       = "skip_ipv6"
+	schemaAgentTimeout = "agent_timeout"
 )
 
 func resourceVmQemu() *schema.Resource {
@@ -100,7 +99,7 @@ func resourceVmQemu() *schema.Resource {
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Default:     90,
-				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent one we have a connection.",
+				Description: "Timeout in seconds to keep trying to obtain an IP address from the guest agent.",
 				ValidateDiagFunc: func(i interface{}, k cty.Path) diag.Diagnostics {
 					v, ok := i.(int)
 					if !ok {
@@ -389,12 +388,7 @@ func resourceVmQemu() *schema.Resource {
 				Default:     10,
 				Description: "Value in second to wait after a VM has been cloned, useful if system is not fast or during I/O intensive parallel terraform tasks",
 			},
-			schemaAdditionalWait: {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Default:     5,
-				Description: "Value in second to wait after some operations, useful if system is not fast or during I/O intensive parallel terraform tasks",
-			},
+			wait.Root: wait.Schema(),
 			"ci_wait": { // how long to wait before provision
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -444,28 +438,10 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
-			schemaSkipIPv4: {
-				Type:          schema.TypeBool,
-				Optional:      true,
-				Default:       false,
-				ConflictsWith: []string{schemaSkipIPv6},
-			},
-			schemaSkipIPv6: {
-				Type:          schema.TypeBool,
-				Optional:      true,
-				Default:       false,
-				ConflictsWith: []string{schemaSkipIPv4},
-			},
-			"default_ipv4_address": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Use to track vm ipv4 address",
-			},
-			"default_ipv6_address": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Use to track vm ipv6 address",
-			},
+			ip.RootSkipV4:    ip.SchemaSkipV4(),
+			ip.RootSkipV6:    ip.SchemaSkipV6(),
+			ip.RootQemuV4: ip.SchemaV4(),
+			ip.RootQemuV6: ip.SchemaV6(),
 			"define_connection_info": { // by default define SSH for provisioner info
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -712,7 +688,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup
-	time.Sleep(time.Duration(d.Get(schemaAdditionalWait).(int)) * time.Second)
+	time.Sleep(wait.GetDuration(d))
 
 	d.Set("reboot_required", rebootRequired)
 	log.Print("[DEBUG][QemuVmCreate] vm creation done!")
@@ -1264,10 +1240,10 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 		config.Networks,
 		vmr,
 		agentTimeout,
-		time.Duration(d.Get(schemaAdditionalWait).(int))*time.Second,
+		wait.GetDuration(d),
 		ciAgentEnabled,
-		d.Get(schemaSkipIPv4).(bool),
-		d.Get(schemaSkipIPv6).(bool),
+		d.Get(ip.RootSkipV4).(bool),
+		d.Get(ip.RootSkipV6).(bool),
 		hasCiDisk)
 	if len(agentDiags) > 0 {
 		diags = append(diags, agentDiags...)
@@ -1285,8 +1261,8 @@ func initConnInfo(ctx context.Context, d *schema.ResourceData, client *pveSDK.Cl
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("this is the vm configuration: %s %s", sshHost, sshPort)
 
 	// Optional convenience attributes for provisioners
-	_ = d.Set("default_ipv4_address", IPs.IPv4)
-	_ = d.Set("default_ipv6_address", IPs.IPv6)
+	_ = d.Set(ip.RootQemuV4, IPs.IPv4)
+	_ = d.Set(ip.RootQemuV6, IPs.IPv6)
 	_ = d.Set("ssh_host", sshHost)
 	_ = d.Set("ssh_port", sshPort)
 
@@ -1376,7 +1352,7 @@ func getPrimaryIP(
 			if raw, ok := interfaces.SelectMacAddress(primaryMacAddress); ok {
 				log.Printf("[INFO][getPrimaryIP] Qemu Agent found MAC")
 				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Qemu Agent found MAC")
-				conn = conn.parsePrimaryIPs(raw.GetIpAddresses())
+				conn.parsePrimaryIPs(raw.GetIpAddresses())
 				if conn.hasRequiredIP() {
 					return conn.IPs, diag.Diagnostics{}
 				}
@@ -1392,7 +1368,7 @@ func getPrimaryIP(
 			Summary:  "Qemu Guest Agent is enabled but not installed/working inside the Qemu guest",
 			Severity: diag.Warning}}
 	}
-	return conn.IPs, conn.agentDiagnostics()
+	return conn.IPs, conn.agentDiagnostics(schemaAgentTimeout, "Qemu Guest Agent is enabled but ", "Qemu Guest Agent is enabled in your configuration but ")
 }
 
 // Map struct to the terraform schema
