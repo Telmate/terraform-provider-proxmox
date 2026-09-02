@@ -69,21 +69,15 @@ func resourceVmQemu() *schema.Resource {
 		CustomizeDiff: customdiff.All(
 			customdiff.ComputedIf(
 				"ssh_host",
-				func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
-					return d.HasChange("vm_state")
-				},
+				powerStateChanged,
 			),
 			customdiff.ComputedIf(
 				"default_ipv4_address",
-				func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
-					return d.HasChange("vm_state")
-				},
+				powerStateChanged,
 			),
 			customdiff.ComputedIf(
 				"ssh_port",
-				func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
-					return d.HasChange("vm_state")
-				},
+				powerStateChanged,
 			),
 			efi.CustomizeDiff(),
 			reboot.CustomizeDiff(),
@@ -125,7 +119,7 @@ func resourceVmQemu() *schema.Resource {
 				Description:      "The VM bios, it can be seabios or ovmf",
 				ValidateDiagFunc: BIOSValidator(),
 			},
-			powerstate.Root:            powerstate.Schema(schema.Schema{}),
+			powerstate.Root:            powerstate.Schema(schema.Schema{Computed: true}),
 			powerstate.LegacyRoot:      powerstate.SchemaLegacy(),
 			startatnodeboot.LegacyRoot: startatnodeboot.LegacySchema(),
 			startatnodeboot.Root:       startatnodeboot.Schema(),
@@ -459,6 +453,10 @@ func resourceVmQemu() *schema.Resource {
 		Timeouts: resourceTimeouts(),
 	}
 	return thisResource
+}
+
+func powerStateChanged(ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
+	return d.HasChange(powerstate.Root) || d.HasChange(powerstate.LegacyRoot)
 }
 
 func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -896,7 +894,6 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 	}
 	state := guestStatus.GetState()
 	log.Print("[DEBUG] Getting VM state" + state.String())
-	d.Set("vm_state", state.String())
 	if state == pveSDK.PowerStateRunning {
 		log.Printf("[DEBUG] VM is running, checking the IP")
 		// TODO when network interfaces are reimplemented check if we have an interface before getting the connection info
