@@ -6,18 +6,12 @@ import (
 )
 
 func Terraform(config pveSDK.PowerState, legacy bool, d *schema.ResourceData) {
-	if _, ok := d.GetOk(Root); ok {
-		d.Set(Root, terraform(config))
-		if legacy {
-			terraformLegacyClear(d)
-		}
-		return
-	}
 	if legacy {
 		if _, ok := d.GetOk(LegacyRoot); ok {
 			terraformLegacy(config,d)
 			return
 		}
+		terraformLegacyClear(d)
 	}
 	d.Set(Root, terraform(config))
 }
