@@ -914,7 +914,23 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("[READ] Received Config from Proxmox API: %+v", config)
 
 	// NewActiveRawConfigQemuFromApi do not call ReadVMHA() so hagroup is not populated yet
-	client.ReadVMHA(ctx, vmr)
+	//
+	// Proxmox answers GET /cluster/ha/resources/{vmid} with a bare HTTP 500
+	// ("no such resource") instead of 404 whenever the VM isn't HA-managed -
+	// the normal case for most VMs (Proxmox bugzilla #5698, still open as of
+	// writing). Treat that as "no HA info available" instead of letting it
+	// abort the whole read, and guard against a possible panic decoding the
+	// resulting {"data":null} body.
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("[READ] ReadVMHA panicked, treating as not HA-managed: %v", r)
+			}
+		}()
+		if haErr := client.ReadVMHA(ctx, vmr); haErr != nil {
+			logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("[READ] ReadVMHA failed, treating as not HA-managed: %v", haErr)
+		}
+	}()
 
 	d.SetId(id.Guest{
 		ID:   vmr.VmId(),
