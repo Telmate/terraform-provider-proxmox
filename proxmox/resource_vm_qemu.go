@@ -32,6 +32,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/efi"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/hotplug"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/network"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/pci"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/rng"
@@ -234,11 +235,7 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				Default:  true,
 			},
-			"hotplug": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "network,disk,usb",
-			},
+			hotplug.Root: hotplug.Schema(),
 			"scsihw": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -489,7 +486,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		EfiDisk:          efi.SDK(d),
 		HaGroup:          d.Get("hagroup").(string),
 		HaState:          d.Get("hastate").(string),
-		Hotplug:          d.Get("hotplug").(string),
+		HotPlug:          hotplug.SDK(d),
 		Machine:          d.Get("machine").(string),
 		Memory:           mapToSDK_Memory(d),
 		Name:             &guestName,
@@ -730,7 +727,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		EfiDisk:          efi.SDK(d),
 		HaGroup:          d.Get("hagroup").(string),
 		HaState:          d.Get("hastate").(string),
-		Hotplug:          d.Get("hotplug").(string),
+		HotPlug:          hotplug.SDK(d),
 		Machine:          d.Get("machine").(string),
 		Memory:           mapToSDK_Memory(d),
 		Name:             util.Pointer(name.SDK(d)),
@@ -927,7 +924,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 	d.Set("bootdisk", config.BootDisk)
 	d.Set("machine", config.Machine)
 	d.Set("kvm", config.QemuKVM)
-	d.Set("hotplug", config.Hotplug)
+	hotplug.Terraform(*config.HotPlug, d)
 	d.Set("scsihw", config.Scsihw)
 	d.Set("hastate", vmr.HaState())
 	d.Set("hagroup", vmr.HaGroup())
