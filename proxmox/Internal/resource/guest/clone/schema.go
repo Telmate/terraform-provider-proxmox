@@ -57,7 +57,7 @@ func Schema() *schema.Schema {
 					ValidateDiagFunc: func(i any, k cty.Path) diag.Diagnostics {
 						v, ok := i.(string)
 						if !ok {
-							return diag.Diagnostics{errorMSG.StringDiagnostic(SchemaName)}
+							return errorMSG.StringDiagnostics(SchemaName)
 						}
 						return diag.FromErr(pveSDK.GuestName(v).Validate())
 					}},

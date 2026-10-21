@@ -21,16 +21,26 @@ var rxClusterRsId = regexp.MustCompile(`([^/]+)/([^/]+)`)
 
 var machineModelsRegex = regexp.MustCompile(`(^pc|^q35|^virt)`)
 
+const (
+	logPanic = "panic"
+	logFatal = "fatal"
+	logError = "error"
+	logWarn  = "warn"
+	logInfo  = "info"
+	logDebug = "debug"
+	logTrace = "trace"
+)
+
 // given a string, return the appropriate zerolog level
 func levelStringToZerologLevel(logLevel string) (zerolog.Level, error) {
 	conversionMap := map[string]zerolog.Level{
-		"panic": zerolog.PanicLevel,
-		"fatal": zerolog.FatalLevel,
-		"error": zerolog.ErrorLevel,
-		"warn":  zerolog.WarnLevel,
-		"info":  zerolog.InfoLevel,
-		"debug": zerolog.DebugLevel,
-		"trace": zerolog.TraceLevel,
+		logPanic: zerolog.PanicLevel,
+		logFatal: zerolog.FatalLevel,
+		logError: zerolog.ErrorLevel,
+		logWarn:  zerolog.WarnLevel,
+		logInfo:  zerolog.InfoLevel,
+		logDebug: zerolog.DebugLevel,
+		logTrace: zerolog.TraceLevel,
 	}
 
 	foundResult, ok := conversionMap[logLevel]
@@ -50,10 +60,10 @@ var rootLogger zerolog.Logger
 var logLevels map[string]string
 
 // Configure the debug logger for this provider.  The goal here is to enable selective amounts
-// of output for targetted debugging without overwhelming with data from sources the user/developer
+// of output for targeted debugging without overwhelming with data from sources the user/developer
 // doesn't care about.
 //
-// logLevels can be specifed as follows:
+// logLevels can be specified as follows:
 //
 //	map[string]string
 //
@@ -63,10 +73,10 @@ var logLevels map[string]string
 //	 * '_default' - sets the default log level (if this is not set, the default is INFO)
 //	 (any other string) - the level to set that SubLogger to
 //
-//	Eventually we'll have a list of all subloggers that can be displayed/generated but for now, unfortuantely,
+//	Eventually we'll have a list of all subloggers that can be displayed/generated but for now, unfortunately,
 //	the code is the manual on that. I'll do my best to keep this doc string updated.
 //
-//	Known Subloggers:
+//	Known Sub-loggers:
 //	 * resource_vm_create - logs from the create function
 //	 * resource_vm_read  - logs from the read function
 //
@@ -76,14 +86,14 @@ var logLevels map[string]string
 // logs will be written out to the logPath specified. An existing file at that path will be appended to.
 // note that there are some information (like our redirection of the built-in log library) which will not
 // follow the zerolog pattern and thus could mess with parsing.  This is annoying but something to fix in
-// a future verison.
-func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[string]string) {
+// a future version.
+func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[string]string) error {
 
 	// if we are not supposed to do anything here, then short circuit and do not set
 	// anything up.
 	if !enableOutput {
 		rootLogger.Level(zerolog.Disabled)
-		return
+		return nil
 	}
 
 	// update the global logLevels
@@ -94,7 +104,7 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 	// TODO log to stderr so at least terraform's TF_LOG can capture an issue if this file isn't created
 	f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
-		return
+		return err
 	}
 
 	// using a multi-writer here so we can easily add additional log destination (like a json file)
@@ -109,11 +119,11 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 	// look to see if there is a default level we should be using
 	defaultLevelString, ok := logLevels["_default"]
 	if !ok {
-		defaultLevelString = "info"
+		defaultLevelString = logInfo
 	}
 
 	// set the log level using the default of INFO unless it is
-	// overriden by the logLevels map by "_root" level
+	// overridden by the logLevels map by "_root" level
 	rootLevelString, ok := logLevels["_root"]
 	if !ok {
 		rootLevelString = defaultLevelString
@@ -147,7 +157,7 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 
 	// look to see if we should capture all logs going through the native log library
 	// this is mostly useful in this particular case to see logs from the proxmox api library.
-	// just the presense of the _capturelog key (no matter the level set) is indication we should capture it
+	// just the presence of the _capturelog key (no matter the level set) is indication we should capture it
 	_, ok = logLevels["_capturelog"]
 	if ok {
 		rootLogger.Info().Msg("Enabling the capture of log-library logs as ithe _capturelog flag was detected")
@@ -184,9 +194,10 @@ func ConfigureLogger(enableOutput bool, logPath string, inputLogLevels map[strin
 	//}
 
 	rootLogger.Info().Msgf("Logging Started. Root Logger Set to level %v", rootLevel)
+	return nil
 }
 
-// Create a sublogger from the rootLogger
+// Create a sub-logger from the rootLogger
 // This is helpful as it allows for custom logging level for each component/part of the system.
 //
 // The loggerName string is used to set the name of the logger in message outputs (as a key-val pair) but
@@ -215,6 +226,15 @@ func CreateSubLogger(loggerName string) (zerolog.Logger, error) {
 	// create the logger
 	thisLogger := rootLogger.With().Str("loggerName", loggerName).Logger().Level(level)
 	return thisLogger, nil
+}
+
+type logWriter struct {
+	l zerolog.Logger
+}
+
+func (w *logWriter) Write(p []byte) (n int, err error) {
+	w.l.Debug().Msg(string(p))
+	return len(p), nil
 }
 
 func UpdateDeviceConfDefaults(

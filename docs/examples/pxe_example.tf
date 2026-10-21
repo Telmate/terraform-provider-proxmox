@@ -30,7 +30,7 @@ resource "proxmox_vm_qemu" "pxe-example" {
 # boot order MUST include network, this is enforced in the Provider
 # Optinally, setting a disk first means that PXE will be used first boot
 # and future boots will run off the disk
-    boot                      = "order=scsi0;net0"
+    boot                      = "scsi0,net0"
     define_connection_info    = true
     force_create              = false
     hotplug                   = "network,disk,usb"

@@ -33,7 +33,6 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/startupshutdown"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/wait"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/id"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
@@ -163,7 +162,7 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 				Summary:  err.Error(),
 				Severity: diag.Error})
 		}
-		vmr, err = cloneRef.CloneLxc(ctx, cloneGuest.Target, client)
+		vmr, err = clientNew.LxcGuest.Clone(ctx, *cloneRef, cloneGuest.Target)
 		if err != nil {
 			return append(diags, diag.Diagnostic{
 				Summary:  err.Error(),
@@ -173,8 +172,7 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 			ID:   vmr.VmId(),
 			Node: targetNode,
 			Type: id.GuestLxc}.String())
-		err = config.Update(ctx, true, vmr, client)
-		if err != nil {
+		if err = clientNew.LxcGuest.Update(ctx, *vmr, true, config); err != nil {
 			return append(diags, diag.Diagnostic{
 				Summary:  err.Error(),
 				Severity: diag.Error})
@@ -185,19 +183,21 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 			OsTemplate:    template.SDK(d),
 			PublicSSHkeys: ssh_public_keys.SDK(d),
 			UserPassword:  password.SDK(d)}
-		vmr, err = config.Create(ctx, client)
+		vmr, err = clientNew.LxcGuest.Create(ctx, config)
+		if vmr != nil { // note down the guest was created
+			d.SetId(id.Guest{
+				ID:   vmr.VmId(),
+				Node: targetNode,
+				Type: id.GuestLxc}.String())
+		}
 		if err != nil {
 			return append(diags, diag.Diagnostic{
 				Summary:  err.Error(),
 				Severity: diag.Error})
 		}
-		d.SetId(id.Guest{
-			ID:   vmr.VmId(),
-			Node: targetNode,
-			Type: id.GuestLxc}.String())
 	}
 
-	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, &version, true)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, clientNew, &version, true)...)
 }
 
 func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -206,6 +206,7 @@ func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta an
 	defer lock.unlock()
 
 	client := pConf.Client
+	clientNew := pConf.NewClient
 
 	diags := lxcGuestWarning()
 
@@ -247,9 +248,9 @@ func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta an
 			Severity: diag.Error})
 	}
 	config.Node = &targetNode
-	config.Pool = util.Pointer(pool.SDK(d))
+	config.Pool = new(pool.SDK(d))
 
-	if err = config.Update(ctx, reboot.GetAutomatic(d), vmr, client); err != nil {
+	if err = clientNew.LxcGuest.Update(ctx, *vmr, reboot.GetAutomatic(d), config); err != nil {
 		if err.Error() == "<this should be the reboot error>" { // TODO catch the error but we need upstream support for that
 			return append(diags, reboot.ErrorLxc(d))
 		}
@@ -258,7 +259,7 @@ func resourceLxcGuestUpdate(ctx context.Context, d *schema.ResourceData, meta an
 			Severity: diag.Error})
 	}
 
-	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, &version, true)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, clientNew, &version, true)...)
 }
 
 func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -277,6 +278,7 @@ func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	client := pConf.Client
+	clientNew := pConf.NewClient
 
 	ok, err := resourceID.ID.Exists(ctx, client)
 	if err != nil {
@@ -290,19 +292,18 @@ func resourceLxcGuestReadWithLock(ctx context.Context, d *schema.ResourceData, m
 	if err := client.CheckVmRef(ctx, vmr); err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
-	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, nil, false)...)
+	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, clientNew, nil, false)...)
 }
 
-func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client, version *pveSDK.Version, waitForAgent bool) diag.Diagnostics {
-	newClient := client.New()
-	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
+func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client, clientNew *pveSDK.ClientNew, version *pveSDK.Version, waitForAgent bool) diag.Diagnostics {
+	guestStatus, err := clientNew.Guest.Status(ctx, *vmr)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
 	var raw pveSDK.RawConfigLXC
 	var pending bool
-	raw, pending, err = pveSDK.NewActiveRawConfigLXCFromApi(ctx, vmr, client)
+	raw, pending, err = clientNew.LxcGuest.ReadActive(ctx, *vmr)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -357,7 +358,7 @@ func resourceLxcGuestRead(ctx context.Context, d *schema.ResourceData, vmr *pveS
 		if waitForAgent {
 			timeout = time.Duration(d.Get(schemaNetworkTimeout).(int)) * time.Second
 		}
-		tmpDiags := lxcGetIP(ctx, client, newClient, conn, config.Networks, *vmr, timeout, wait.GetDuration(d), version)
+		tmpDiags := lxcGetIP(ctx, client, clientNew, conn, config.Networks, *vmr, timeout, wait.GetDuration(d), version)
 		if len(tmpDiags) > 0 {
 			diags = append(diags, tmpDiags...)
 		}
@@ -407,7 +408,7 @@ func lxcGuestWarning() diag.Diagnostics {
 		Severity: diag.Warning}}
 }
 
-func lxcGetIP(ctx context.Context, client *pveSDK.Client, newClient pveSDK.ClientNew, conn *connectionInfo, network pveSDK.LxcNetworks, vmr pveSDK.VmRef, retryDuration, retryInterval time.Duration, version *pveSDK.Version) diag.Diagnostics {
+func lxcGetIP(ctx context.Context, client *pveSDK.Client, newClient *pveSDK.ClientNew, conn *connectionInfo, network pveSDK.LxcNetworks, vmr pveSDK.VmRef, retryDuration, retryInterval time.Duration, version *pveSDK.Version) diag.Diagnostics {
 	var name pveSDK.LxcNetworkName
 	for i := range networks.NetworksAmount {
 		if v, ok := network[pveSDK.LxcNetworkID(i)]; ok {

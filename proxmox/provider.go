@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/util"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/validator"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -223,7 +223,35 @@ func Provider() *schema.Provider {
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
-	client, err := getClient(
+	// look to see what logging we should be outputting according to the provider configuration
+	logLevels := make(map[string]string)
+	for logger, level := range d.Get(schemaPmLogLevels).(map[string]any) {
+		levelAsString, ok := level.(string)
+		if ok {
+			logLevels[logger] = levelAsString
+		} else {
+			return nil, diag.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
+		}
+	}
+
+	// actually configure logging
+	// note that if enable is false here, the configuration will squash all output
+	err := ConfigureLogger(
+		d.Get(schemaPmLogEnable).(bool),
+		d.Get(schemaPmLogFile).(string),
+		logLevels)
+	if err != nil {
+		return nil, diag.FromErr(err)
+	}
+
+	var debugLogger io.Writer
+	if d.Get(schemaPmDebug).(bool) {
+		apiLogger, _ := CreateSubLogger("raw api")
+		debugLogger = &logWriter{l: apiLogger}
+	}
+
+	var client *pveSDK.Client
+	client, err = getClient(
 		d.Get(schemaPmApiUrl).(string),
 		d.Get(schemaPmUser).(string),
 		d.Get(schemaPmPassword).(string),
@@ -233,7 +261,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 		d.Get(schemaPmTlsInsecure).(bool),
 		d.Get(schemaPmHttpHeaders).(string),
 		d.Get(schemaPmTimeout).(int),
-		d.Get(schemaPmDebug).(bool),
+		debugLogger,
 		d.Get(schemaPmProxyServer).(string),
 	)
 	if err != nil {
@@ -294,27 +322,9 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (any, diag.D
 		}
 	}
 
-	// look to see what logging we should be outputting according to the provider configuration
-	logLevels := make(map[string]string)
-	for logger, level := range d.Get(schemaPmLogLevels).(map[string]any) {
-		levelAsString, ok := level.(string)
-		if ok {
-			logLevels[logger] = levelAsString
-		} else {
-			return nil, diag.Errorf("invalid logging level %v for %v. Be sure to use a string", level, logger)
-		}
-	}
-
-	// actually configure logging
-	// note that if enable is false here, the configuration will squash all output
-	ConfigureLogger(
-		d.Get(schemaPmLogEnable).(bool),
-		d.Get(schemaPmLogFile).(string),
-		logLevels)
-
 	var mut sync.Mutex
 	return &providerConfiguration{
-		NewClient:                          util.Pointer(client.New()),
+		NewClient:                          new(client.New()),
 		Client:                             client,
 		MaxParallel:                        d.Get(schemaPmParallel).(int),
 		CurrentParallel:                    0,
@@ -336,7 +346,7 @@ func getClient(pm_api_url string,
 	pm_tls_insecure bool,
 	pm_http_headers string,
 	pm_timeout int,
-	pm_debug bool,
+	pm_debug io.Writer,
 	pm_proxy_server string) (*pveSDK.Client, error) {
 
 	tlsconf := &tls.Config{InsecureSkipVerify: true}

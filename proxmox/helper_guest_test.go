@@ -28,6 +28,7 @@ type rawGuestResourceMock struct {
 	GetNetworkOutFunc         func() uint
 	GetNodeFunc               func() pveSDK.NodeName
 	GetPoolFunc               func() pveSDK.PoolName
+	GetPowerStateFunc         func() pveSDK.PowerState
 	GetStatusFunc             func() pveSDK.PowerState
 	GetTagsFunc               func() pveSDK.Tags
 	GetTemplateFunc           func() bool
@@ -54,6 +55,7 @@ func (r *rawGuestResourceMock) GetNetworkIn() uint           { return r.GetNetwo
 func (r *rawGuestResourceMock) GetNetworkOut() uint          { return r.GetNetworkOutFunc() }
 func (r *rawGuestResourceMock) GetNode() pveSDK.NodeName     { return r.GetNodeFunc() }
 func (r *rawGuestResourceMock) GetPool() pveSDK.PoolName     { return r.GetPoolFunc() }
+func (r *rawGuestResourceMock) GetState() pveSDK.PowerState  { return r.GetPowerStateFunc() }
 func (r *rawGuestResourceMock) GetStatus() pveSDK.PowerState { return r.GetStatusFunc() }
 func (r *rawGuestResourceMock) GetTags() pveSDK.Tags         { return r.GetTagsFunc() }
 func (r *rawGuestResourceMock) GetTemplate() bool            { return r.GetTemplateFunc() }
