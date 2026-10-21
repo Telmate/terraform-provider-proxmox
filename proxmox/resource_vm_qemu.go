@@ -606,17 +606,16 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
+			d.SetId(id.Guest{
+				ID:   vmr.VmId(),
+				Node: targetNode,
+				Type: id.GuestQemu}.String())
 			// give sometime to proxmox to catchup
 			time.Sleep(time.Duration(d.Get("clone_wait").(int)) * time.Second)
 
 			log.Print("[DEBUG][QemuVmCreate] update VM after clone")
 			err = clientNew.QemuGuest.Update(ctx, *vmr, false, true, config)
 			if err != nil {
-				// Set the id because when update config fail the vm is still created
-				d.SetId(id.Guest{
-					ID:   vmr.VmId(),
-					Node: targetNode,
-					Type: id.GuestQemu}.String())
 				return append(diags, diag.FromErr(err)...)
 			}
 
@@ -645,6 +644,12 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			log.Print("[DEBUG][QemuVmCreate] create with PXE")
 			config.ID = guestID
 			vmr, err = clientNew.QemuGuest.Create(ctx, config)
+			if vmr != nil {
+				d.SetId(id.Guest{
+					ID:   vmr.VmId(),
+					Node: targetNode,
+					Type: id.GuestQemu}.String())
+			}
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
@@ -652,6 +657,12 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			log.Print("[DEBUG][QemuVmCreate] create with ISO")
 			config.ID = guestID
 			vmr, err = clientNew.QemuGuest.Create(ctx, config)
+			if vmr != nil {
+				d.SetId(id.Guest{
+					ID:   vmr.VmId(),
+					Node: targetNode,
+					Type: id.GuestQemu}.String())
+			}
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
@@ -676,10 +687,6 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 
 	}
-	d.SetId(id.Guest{
-		ID:   vmr.VmId(),
-		Node: vmr.Node(),
-		Type: id.GuestQemu}.String())
 	logger.Debug().Int(vmID.Root, int(vmr.VmId())).Msgf("Set this vm (resource Id) to '%v'", d.Id())
 
 	// give sometime to proxmox to catchup

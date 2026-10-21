@@ -184,15 +184,17 @@ func resourceLxcGuestCreate(ctx context.Context, d *schema.ResourceData, meta an
 			PublicSSHkeys: ssh_public_keys.SDK(d),
 			UserPassword:  password.SDK(d)}
 		vmr, err = clientNew.LxcGuest.Create(ctx, config)
+		if vmr != nil { // note down the guest was created
+			d.SetId(id.Guest{
+				ID:   vmr.VmId(),
+				Node: targetNode,
+				Type: id.GuestLxc}.String())
+		}
 		if err != nil {
 			return append(diags, diag.Diagnostic{
 				Summary:  err.Error(),
 				Severity: diag.Error})
 		}
-		d.SetId(id.Guest{
-			ID:   vmr.VmId(),
-			Node: targetNode,
-			Type: id.GuestLxc}.String())
 	}
 
 	return append(diags, resourceLxcGuestRead(ctx, d, vmr, client, clientNew, &version, true)...)
