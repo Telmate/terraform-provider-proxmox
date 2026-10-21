@@ -2,9 +2,9 @@ package tags
 
 import (
 	"sort"
-	"strings"
 
 	pveSDK "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/parse"
 )
 
 func removeDuplicates(tags *pveSDK.Tags) *pveSDK.Tags {
@@ -35,24 +35,9 @@ func sortArray(tags *pveSDK.Tags) *pveSDK.Tags {
 }
 
 func split(rawTags string) *pveSDK.Tags {
-	tags := make(pveSDK.Tags, 0)
-	if rawTags == "" {
-		return &tags
-	}
-	tagIter := strings.SplitSeq(rawTags, ";")
-	for tag := range tagIter {
-		tagSubArrays := strings.Split(tag, ",")
-		if len(tagSubArrays) > 1 {
-			tmpTags := make([]pveSDK.Tag, len(tagSubArrays))
-			for i, e := range tagSubArrays {
-				tmpTags[i] = pveSDK.Tag(e)
-			}
-			tags = append(tags, tmpTags...)
-		} else {
-			tags = append(tags, pveSDK.Tag(tag))
-		}
-	}
-	return &tags
+	return new(pveSDK.Tags(parse.DoubleDelimitedString(rawTags, func(s string) pveSDK.Tag {
+		return pveSDK.Tag(s)
+	})))
 }
 
 func toString(tags *pveSDK.Tags) (tagList string) {

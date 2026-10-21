@@ -27,6 +27,7 @@ import (
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/node"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/pool"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/powerstate"
+	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/boot"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cloudinit"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/cpu"
 	"github.com/Telmate/terraform-provider-proxmox/v2/proxmox/Internal/resource/guest/qemu/disk"
@@ -143,12 +144,7 @@ func resourceVmQemu() *schema.Resource {
 				Default:     true,
 				Description: "Enable tablet mode in the VM",
 			},
-			"boot": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Computed:    true,
-				Description: "Boot order of the VM",
-			},
+			boot.Root: boot.Schema(),
 			"bootdisk": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -485,7 +481,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		Agent:            mapToSDK_QemuGuestAgent(d),
 		Args:             d.Get("args").(string),
 		Bios:             d.Get("bios").(string),
-		Boot:             d.Get("boot").(string),
+		Boot:             boot.SDK(d),
 		BootDisk:         d.Get("bootdisk").(string),
 		CPU:              cpu.SDK(d),
 		CloudInit:        cloudinit.SDK(d),
@@ -726,7 +722,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		Agent:            mapToSDK_QemuGuestAgent(d),
 		Args:             d.Get("args").(string),
 		Bios:             d.Get("bios").(string),
-		Boot:             d.Get("boot").(string),
+		Boot:             boot.SDK(d),
 		BootDisk:         d.Get("bootdisk").(string),
 		CPU:              cpu.SDK(d),
 		CloudInit:        cloudinit.SDK(d),
@@ -927,7 +923,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 	d.Set("bios", config.Bios)
 	d.Set("protection", config.Protection)
 	d.Set("tablet", config.Tablet)
-	d.Set("boot", config.Boot)
+	boot.Terraform(*config.Boot, d)
 	d.Set("bootdisk", config.BootDisk)
 	d.Set("machine", config.Machine)
 	d.Set("kvm", config.QemuKVM)
