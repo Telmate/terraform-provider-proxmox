@@ -40,9 +40,9 @@ func SDK(d *schema.ResourceData, s Settings) *Return {
 				Name: s.Name,
 				Node: s.Node}}}
 	}
-	var storage *string
+	var storage *pveSDK.StorageName
 	if v := settings[schemaStorage].(string); v != "" {
-		storage = &v
+		storage = new(pveSDK.StorageName(v))
 	}
 	return &Return{
 		ID:   pveSDK.GuestID(settings[SchemaID].(int)),

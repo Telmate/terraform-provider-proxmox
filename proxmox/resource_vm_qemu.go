@@ -431,8 +431,8 @@ func resourceVmQemu() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
-			ip.RootSkipV4:    ip.SchemaSkipV4(),
-			ip.RootSkipV6:    ip.SchemaSkipV6(),
+			ip.RootSkipV4: ip.SchemaSkipV4(),
+			ip.RootSkipV6: ip.SchemaSkipV6(),
 			ip.RootQemuV4: ip.SchemaV4(),
 			ip.RootQemuV6: ip.SchemaV6(),
 			"define_connection_info": { // by default define SSH for provisioner info
@@ -556,8 +556,10 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	var rebootRequired bool
 
+	var err error
 	if vmr == nil { // Create new VM
-		targetNode, err := node.SdkCreate(d)
+		var targetNode pveSDK.NodeName
+		targetNode, err = node.SdkCreate(d)
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
@@ -600,7 +602,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 			log.Print("[DEBUG][QemuVmCreate] cloning VM")
 			logger.Debug().Str(vmID.Root, d.Id()).Msgf("Cloning VM")
-			vmr, err = sourceVmr.CloneQemu(ctx, cloneSettings, client)
+			vmr, err = clientNew.QemuGuest.Clone(ctx, *sourceVmr, cloneSettings)
 			if err != nil {
 				return append(diags, diag.FromErr(err)...)
 			}
@@ -685,7 +687,7 @@ func resourceVmQemuCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Set("reboot_required", rebootRequired)
 	log.Print("[DEBUG][QemuVmCreate] vm creation done!")
-	return append(diags, resourceVmQemuRead(ctx, d, vmr, client, true)...)
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client, clientNew, true)...)
 }
 
 func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -813,7 +815,7 @@ func resourceVmQemuUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	reboot.SetRequired(rebootRequired, d)
-	return append(diags, resourceVmQemuRead(ctx, d, vmr, client, true)...)
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client, newClient, true)...)
 }
 
 func resourceVmQemuReadWithLock(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
@@ -832,6 +834,7 @@ func resourceVmQemuReadWithLock(ctx context.Context, d *schema.ResourceData, met
 	}
 
 	client := pconf.Client
+	newClient := pconf.NewClient
 
 	// Try to get information on the vm. If this call err's out
 	// that indicates the VM does not exist. We indicate that to terraform
@@ -853,10 +856,10 @@ func resourceVmQemuReadWithLock(ctx context.Context, d *schema.ResourceData, met
 	if err := client.CheckVmRef(ctx, vmr); err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
-	return append(diags, resourceVmQemuRead(ctx, d, vmr, client, false)...)
+	return append(diags, resourceVmQemuRead(ctx, d, vmr, client, newClient, false)...)
 }
 
-func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client, waitForAgent bool) diag.Diagnostics {
+func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK.VmRef, client *pveSDK.Client, newClient *pveSDK.ClientNew, waitForAgent bool) diag.Diagnostics {
 
 	// create a logger for this function
 	var diags diag.Diagnostics
@@ -864,7 +867,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 
 	logger.Info().Int(vmID.Root, int(vmr.VmId())).Msg("Reading configuration for vmid")
 
-	raw, pending, err := pveSDK.NewActiveRawConfigQemuFromApi(ctx, vmr, client)
+	raw, pending, err := newClient.QemuGuest.ReadActive(ctx, vmr)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -881,7 +884,7 @@ func resourceVmQemuRead(ctx context.Context, d *schema.ResourceData, vmr *pveSDK
 		disk.Terraform_Unsafe(d, config.Disks, &ciDisk)
 	}
 
-	guestStatus, err := vmr.GetRawGuestStatus(ctx, client)
+	guestStatus, err := newClient.Guest.Status(ctx, *vmr)
 	if err != nil {
 		return diag.Diagnostics{{
 			Summary:  err.Error(),

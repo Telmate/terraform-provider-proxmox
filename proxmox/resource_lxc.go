@@ -531,9 +531,9 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			guestID = util.Pointer(pveSDK.GuestID(setGuestID))
 		}
 
-		var storage *string
+		var storage *pveSDK.StorageName
 		if config.CloneStorage != "" {
-			storage = &config.CloneStorage
+			storage = new(pveSDK.StorageName(config.CloneStorage))
 		}
 
 		var poolName *pveSDK.PoolName
@@ -562,7 +562,7 @@ func resourceLxcCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 
 		log.Print("[DEBUG][LxcCreate] cloning LXC")
-		vmr, err = sourceVmr.CloneLxc(ctx, cloneSettings, client)
+		vmr, err = clientNew.LxcGuest.Clone(ctx, *sourceVmr, cloneSettings)
 		if err != nil {
 			return append(diags, diag.FromErr(err)...)
 		}
@@ -769,7 +769,7 @@ func resourceLxcUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	if d.HasChange("start") {
-		guestState, err := vmr.GetRawGuestStatus(ctx, client)
+		guestState, err := clientNew.Guest.Status(ctx, *vmr)
 		if err != nil {
 			return diag.Diagnostics{{
 				Summary:  err.Error(),
