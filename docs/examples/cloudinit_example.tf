@@ -65,7 +65,7 @@ resource "proxmox_vm_qemu" "cloudinit-test" {
     }
 
     # Setup the ip address using cloud-init.
-    boot = "order=virtio0"
+    boot = "virtio0"
     # Keep in mind to use the CIDR notation for the ip.
     ipconfig0 = "ip=192.168.10.20/24,gw=192.168.10.1"
 
