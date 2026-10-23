@@ -75,7 +75,7 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
   boot        = "order=scsi0" # has to be the same as the OS disk of the template
   clone       = "debian12-cloudinit" # The name of the template
   scsihw      = "virtio-scsi-single"
-  vm_state    = "running"
+  power_state = "running"
   automatic_reboot = true
 
   # Cloud-Init configuration

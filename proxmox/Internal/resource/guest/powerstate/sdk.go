@@ -16,8 +16,10 @@ type LegacyEnum uint8
 
 func SDK(legacy LegacyEnum, d *schema.ResourceData) *pveSDK.PowerState {
 	v, ok := d.GetOk(Root)
-	if !ok && legacy > LegacyFalse {
-		return sdkLegacy(d)
+	if legacy > LegacyFalse {
+		if _, okLegacy := d.GetOk(LegacyRoot); okLegacy || !ok {
+			return sdkLegacy(d)
+		}
 	}
 	switch v.(string) {
 	case enumRunning:
