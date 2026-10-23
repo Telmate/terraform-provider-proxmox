@@ -83,6 +83,7 @@ func sdk_Disks_QemuIdeStorage(key string, schema map[string]any) *pveAPI.QemuIde
 			Discard:         diskMap[schemaDiscard].(bool),
 			EmulateSSD:      diskMap[schemaEmulateSSD].(bool),
 			Format:          pveAPI.QemuDiskFormat(diskMap[schemaFormat].(string)),
+			ImportFrom:      diskMap[schemaImportFrom].(string),
 			Replicate:       diskMap[schemaReplicate].(bool),
 			SizeInKibibytes: pveAPI.QemuDiskSize(size.Parse_Unsafe(diskMap[schemaSize].(string))),
 			Storage:         diskMap[schemaStorage].(string)}
@@ -172,6 +173,7 @@ func sdk_Disks_QemuSataStorage(key string, schema map[string]any) *pveAPI.QemuSa
 			Discard:         diskMap[schemaDiscard].(bool),
 			EmulateSSD:      diskMap[schemaEmulateSSD].(bool),
 			Format:          pveAPI.QemuDiskFormat(diskMap[schemaFormat].(string)),
+			ImportFrom:      diskMap[schemaImportFrom].(string),
 			Replicate:       diskMap[schemaReplicate].(bool),
 			SizeInKibibytes: pveAPI.QemuDiskSize(size.Parse_Unsafe(diskMap[schemaSize].(string))),
 			Storage:         diskMap[schemaStorage].(string)}
@@ -311,6 +313,7 @@ func sdk_Disks_QemuScsiStorage(key string, schema map[string]any) *pveAPI.QemuSc
 			Discard:         diskMap[schemaDiscard].(bool),
 			EmulateSSD:      diskMap[schemaEmulateSSD].(bool),
 			Format:          pveAPI.QemuDiskFormat(diskMap[schemaFormat].(string)),
+			ImportFrom:      diskMap[schemaImportFrom].(string),
 			IOThread:        diskMap[schemaIOthread].(bool),
 			ReadOnly:        diskMap[schemaReadOnly].(bool),
 			Replicate:       diskMap[schemaReplicate].(bool),
@@ -423,6 +426,7 @@ func sdk_Disks_QemuVirtIOStorage(key string, schema map[string]any) *pveAPI.Qemu
 			Bandwidth:       sdk_Disks_QemuDiskBandwidth(diskMap),
 			Discard:         diskMap[schemaDiscard].(bool),
 			Format:          pveAPI.QemuDiskFormat(diskMap[schemaFormat].(string)),
+			ImportFrom:      diskMap[schemaImportFrom].(string),
 			IOThread:        diskMap[schemaIOthread].(bool),
 			ReadOnly:        diskMap[schemaReadOnly].(bool),
 			Replicate:       diskMap[schemaReplicate].(bool),

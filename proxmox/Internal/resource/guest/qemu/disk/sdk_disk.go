@@ -105,6 +105,7 @@ func sdk_Disk_QemuIdeStorage(ide *pveAPI.QemuIdeStorage, schema map[string]inter
 				Discard:       schema[schemaDiscard].(bool),
 				EmulateSSD:    schema[schemaEmulateSSD].(bool),
 				Format:        default_format(schema[schemaFormat].(string)),
+				ImportFrom:    schema[schemaImportFrom].(string),
 				Replicate:     schema[schemaReplicate].(bool),
 				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
 				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
@@ -184,6 +185,7 @@ func sdk_Disk_QemuSataStorage(sata *pveAPI.QemuSataStorage, schema map[string]in
 				Discard:       schema[schemaDiscard].(bool),
 				EmulateSSD:    schema[schemaEmulateSSD].(bool),
 				Format:        default_format(schema[schemaFormat].(string)),
+				ImportFrom:    schema[schemaImportFrom].(string),
 				Replicate:     schema[schemaReplicate].(bool),
 				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
 				WorldWideName: pveAPI.QemuWorldWideName(schema[schemaWorldWideName].(string))}
@@ -310,6 +312,7 @@ func sdk_Disk_QemuScsiStorage(scsi *pveAPI.QemuScsiStorage, schema map[string]in
 				EmulateSSD:    schema[schemaEmulateSSD].(bool),
 				Format:        default_format(schema[schemaFormat].(string)),
 				IOThread:      schema[schemaIOthread].(bool),
+				ImportFrom:    schema[schemaImportFrom].(string),
 				ReadOnly:      schema[schemaReadOnly].(bool),
 				Replicate:     schema[schemaReplicate].(bool),
 				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
@@ -370,6 +373,7 @@ func sdk_Disk_QemuVirtIOStorage(virtio *pveAPI.QemuVirtIOStorage, schema map[str
 				Discard:       schema[schemaDiscard].(bool),
 				Format:        default_format(schema[schemaFormat].(string)),
 				IOThread:      schema[schemaIOthread].(bool),
+				ImportFrom:    schema[schemaImportFrom].(string),
 				ReadOnly:      schema[schemaReadOnly].(bool),
 				Replicate:     schema[schemaReplicate].(bool),
 				Serial:        pveAPI.QemuDiskSerial(schema[schemaSerial].(string)),
