@@ -297,6 +297,11 @@ func resourceLxc() *schema.Resource {
 							Optional: true,
 							Computed: true,
 						},
+						"host_managed": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Computed: true,
+						},
 					},
 				},
 			},
