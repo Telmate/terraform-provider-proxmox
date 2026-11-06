@@ -85,11 +85,16 @@ func _resourcePoolRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	rawPool, err := client.Pool.Read(ctx, pveSDK.PoolName(poolID))
 	if err != nil {
-		d.SetId("")
-		return nil
+		exists, errExists := client.Pool.Exists(ctx, pveSDK.PoolName(poolID))
+		if errExists == nil && !exists {
+			d.SetId("")
+			return nil
+		}
+		return err
 	}
 
 	d.SetId(clusterResourceId("pools", poolID))
+	d.Set("poolid", poolID)
 	d.Set("comment", rawPool.GetComment())
 
 	// DEBUG print the read result
