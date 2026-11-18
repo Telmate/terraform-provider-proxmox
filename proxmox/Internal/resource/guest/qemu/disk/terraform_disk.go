@@ -95,7 +95,7 @@ func terraform_Disk_QemuIdeStorage(config *pveAPI.QemuIdeStorage, ciDisk *bool, 
 		schema[schemaCache] = string(config.Passthrough.Cache)
 		schema[schemaDiscard] = config.Passthrough.Discard
 		schema[schemaEmulateSSD] = config.Passthrough.EmulateSSD
-		schema[schemaFile] = config.Passthrough.File
+		schema[schemaDiskFile] = config.Passthrough.File
 		schema[schemaPassthrough] = true
 		schema[schemaReplicate] = config.Passthrough.Replicate
 		schema[schemaSerial] = string(config.Passthrough.Serial)
@@ -173,7 +173,7 @@ func terraform_Disk_QemuSataStorage(config *pveAPI.QemuSataStorage, ciDisk *bool
 		schema[schemaCache] = string(config.Passthrough.Cache)
 		schema[schemaDiscard] = config.Passthrough.Discard
 		schema[schemaEmulateSSD] = config.Passthrough.EmulateSSD
-		schema[schemaFile] = config.Passthrough.File
+		schema[schemaDiskFile] = config.Passthrough.File
 		schema[schemaPassthrough] = true
 		schema[schemaReplicate] = config.Passthrough.Replicate
 		schema[schemaSerial] = string(config.Passthrough.Serial)
@@ -328,7 +328,7 @@ func terraform_Disk_QemuScsiStorage(config *pveAPI.QemuScsiStorage, ciDisk *bool
 		schema[schemaCache] = string(config.Passthrough.Cache)
 		schema[schemaDiscard] = config.Passthrough.Discard
 		schema[schemaEmulateSSD] = config.Passthrough.EmulateSSD
-		schema[schemaFile] = config.Passthrough.File
+		schema[schemaDiskFile] = config.Passthrough.File
 		schema[schemaIOthread] = config.Passthrough.IOThread
 		schema[schemaPassthrough] = true
 		schema[schemaReadOnly] = config.Passthrough.ReadOnly
@@ -438,7 +438,7 @@ func terraform_Disk_QemuVirtIOStorage(config *pveAPI.QemuVirtIOStorage, schema m
 		schema[schemaBackup] = config.Passthrough.Backup
 		schema[schemaCache] = string(config.Passthrough.Cache)
 		schema[schemaDiscard] = config.Passthrough.Discard
-		schema[schemaFile] = config.Passthrough.File
+		schema[schemaDiskFile] = config.Passthrough.File
 		schema[schemaIOthread] = config.Passthrough.IOThread
 		schema[schemaPassthrough] = true
 		schema[schemaReadOnly] = config.Passthrough.ReadOnly
